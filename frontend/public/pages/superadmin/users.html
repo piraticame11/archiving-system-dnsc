@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Management — DNSC Research System</title>
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 font-sans min-h-screen">
+
+  <!-- Navbar -->
+  <nav class="bg-primary-700 text-white px-6 py-4 flex items-center justify-between shadow sticky top-0 z-40">
+    <div class="flex items-center gap-3">
+      <a href="/pages/superadmin/dashboard.html" class="text-primary-200 hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </a>
+      <span class="font-bold text-lg">DNSC Research System</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <span id="user-name" class="text-sm text-primary-100"></span>
+      <button onclick="logout()" class="text-sm bg-primary-800 hover:bg-primary-900 px-3 py-1.5 rounded-lg transition-colors">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="max-w-7xl mx-auto px-6 py-8">
+
+    <!-- Page header -->
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">User Management</h1>
+        <p class="text-sm text-gray-500 mt-0.5">Create, edit, and manage all system accounts</p>
+      </div>
+      <button onclick="openCreateModal()" class="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Add User
+      </button>
+    </div>
+
+    <!-- Stats -->
+    <div id="stats-row" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6"></div>
+
+    <!-- Toolbar -->
+    <div class="bg-white border border-gray-200 rounded-xl px-4 py-3 flex flex-wrap items-center gap-3 mb-4 shadow-sm">
+      <div class="relative flex-1 min-w-48">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/></svg>
+        <input id="search-input" type="text" placeholder="Search by name, email, student no…"
+          class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+      </div>
+      <select id="role-filter" class="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white">
+        <option value="">All Roles</option>
+        <option value="student">Student</option>
+        <option value="instructor">Instructor</option>
+        <option value="admin">Admin</option>
+        <option value="panelist">Panelist</option>
+        <option value="superadmin">Super Admin</option>
+      </select>
+      <select id="status-filter" class="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white">
+        <option value="">All Status</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+      <button onclick="resetFilters()" class="text-sm text-gray-500 hover:text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
+        Reset
+      </button>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <th class="px-4 py-3 text-left w-10">#</th>
+              <th class="px-4 py-3 text-left min-w-52">User</th>
+              <th class="px-4 py-3 text-left">Role</th>
+              <th class="px-4 py-3 text-left">Department</th>
+              <th class="px-4 py-3 text-left">Student No.</th>
+              <th class="px-4 py-3 text-left">Status</th>
+              <th class="px-4 py-3 text-left">Created</th>
+              <th class="px-4 py-3 text-center w-36">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="users-tbody">
+            <tr><td colspan="8" class="px-4 py-10 text-center text-gray-400">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div id="pagination-bar" class="hidden flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+        <span id="pagination-info" class="text-xs text-gray-500"></span>
+        <div class="flex items-center gap-1">
+          <button id="btn-prev" onclick="changePage(-1)"
+            class="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+            ← Prev
+          </button>
+          <div id="page-numbers" class="flex items-center gap-1"></div>
+          <button id="btn-next" onclick="changePage(1)"
+            class="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+            Next →
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Create / Edit Modal ─────────────────────────────────── -->
+  <div id="user-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/40" onclick="closeUserModal()"></div>
+    <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-screen overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <h2 id="modal-title" class="text-base font-semibold text-gray-900"></h2>
+        <button onclick="closeUserModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <form id="user-form" onsubmit="submitUserForm(event)" class="px-6 py-5 space-y-4">
+        <input type="hidden" id="form-user-id">
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">First Name <span class="text-red-500">*</span></label>
+            <input id="f-first-name" type="text" class="form-input" placeholder="Juan" required>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Last Name <span class="text-red-500">*</span></label>
+            <input id="f-last-name" type="text" class="form-input" placeholder="Dela Cruz" required>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Email <span class="text-red-500">*</span></label>
+          <input id="f-email" type="email" class="form-input" placeholder="juan@example.com" required>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Role <span class="text-red-500">*</span></label>
+            <select id="f-role" onchange="onRoleChange()" class="form-input" required>
+              <option value="">Select role…</option>
+              <option value="student">Student</option>
+              <option value="instructor">Instructor</option>
+              <option value="admin">Admin</option>
+              <option value="panelist">Panelist</option>
+              <option value="superadmin">Super Admin</option>
+            </select>
+          </div>
+          <div id="dept-field">
+            <label class="block text-xs font-medium text-gray-600 mb-1">Department</label>
+            <select id="f-department" class="form-input">
+              <option value="">None</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="student-number-field" class="hidden">
+          <label class="block text-xs font-medium text-gray-600 mb-1">Student Number</label>
+          <input id="f-student-number" type="text" class="form-input" placeholder="2021-00001">
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">
+              Password <span id="pw-hint" class="text-red-500">*</span>
+            </label>
+            <input id="f-password" type="password" class="form-input" placeholder="Min 8 chars, 1 uppercase, 1 number">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Confirm Password</label>
+            <input id="f-confirm-password" type="password" class="form-input" placeholder="Repeat password">
+          </div>
+        </div>
+        <p id="pw-edit-hint" class="hidden text-xs text-gray-400 -mt-2">Leave password fields blank to keep current password.</p>
+
+        <div class="flex items-center gap-3 pt-1">
+          <label class="text-xs font-medium text-gray-600">Account Status</label>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input id="f-is-active" type="checkbox" class="sr-only peer" checked>
+            <div class="w-9 h-5 bg-gray-300 peer-checked:bg-primary-600 rounded-full transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
+          </label>
+          <span id="active-label" class="text-xs text-gray-500">Active</span>
+        </div>
+
+        <div id="form-error" class="hidden bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700"></div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="button" onclick="closeUserModal()" class="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">Cancel</button>
+          <button type="submit" id="form-submit-btn" class="flex-1 bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ─── Reset Password Modal ──────────────────────────────────── -->
+  <div id="reset-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/40" onclick="closeResetModal()"></div>
+    <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-sm">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <h2 class="text-base font-semibold text-gray-900">Reset Password</h2>
+        <button onclick="closeResetModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="px-6 py-5 space-y-4">
+        <p id="reset-modal-label" class="text-sm text-gray-600"></p>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">New Password <span class="text-red-500">*</span></label>
+          <input id="r-password" type="password" class="form-input" placeholder="Min 8 chars, 1 uppercase, 1 number">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Confirm Password <span class="text-red-500">*</span></label>
+          <input id="r-confirm" type="password" class="form-input" placeholder="Repeat password">
+        </div>
+        <div id="reset-error" class="hidden bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700"></div>
+        <div class="flex gap-3 pt-1">
+          <button onclick="closeResetModal()" class="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">Cancel</button>
+          <button onclick="submitResetPassword()" id="reset-submit-btn" class="flex-1 bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60">Reset</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Delete Confirm Modal ─────────────────────────────────── -->
+  <div id="delete-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/40" onclick="closeDeleteModal()"></div>
+    <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-sm">
+      <div class="px-6 py-6 text-center">
+        <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        </div>
+        <h3 class="text-base font-semibold text-gray-900 mb-1">Delete User</h3>
+        <p id="delete-modal-label" class="text-sm text-gray-500 mb-5"></p>
+        <div class="flex gap-3">
+          <button onclick="closeDeleteModal()" class="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">Cancel</button>
+          <button onclick="confirmDelete()" id="delete-confirm-btn" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .form-input {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.875rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.5rem;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .form-input:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59,130,246,0.25);
+    }
+    .form-input[disabled] { background: #f9fafb; cursor: not-allowed; }
+  </style>
+
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/utils.js"></script>
+  <script>
+    /* ── API wrappers — parse JSON and throw on non-OK ──────── */
+    async function http(fn) {
+      const res  = await fn();
+      const json = await res.json();
+      if (!res.ok) throw json;
+      return json;
+    }
+    const get   = path        => http(() => apiGet(path));
+    const post  = (path, b)   => http(() => apiPost(path, b));
+    const patch = (path, b)   => http(() => apiPatch(path, b));
+    const del   = path        => http(() => apiDelete(path));
+
+    /* ── State ───────────────────────────────────────────────── */
+    let currentPage  = 1;
+    let totalPages   = 1;
+    let resetUserId  = null;
+    let deleteUserId = null;
+
+    const ROLE_BADGE = {
+      superadmin: 'bg-purple-100 text-purple-700',
+      admin:      'bg-blue-100 text-blue-700',
+      instructor: 'bg-indigo-100 text-indigo-700',
+      panelist:   'bg-teal-100 text-teal-700',
+      student:    'bg-green-100 text-green-700',
+    };
+    const ROLE_LABEL = {
+      superadmin: 'Super Admin',
+      admin:      'Admin',
+      instructor: 'Instructor',
+      panelist:   'Panelist',
+      student:    'Student',
+    };
+
+    /* ── Init ────────────────────────────────────────────────── */
+    requireAuthAsync('superadmin').then(user => {
+      if (!user) return;
+      document.getElementById('user-name').textContent = 'Super Administrator';
+      loadDepartments().then(() => loadUsers());
+    });
+
+    /* ── Departments ─────────────────────────────────────────── */
+    async function loadDepartments() {
+      try {
+        const json = await get('/api/v1/departments');
+        const sel  = document.getElementById('f-department');
+        (json.data || []).forEach(d => {
+          sel.insertAdjacentHTML('beforeend',
+            `<option value="${d.id}">${d.code} — ${d.name}</option>`);
+        });
+      } catch (_) {}
+    }
+
+    /* ── Load / Render users ─────────────────────────────────── */
+    async function loadUsers(page = currentPage) {
+      const search = document.getElementById('search-input').value.trim();
+      const role   = document.getElementById('role-filter').value;
+      const status = document.getElementById('status-filter').value;
+
+      const params = new URLSearchParams({ page, limit: 15 });
+      if (search) params.set('search', search);
+      if (role)   params.set('role', role);
+      if (status) params.set('status', status);
+
+      const tbody = document.getElementById('users-tbody');
+      tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-10 text-center text-gray-400">Loading…</td></tr>';
+
+      try {
+        const json = await get(`/api/v1/users?${params}`);
+        const { data, pagination } = json.data;
+        currentPage = pagination.page;
+        totalPages  = pagination.totalPages;
+        renderTable(data, pagination);
+        renderStats(search, role, status);
+        renderPagination(pagination);
+      } catch (err) {
+        const msg = err?.message || 'Failed to load users.';
+        tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-10 text-center text-red-400">${esc(msg)}</td></tr>`;
+      }
+    }
+
+    function renderTable(rows, pagination) {
+      const tbody = document.getElementById('users-tbody');
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-10 text-center text-gray-400">No users found.</td></tr>';
+        return;
+      }
+      const offset = (pagination.page - 1) * pagination.limit;
+      tbody.innerHTML = rows.map((u, i) => {
+        const initials   = (u.first_name[0] + u.last_name[0]).toUpperCase();
+        const avatarBg   = avatarColor(u.role);
+        const roleBadge  = ROLE_BADGE[u.role] || 'bg-gray-100 text-gray-600';
+        const roleLabel  = ROLE_LABEL[u.role]  || u.role;
+        const statusCls  = u.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500';
+        const statusText = u.is_active ? 'Active' : 'Inactive';
+        const toggleTitle = u.is_active ? 'Deactivate' : 'Activate';
+        const toggleIcon  = u.is_active
+          ? `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>`
+          : `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>`;
+
+        return `
+          <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+            <td class="px-4 py-3 text-gray-400 text-xs">${offset + i + 1}</td>
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full ${avatarBg} flex items-center justify-center text-xs font-semibold text-white flex-shrink-0">${initials}</div>
+                <div>
+                  <p class="font-medium text-gray-800">${esc(u.first_name)} ${esc(u.last_name)}</p>
+                  <p class="text-xs text-gray-400">${esc(u.email)}</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-4 py-3">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${roleBadge}">${roleLabel}</span>
+            </td>
+            <td class="px-4 py-3 text-gray-600 text-xs">${u.department_code ? `<span class="font-medium">${esc(u.department_code)}</span>` : '<span class="text-gray-300">—</span>'}</td>
+            <td class="px-4 py-3 text-gray-600 text-xs">${u.student_number ? esc(u.student_number) : '<span class="text-gray-300">—</span>'}</td>
+            <td class="px-4 py-3">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusCls}">${statusText}</span>
+            </td>
+            <td class="px-4 py-3 text-xs text-gray-400">${fmtDate(u.created_at)}</td>
+            <td class="px-4 py-3">
+              <div class="flex items-center justify-center gap-1">
+                <button onclick='openEditModal(${JSON.stringify(u)})' title="Edit"
+                  class="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                </button>
+                <button onclick="openResetModal(${u.id}, '${esc(u.first_name)} ${esc(u.last_name)}')" title="Reset Password"
+                  class="p-1.5 rounded-lg text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 transition-colors">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                </button>
+                <button onclick="openToggleActive(${u.id}, ${u.is_active})" title="${toggleTitle}"
+                  class="p-1.5 rounded-lg transition-colors ${u.is_active ? 'text-gray-400 hover:text-orange-500 hover:bg-orange-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'}">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">${toggleIcon}</svg>
+                </button>
+                <button onclick="openDeleteModal(${u.id}, '${esc(u.first_name)} ${esc(u.last_name)}')" title="Delete"
+                  class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                </button>
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    async function renderStats(search, role, status) {
+      const statsRow = document.getElementById('stats-row');
+      if (search || role || status) { statsRow.innerHTML = ''; return; }
+      try {
+        const [tot, act, inact, stu, ins, adm] = await Promise.all([
+          get('/api/v1/users?limit=1').then(j => j.data.pagination.total),
+          get('/api/v1/users?limit=1&status=active').then(j => j.data.pagination.total),
+          get('/api/v1/users?limit=1&status=inactive').then(j => j.data.pagination.total),
+          get('/api/v1/users?limit=1&role=student').then(j => j.data.pagination.total),
+          get('/api/v1/users?limit=1&role=instructor').then(j => j.data.pagination.total),
+          get('/api/v1/users?limit=1&role=admin').then(j => j.data.pagination.total),
+        ]);
+        statsRow.innerHTML = [
+          statCard('Total Users',  tot,   'bg-primary-50 text-primary-700'),
+          statCard('Active',       act,   'bg-green-50 text-green-700'),
+          statCard('Inactive',     inact, 'bg-gray-100 text-gray-600'),
+          statCard('Students',     stu,   'bg-teal-50 text-teal-700'),
+          statCard('Instructors',  ins,   'bg-indigo-50 text-indigo-700'),
+          statCard('Admins',       adm,   'bg-blue-50 text-blue-700'),
+        ].join('');
+      } catch (_) { statsRow.innerHTML = ''; }
+    }
+
+    function statCard(label, value, cls) {
+      return `<div class="rounded-xl px-4 py-3 ${cls} border border-current border-opacity-20">
+        <p class="text-2xl font-bold">${value}</p>
+        <p class="text-xs font-medium opacity-70 mt-0.5">${label}</p>
+      </div>`;
+    }
+
+    function renderPagination(p) {
+      const bar = document.getElementById('pagination-bar');
+      if (p.totalPages <= 1) { bar.classList.add('hidden'); return; }
+      bar.classList.remove('hidden');
+
+      const start = (p.page - 1) * p.limit + 1;
+      const end   = Math.min(p.page * p.limit, p.total);
+      document.getElementById('pagination-info').textContent =
+        `Showing ${start}–${end} of ${p.total} users`;
+
+      document.getElementById('btn-prev').disabled = p.page <= 1;
+      document.getElementById('btn-next').disabled = p.page >= p.totalPages;
+
+      const pages = pagesToShow(p.page, p.totalPages);
+      document.getElementById('page-numbers').innerHTML = pages.map(pg => pg === '…'
+        ? `<span class="px-2 py-1 text-xs text-gray-400">…</span>`
+        : `<button onclick="goToPage(${pg})"
+             class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${pg === p.page
+               ? 'bg-primary-600 text-white border-primary-600'
+               : 'border-gray-300 bg-white hover:bg-gray-50 text-gray-600'}">${pg}</button>`
+      ).join('');
+    }
+
+    function pagesToShow(cur, tot) {
+      if (tot <= 7) return Array.from({ length: tot }, (_, i) => i + 1);
+      const s = new Set([1, tot, cur, cur - 1, cur + 1].filter(p => p >= 1 && p <= tot));
+      const sorted = [...s].sort((a, b) => a - b);
+      return sorted.reduce((acc, p, i) => {
+        if (i > 0 && p - sorted[i - 1] > 1) acc.push('…');
+        acc.push(p);
+        return acc;
+      }, []);
+    }
+
+    function goToPage(p)   { currentPage = p; loadUsers(p); }
+    function changePage(d) { goToPage(currentPage + d); }
+
+    /* ── Filters ─────────────────────────────────────────────── */
+    const debouncedLoad = debounce(() => { currentPage = 1; loadUsers(1); }, 350);
+    document.getElementById('search-input').addEventListener('input', debouncedLoad);
+    document.getElementById('role-filter').addEventListener('change',   () => { currentPage = 1; loadUsers(1); });
+    document.getElementById('status-filter').addEventListener('change', () => { currentPage = 1; loadUsers(1); });
+
+    function resetFilters() {
+      document.getElementById('search-input').value  = '';
+      document.getElementById('role-filter').value   = '';
+      document.getElementById('status-filter').value = '';
+      currentPage = 1;
+      loadUsers(1);
+    }
+
+    /* ── Create / Edit Modal ─────────────────────────────────── */
+    function openCreateModal() {
+      document.getElementById('modal-title').textContent     = 'Add New User';
+      document.getElementById('form-user-id').value          = '';
+      document.getElementById('user-form').reset();
+      document.getElementById('pw-hint').textContent         = '*';
+      document.getElementById('pw-edit-hint').classList.add('hidden');
+      document.getElementById('f-password').required         = true;
+      document.getElementById('f-confirm-password').required = true;
+      document.getElementById('f-is-active').checked         = true;
+      document.getElementById('active-label').textContent    = 'Active';
+      document.getElementById('student-number-field').classList.add('hidden');
+      document.getElementById('form-error').classList.add('hidden');
+      document.getElementById('user-modal').classList.remove('hidden');
+    }
+
+    function openEditModal(u) {
+      document.getElementById('modal-title').textContent     = 'Edit User';
+      document.getElementById('form-user-id').value          = u.id;
+      document.getElementById('f-first-name').value          = u.first_name;
+      document.getElementById('f-last-name').value           = u.last_name;
+      document.getElementById('f-email').value               = u.email;
+      document.getElementById('f-role').value                = u.role;
+      document.getElementById('f-department').value          = u.department_id || '';
+      document.getElementById('f-student-number').value      = u.student_number || '';
+      document.getElementById('f-password').value            = '';
+      document.getElementById('f-confirm-password').value    = '';
+      document.getElementById('f-password').required         = false;
+      document.getElementById('f-confirm-password').required = false;
+      document.getElementById('pw-hint').textContent         = '(optional)';
+      document.getElementById('pw-edit-hint').classList.remove('hidden');
+      document.getElementById('f-is-active').checked         = !!u.is_active;
+      document.getElementById('active-label').textContent    = u.is_active ? 'Active' : 'Inactive';
+      document.getElementById('student-number-field').classList.toggle('hidden', u.role !== 'student');
+      document.getElementById('form-error').classList.add('hidden');
+      document.getElementById('user-modal').classList.remove('hidden');
+    }
+
+    function closeUserModal() { document.getElementById('user-modal').classList.add('hidden'); }
+
+    function onRoleChange() {
+      const role = document.getElementById('f-role').value;
+      document.getElementById('student-number-field').classList.toggle('hidden', role !== 'student');
+    }
+
+    document.getElementById('f-is-active').addEventListener('change', function () {
+      document.getElementById('active-label').textContent = this.checked ? 'Active' : 'Inactive';
+    });
+
+    async function submitUserForm(e) {
+      e.preventDefault();
+      const errEl  = document.getElementById('form-error');
+      const btn    = document.getElementById('form-submit-btn');
+      const userId = document.getElementById('form-user-id').value;
+      const pw     = document.getElementById('f-password').value;
+      const cpw    = document.getElementById('f-confirm-password').value;
+
+      if (pw && pw !== cpw) { showFormError(errEl, 'Passwords do not match.'); return; }
+
+      const body = {
+        first_name:     document.getElementById('f-first-name').value.trim(),
+        last_name:      document.getElementById('f-last-name').value.trim(),
+        email:          document.getElementById('f-email').value.trim(),
+        role:           document.getElementById('f-role').value,
+        department_id:  document.getElementById('f-department').value || null,
+        student_number: document.getElementById('f-student-number').value.trim() || null,
+        is_active:      document.getElementById('f-is-active').checked,
+      };
+      if (pw) body.password = pw;
+
+      btn.disabled = true; btn.textContent = 'Saving…'; errEl.classList.add('hidden');
+
+      try {
+        if (userId) {
+          await patch(`/api/v1/users/${userId}`, body);
+          showToast('User updated successfully', 'success');
+        } else {
+          if (!pw) { showFormError(errEl, 'Password is required.'); btn.disabled = false; btn.textContent = 'Save'; return; }
+          await post('/api/v1/users', body);
+          showToast('User created successfully', 'success');
+        }
+        closeUserModal();
+        loadUsers();
+      } catch (err) {
+        showFormError(errEl, err?.message || 'Something went wrong.');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Save';
+      }
+    }
+
+    /* ── Reset Password Modal ────────────────────────────────── */
+    function openResetModal(id, name) {
+      resetUserId = id;
+      document.getElementById('reset-modal-label').textContent = `Set a new password for ${name}.`;
+      document.getElementById('r-password').value = '';
+      document.getElementById('r-confirm').value  = '';
+      document.getElementById('reset-error').classList.add('hidden');
+      document.getElementById('reset-modal').classList.remove('hidden');
+    }
+
+    function closeResetModal() {
+      document.getElementById('reset-modal').classList.add('hidden');
+      resetUserId = null;
+    }
+
+    async function submitResetPassword() {
+      const errEl = document.getElementById('reset-error');
+      const btn   = document.getElementById('reset-submit-btn');
+      const pw    = document.getElementById('r-password').value;
+      const cpw   = document.getElementById('r-confirm').value;
+
+      if (!pw)        { showFormError(errEl, 'Password is required.'); return; }
+      if (pw !== cpw) { showFormError(errEl, 'Passwords do not match.'); return; }
+
+      btn.disabled = true; btn.textContent = 'Resetting…'; errEl.classList.add('hidden');
+      try {
+        await post(`/api/v1/users/${resetUserId}/reset-password`, { password: pw });
+        showToast('Password reset successfully', 'success');
+        closeResetModal();
+      } catch (err) {
+        showFormError(errEl, err?.message || 'Something went wrong.');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Reset';
+      }
+    }
+
+    /* ── Toggle Active ───────────────────────────────────────── */
+    async function openToggleActive(id, currentStatus) {
+      const action = currentStatus ? 'deactivate' : 'activate';
+      if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+      try {
+        const json = await patch(`/api/v1/users/${id}/toggle-active`);
+        showToast(json.message || `User ${action}d`, 'success');
+        loadUsers();
+      } catch (err) {
+        showToast(err?.message || 'Failed to update status', 'error');
+      }
+    }
+
+    /* ── Delete Modal ────────────────────────────────────────── */
+    function openDeleteModal(id, name) {
+      deleteUserId = id;
+      document.getElementById('delete-modal-label').textContent =
+        `This will permanently remove "${name}". This action cannot be undone.`;
+      document.getElementById('delete-modal').classList.remove('hidden');
+    }
+
+    function closeDeleteModal() {
+      document.getElementById('delete-modal').classList.add('hidden');
+      deleteUserId = null;
+    }
+
+    async function confirmDelete() {
+      const btn = document.getElementById('delete-confirm-btn');
+      btn.disabled = true; btn.textContent = 'Deleting…';
+      try {
+        await del(`/api/v1/users/${deleteUserId}`);
+        showToast('User deleted', 'success');
+        closeDeleteModal();
+        loadUsers();
+      } catch (err) {
+        showToast(err?.message || 'Failed to delete user', 'error');
+        btn.disabled = false; btn.textContent = 'Delete';
+      }
+    }
+
+    /* ── Helpers ─────────────────────────────────────────────── */
+    function showFormError(el, msg) { el.textContent = msg; el.classList.remove('hidden'); }
+
+    function esc(str) {
+      return String(str ?? '')
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function fmtDate(str) {
+      if (!str) return '—';
+      return new Date(str).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    function avatarColor(role) {
+      return { superadmin:'bg-purple-500', admin:'bg-blue-500', instructor:'bg-indigo-500',
+               panelist:'bg-teal-500', student:'bg-green-500' }[role] || 'bg-gray-400';
+    }
+  </script>
+</body>
+</html>

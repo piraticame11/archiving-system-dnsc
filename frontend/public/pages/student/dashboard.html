@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Dashboard — DNSC Research System</title>
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 font-sans">
+
+  <nav class="bg-primary-700 text-white px-6 py-4 flex items-center justify-between shadow">
+    <span class="font-bold text-lg">DNSC Research System</span>
+    <div class="flex items-center gap-4">
+      <span id="user-name" class="text-sm text-primary-100"></span>
+      <button onclick="logout()" class="text-sm bg-primary-800 hover:bg-primary-900 px-3 py-1.5 rounded-lg transition-colors">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="max-w-5xl mx-auto px-6 py-10">
+    <h1 class="text-2xl font-bold text-gray-900 mb-2">Student Dashboard</h1>
+    <p class="text-gray-500 text-sm mb-8">Submit your research title, upload documents, and track your progress.</p>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      <a href="/pages/student/submit-title.html" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mb-3">
+          <svg class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        </div>
+        <p class="font-semibold text-gray-800">Submit Title</p>
+        <p class="text-xs text-gray-500 mt-1">Propose a new thesis or capstone title</p>
+      </a>
+
+      <a href="/pages/student/my-submissions.html" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+        <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center mb-3">
+          <svg class="w-5 h-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        </div>
+        <p class="font-semibold text-gray-800">My Submissions</p>
+        <p class="text-xs text-gray-500 mt-1">Track status of your submissions</p>
+      </a>
+
+      <a href="/pages/student/my-schedule.html" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+        <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mb-3">
+          <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        </div>
+        <p class="font-semibold text-gray-800">My Schedule</p>
+        <p class="text-xs text-gray-500 mt-1">View your defense date, time, and venue</p>
+      </a>
+
+      <a href="/pages/student/my-scores.html" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+        <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mb-3">
+          <svg class="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        </div>
+        <p class="font-semibold text-gray-800">My Scores</p>
+        <p class="text-xs text-gray-500 mt-1">View evaluation results and feedback</p>
+      </a>
+
+      <a href="/pages/student/upload-document.html" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+        <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mb-3">
+          <svg class="w-5 h-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        </div>
+        <p class="font-semibold text-gray-800">Upload Document</p>
+        <p class="text-xs text-gray-500 mt-1">Upload your research documents</p>
+      </a>
+    </div>
+  </div>
+
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/utils.js"></script>
+  <script>
+    requireAuthAsync('student').then(user => {
+      if (!user) return;
+      document.getElementById('user-name').textContent = 'Student';
+    });
+  </script>
+</body>
+</html>

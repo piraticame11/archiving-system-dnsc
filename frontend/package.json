@@ -1,0 +1,12 @@
+{
+  "name": "archiving-system-frontend",
+  "version": "1.0.0",
+  "description": "Thesis and Capstone Archiving and Scheduling Management System - Frontend",
+  "scripts": {
+    "build:css": "tailwindcss -i ./src/tailwind.css -o ./public/assets/css/app.css --minify",
+    "watch:css": "tailwindcss -i ./src/tailwind.css -o ./public/assets/css/app.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.4"
+  }
+}

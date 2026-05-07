@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panelist Dashboard — DNSC Research System</title>
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 font-sans">
+
+  <nav class="bg-primary-700 text-white px-6 py-4 flex items-center justify-between shadow">
+    <span class="font-bold text-lg">DNSC Research System</span>
+    <div class="flex items-center gap-4">
+      <span id="user-name" class="text-sm text-primary-100"></span>
+      <button onclick="logout()" class="text-sm bg-primary-800 hover:bg-primary-900 px-3 py-1.5 rounded-lg transition-colors">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="max-w-5xl mx-auto px-6 py-10">
+    <h1 class="text-2xl font-bold text-gray-900 mb-2">Panelist Dashboard</h1>
+    <p class="text-gray-500 text-sm mb-8">View your assigned defenses and submit evaluations.</p>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+      <a href="/pages/panelist/my-schedules.html" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+        <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mb-3">
+          <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        </div>
+        <p class="font-semibold text-gray-800">My Schedules</p>
+        <p class="text-xs text-gray-500 mt-1">View upcoming defense assignments</p>
+      </a>
+
+      <a href="/pages/panelist/evaluate.html" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+        <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mb-3">
+          <svg class="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+        </div>
+        <p class="font-semibold text-gray-800">Evaluate</p>
+        <p class="text-xs text-gray-500 mt-1">Submit scores and comments</p>
+      </a>
+    </div>
+  </div>
+
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/utils.js"></script>
+  <script>
+    requireAuthAsync('panelist').then(user => {
+      if (!user) return;
+      document.getElementById('user-name').textContent = 'Panelist';
+    });
+  </script>
+</body>
+</html>

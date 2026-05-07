@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DNSC Research Archiving System</title>
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <script src="/assets/js/auth.js"></script>
+</head>
+<body class="bg-gray-50">
+  <script>
+    restoreSession().then(ok => {
+      const user = getUser();
+      if (!user) { window.location.href = '/pages/login.html'; return; }
+      const map = {
+        student:    '/pages/student/dashboard.html',
+        instructor: '/pages/instructor/dashboard.html',
+        admin:      '/pages/admin/dashboard.html',
+        panelist:   '/pages/panelist/dashboard.html',
+        superadmin: '/pages/superadmin/dashboard.html',
+      };
+      window.location.href = map[user.role] || '/pages/login.html';
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "archiving-system-dnsc",
+  "version": "1.0.0",
+  "description": "Thesis and Capstone Archiving and Scheduling Management System",
+  "scripts": {
+    "dev": "concurrently --names \"backend,frontend\" --prefix-colors \"cyan,magenta\" \"npm run dev --prefix backend\" \"npm run watch:css --prefix frontend\"",
+    "build": "npm run build:css --prefix frontend",
+    "migrate": "npm run migrate --prefix backend",
+    "install:all": "npm install --prefix backend && npm install --prefix frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

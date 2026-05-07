@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Error — DNSC Research System</title>
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col items-center justify-center font-sans px-4">
+
+  <div class="w-full max-w-md text-center">
+
+    <!-- Icon -->
+    <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+      <svg class="w-10 h-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+      </svg>
+    </div>
+
+    <h1 class="text-3xl font-bold text-gray-900 mb-1">Oops!</h1>
+    <p class="text-gray-500 text-sm mb-6">You encountered an error.</p>
+
+    <!-- Error box -->
+    <div class="bg-white border border-red-200 rounded-xl shadow-sm px-6 py-5 mb-8 text-left">
+      <div class="flex items-center gap-3 mb-3">
+        <span id="error-code"
+          class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+          Error
+        </span>
+        <span id="error-title" class="text-sm font-semibold text-gray-800"></span>
+      </div>
+      <p id="error-message" class="text-sm text-gray-600 leading-relaxed"></p>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex flex-col sm:flex-row gap-3 justify-center">
+      <button onclick="history.back()"
+        class="px-5 py-2.5 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+        Go Back
+      </button>
+      <a href="/"
+        class="px-5 py-2.5 rounded-lg bg-primary-700 text-white text-sm font-medium hover:bg-primary-800 transition-colors">
+        Go to Home
+      </a>
+    </div>
+
+    <p class="text-xs text-gray-400 mt-8">
+      DNSC Research Archiving System &mdash; ACES Polytechnic College, Inc.
+    </p>
+  </div>
+
+  <script>
+    const params  = new URLSearchParams(window.location.search);
+    const code    = params.get('code')    || '404';
+    const message = params.get('message') || 'The page you are looking for could not be found.';
+
+    const titles = {
+      '400': 'Bad Request',
+      '401': 'Unauthorized',
+      '403': 'Forbidden',
+      '404': 'Page Not Found',
+      '408': 'Request Timeout',
+      '429': 'Too Many Requests',
+      '500': 'Internal Server Error',
+      '502': 'Bad Gateway',
+      '503': 'Service Unavailable',
+    };
+
+    const codeEl    = document.getElementById('error-code');
+    const titleEl   = document.getElementById('error-title');
+    const messageEl = document.getElementById('error-message');
+
+    codeEl.textContent    = code;
+    titleEl.textContent   = titles[code] || 'Unknown Error';
+    messageEl.textContent = decodeURIComponent(message);
+
+    // Style the badge based on error class
+    if (code.startsWith('5')) {
+      codeEl.className = codeEl.className.replace('bg-red-100 text-red-700', 'bg-orange-100 text-orange-700');
+    } else if (code.startsWith('4') && code !== '404') {
+      codeEl.className = codeEl.className.replace('bg-red-100 text-red-700', 'bg-yellow-100 text-yellow-700');
+    }
+
+    document.title = `${code} ${titles[code] || 'Error'} — DNSC Research System`;
+  </script>
+</body>
+</html>

@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Archive — DNSC Research System</title>
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .form-input {
+      width: 100%; padding: .5rem .75rem; font-size: .875rem;
+      border: 1px solid #d1d5db; border-radius: .5rem; outline: none;
+      transition: border-color .15s, box-shadow .15s; background: #fff;
+    }
+    .form-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,.25); }
+    .tab-btn { transition: color .15s, border-color .15s; }
+    .tab-btn.active { color: #1d4ed8; border-bottom-color: #1d4ed8; }
+    .tab-btn:not(.active) { color: #6b7280; border-bottom-color: transparent; }
+    .card-hover { transition: box-shadow .15s, transform .15s; }
+    .card-hover:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); transform: translateY(-1px); }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans min-h-screen">
+
+  <!-- Navbar -->
+  <nav class="bg-primary-700 text-white px-6 py-4 flex items-center justify-between shadow sticky top-0 z-40">
+    <div class="flex items-center gap-3">
+      <a href="/pages/admin/dashboard.html" id="back-link" class="text-primary-200 hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </a>
+      <span class="font-bold text-lg">DNSC Research System</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <span id="user-name" class="text-sm text-primary-100"></span>
+      <button onclick="logout()" class="text-sm bg-primary-800 hover:bg-primary-900 px-3 py-1.5 rounded-lg transition-colors">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="max-w-7xl mx-auto px-6 py-8">
+
+    <!-- Page header -->
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-gray-900">Research Archive</h1>
+      <p class="text-sm text-gray-500 mt-0.5">Browse published research and promote approved submissions</p>
+    </div>
+
+    <!-- Stats row -->
+    <div id="stats-row" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6"></div>
+
+    <!-- Tabs -->
+    <div class="border-b border-gray-200 mb-6">
+      <nav class="flex gap-0 -mb-px">
+        <button onclick="switchTab('browse')" id="tab-browse"
+          class="tab-btn active px-5 py-3 text-sm font-semibold border-b-2 mr-1">
+          Browse Archive
+        </button>
+        <button onclick="switchTab('promote')" id="tab-promote"
+          class="tab-btn px-5 py-3 text-sm font-semibold border-b-2 admin-only hidden">
+          Promote to Archive
+        </button>
+      </nav>
+    </div>
+
+    <!-- ── TAB: BROWSE ──────────────────────────────────────────── -->
+    <div id="pane-browse">
+      <!-- Filters -->
+      <div class="bg-white border border-gray-200 rounded-xl px-4 py-3 flex flex-wrap items-center gap-3 mb-5 shadow-sm">
+        <div class="relative flex-1 min-w-52">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/></svg>
+          <input id="b-search" type="text" placeholder="Search title, authors, keywords…"
+            class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+        </div>
+        <select id="b-dept" class="form-input w-auto text-sm py-2">
+          <option value="">All Departments</option>
+        </select>
+        <select id="b-type" class="form-input w-auto text-sm py-2">
+          <option value="">Thesis &amp; Capstone</option>
+          <option value="thesis">Thesis</option>
+          <option value="capstone">Capstone</option>
+        </select>
+        <select id="b-year" class="form-input w-auto text-sm py-2">
+          <option value="">All Years</option>
+        </select>
+        <select id="b-semester" class="form-input w-auto text-sm py-2">
+          <option value="">All Semesters</option>
+          <option value="1st">1st Semester</option>
+          <option value="2nd">2nd Semester</option>
+          <option value="summer">Summer</option>
+        </select>
+        <button onclick="resetBrowseFilters()" class="text-sm text-gray-500 hover:text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">Reset</button>
+      </div>
+
+      <!-- Results info -->
+      <p id="b-count" class="text-xs text-gray-400 mb-3 px-1"></p>
+
+      <!-- Card grid -->
+      <div id="archive-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+
+      <!-- Pagination -->
+      <div id="b-pagination" class="hidden flex items-center justify-between mt-6 px-1">
+        <span id="b-pag-info" class="text-xs text-gray-500"></span>
+        <div class="flex items-center gap-1">
+          <button id="b-prev" onclick="browseChangePage(-1)"
+            class="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-40 transition-colors">← Prev</button>
+          <div id="b-page-nums" class="flex items-center gap-1"></div>
+          <button id="b-next" onclick="browseChangePage(1)"
+            class="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-40 transition-colors">Next →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: PROMOTE ─────────────────────────────────────────── -->
+    <div id="pane-promote" class="hidden">
+      <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5 flex items-start gap-3">
+        <svg class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <p class="text-sm text-amber-700">These are <strong>approved</strong> submissions not yet in the archive. Select a submission and choose which uploaded document to publish.</p>
+      </div>
+
+      <!-- Eligible table -->
+      <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <th class="px-4 py-3 text-left">#</th>
+                <th class="px-4 py-3 text-left min-w-72">Title</th>
+                <th class="px-4 py-3 text-left">Student</th>
+                <th class="px-4 py-3 text-left">Department</th>
+                <th class="px-4 py-3 text-left">Type</th>
+                <th class="px-4 py-3 text-left">Period</th>
+                <th class="px-4 py-3 text-left">Approved</th>
+                <th class="px-4 py-3 text-center w-24">Action</th>
+              </tr>
+            </thead>
+            <tbody id="eligible-tbody">
+              <tr><td colspan="8" class="px-4 py-10 text-center text-gray-400">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Eligible pagination -->
+        <div id="e-pagination" class="hidden flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+          <span id="e-pag-info" class="text-xs text-gray-500"></span>
+          <div class="flex items-center gap-1">
+            <button id="e-prev" onclick="eligibleChangePage(-1)"
+              class="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-40 transition-colors">← Prev</button>
+            <div id="e-page-nums" class="flex items-center gap-1"></div>
+            <button id="e-next" onclick="eligibleChangePage(1)"
+              class="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-40 transition-colors">Next →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DETAIL MODAL ─────────────────────────────────────────────── -->
+  <div id="detail-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/40" onclick="closeDetailModal()"></div>
+    <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-screen overflow-y-auto">
+      <div class="flex items-start justify-between px-6 py-5 border-b border-gray-100">
+        <div class="pr-8">
+          <p id="dm-type" class="text-xs font-semibold text-primary-600 uppercase tracking-wide mb-1"></p>
+          <h2 id="dm-title" class="text-lg font-bold text-gray-900 leading-snug"></h2>
+        </div>
+        <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600 flex-shrink-0">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="px-6 py-5 space-y-4">
+        <!-- meta row -->
+        <div class="flex flex-wrap gap-2">
+          <span id="dm-dept"     class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700"></span>
+          <span id="dm-period"   class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600"></span>
+          <span id="dm-downloads" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-600">
+            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            <span></span>
+          </span>
+        </div>
+        <!-- authors -->
+        <div>
+          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Authors</p>
+          <p id="dm-authors" class="text-sm text-gray-800"></p>
+        </div>
+        <div id="dm-adviser-wrap">
+          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Adviser</p>
+          <p id="dm-adviser" class="text-sm text-gray-800"></p>
+        </div>
+        <div id="dm-abstract-wrap">
+          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Abstract</p>
+          <p id="dm-abstract" class="text-sm text-gray-600 leading-relaxed"></p>
+        </div>
+        <div id="dm-keywords-wrap">
+          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Keywords</p>
+          <div id="dm-keywords" class="flex flex-wrap gap-1.5"></div>
+        </div>
+        <!-- file info -->
+        <div class="bg-gray-50 rounded-xl px-4 py-3 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 bg-red-100 rounded-lg flex items-center justify-center">
+              <svg class="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+            </div>
+            <div>
+              <p id="dm-filename" class="text-sm font-medium text-gray-800"></p>
+              <p id="dm-filesize" class="text-xs text-gray-400"></p>
+            </div>
+          </div>
+          <a id="dm-download-btn" href="#" target="_blank"
+            class="flex items-center gap-1.5 bg-primary-600 hover:bg-primary-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Download
+          </a>
+        </div>
+        <!-- archived by -->
+        <p id="dm-meta" class="text-xs text-gray-400"></p>
+      </div>
+      <div class="px-6 pb-5 flex gap-3">
+        <button onclick="closeDetailModal()" class="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">Close</button>
+        <button id="dm-remove-btn" onclick="removeFromDetail()"
+          class="admin-only hidden flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          Remove from Archive
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PROMOTE MODAL ────────────────────────────────────────────── -->
+  <div id="promote-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/40" onclick="closePromoteModal()"></div>
+    <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-screen overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <h2 class="text-base font-semibold text-gray-900">Promote to Archive</h2>
+        <button onclick="closePromoteModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <form id="promote-form" onsubmit="submitPromote(event)" class="px-6 py-5 space-y-4">
+        <input type="hidden" id="pm-submission-id">
+
+        <!-- Read-only summary -->
+        <div class="bg-gray-50 rounded-xl px-4 py-3">
+          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Submission</p>
+          <p id="pm-title" class="text-sm font-semibold text-gray-800 leading-snug"></p>
+          <p id="pm-meta"  class="text-xs text-gray-400 mt-0.5"></p>
+        </div>
+
+        <!-- Document selector -->
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Document to Archive <span class="text-red-500">*</span></label>
+          <select id="pm-document" class="form-input" required>
+            <option value="">Select document…</option>
+          </select>
+          <p class="text-xs text-gray-400 mt-1">Only PDF/DOCX files uploaded for this submission are shown.</p>
+        </div>
+
+        <!-- Authors -->
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Authors <span class="text-red-500">*</span></label>
+          <input id="pm-authors" type="text" class="form-input" placeholder="e.g. Juan Dela Cruz, Maria Santos" required>
+          <p class="text-xs text-gray-400 mt-1">Separate multiple authors with commas.</p>
+        </div>
+
+        <!-- Adviser -->
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Adviser</label>
+          <input id="pm-adviser" type="text" class="form-input" placeholder="e.g. Dr. Jose Rizal">
+        </div>
+
+        <!-- Keywords -->
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Keywords</label>
+          <input id="pm-keywords" type="text" class="form-input" placeholder="e.g. machine learning, IoT, web development">
+          <p class="text-xs text-gray-400 mt-1">Separate with commas.</p>
+        </div>
+
+        <div id="pm-error" class="hidden bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700"></div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="button" onclick="closePromoteModal()" class="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">Cancel</button>
+          <button type="submit" id="pm-submit" class="flex-1 bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60">
+            Archive Submission
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/utils.js"></script>
+  <script>
+    /* ── API wrappers ─────────────────────────────────────────── */
+    async function http(fn) {
+      const r = await fn(); const j = await r.json();
+      if (!r.ok) throw j; return j;
+    }
+    const get  = p     => http(() => apiGet(p));
+    const post = (p,b) => http(() => apiPost(p,b));
+    const del  = p     => http(() => apiDelete(p));
+
+    /* ── State ───────────────────────────────────────────────── */
+    let browsePage = 1, browseTotalPages = 1;
+    let eligPage   = 1, eligTotalPages   = 1;
+    let userRole   = null;
+    let activeDetailId = null;
+    let departments = [];
+
+    const TYPE_BADGE = {
+      thesis:   'bg-indigo-100 text-indigo-700',
+      capstone: 'bg-teal-100 text-teal-700',
+    };
+    const SEM_LABEL = { '1st': '1st Sem', '2nd': '2nd Sem', summer: 'Summer' };
+
+    /* ── Init ────────────────────────────────────────────────── */
+    requireAuthAsync('admin', 'superadmin').then(user => {
+      if (!user) return;
+      userRole = user.role;
+      document.getElementById('user-name').textContent = 'Research Office';
+
+      /* show admin-only elements */
+      document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+
+      /* fix back link for superadmin */
+      if (user.role === 'superadmin') {
+        document.getElementById('back-link').href = '/pages/superadmin/dashboard.html';
+      }
+
+      loadDepts().then(() => {
+        loadStats();
+        loadBrowse();
+      });
+    });
+
+    /* ── Tabs ────────────────────────────────────────────────── */
+    function switchTab(tab) {
+      ['browse','promote'].forEach(t => {
+        document.getElementById(`pane-${t}`).classList.toggle('hidden', t !== tab);
+        document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+      });
+      if (tab === 'promote' && eligPage === 1) loadEligible();
+    }
+
+    /* ── Departments ─────────────────────────────────────────── */
+    async function loadDepts() {
+      try {
+        const j = await get('/api/v1/departments');
+        departments = j.data || [];
+        const sel = document.getElementById('b-dept');
+        departments.forEach(d => {
+          sel.insertAdjacentHTML('beforeend', `<option value="${d.id}">${d.code} — ${d.name}</option>`);
+        });
+      } catch (_) {}
+    }
+
+    /* ── Stats cards ─────────────────────────────────────────── */
+    async function loadStats() {
+      try {
+        const j   = await get('/api/v1/archive/stats');
+        const row = document.getElementById('stats-row');
+        row.innerHTML = [
+          statCard('Total Documents', j.data.total,           'bg-primary-50 text-primary-700'),
+          statCard('Thesis',          j.data.thesis_count,    'bg-indigo-50 text-indigo-700'),
+          statCard('Capstone',        j.data.capstone_count,  'bg-teal-50 text-teal-700'),
+          statCard('Total Downloads', j.data.total_downloads, 'bg-green-50 text-green-700'),
+        ].join('');
+      } catch (_) {}
+    }
+
+    function statCard(label, value, cls) {
+      return `<div class="rounded-xl px-4 py-3 ${cls} border border-current border-opacity-20">
+        <p class="text-2xl font-bold">${value ?? 0}</p>
+        <p class="text-xs font-medium opacity-70 mt-0.5">${label}</p>
+      </div>`;
+    }
+
+    /* ── Browse ──────────────────────────────────────────────── */
+    async function loadBrowse(page = browsePage) {
+      const search   = document.getElementById('b-search').value.trim();
+      const dept     = document.getElementById('b-dept').value;
+      const type     = document.getElementById('b-type').value;
+      const year     = document.getElementById('b-year').value;
+      const semester = document.getElementById('b-semester').value;
+
+      const p = new URLSearchParams({ page, limit: 12 });
+      if (search)   p.set('search', search);
+      if (dept)     p.set('department_id', dept);
+      if (type)     p.set('type', type);
+      if (year)     p.set('school_year', year);
+      if (semester) p.set('semester', semester);
+
+      const grid = document.getElementById('archive-grid');
+      grid.innerHTML = `<div class="col-span-3 py-16 text-center text-gray-400">Loading…</div>`;
+      document.getElementById('b-count').textContent = '';
+
+      try {
+        const j = await get(`/api/v1/archive?${p}`);
+        const { data, pagination } = j.data;
+        browsePage       = pagination.page;
+        browseTotalPages = pagination.totalPages;
+
+        document.getElementById('b-count').textContent =
+          `${pagination.total} document${pagination.total !== 1 ? 's' : ''} found`;
+
+        renderArchiveGrid(data);
+        renderBrowsePagination(pagination);
+        populateYearFilter(data);
+      } catch (err) {
+        grid.innerHTML = `<div class="col-span-3 py-16 text-center text-red-400">${esc(err?.message || 'Failed to load archive.')}</div>`;
+      }
+    }
+
+    function renderArchiveGrid(rows) {
+      const grid = document.getElementById('archive-grid');
+      if (!rows.length) {
+        grid.innerHTML = `<div class="col-span-3 py-16 text-center text-gray-400">
+          <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+          No archived documents found.
+        </div>`;
+        return;
+      }
+
+      grid.innerHTML = rows.map(a => {
+        const typeCls = TYPE_BADGE[a.type] || 'bg-gray-100 text-gray-600';
+        const authors = a.authors ? a.authors.split(',').map(s => s.trim()).slice(0, 2).join(', ') + (a.authors.split(',').length > 2 ? ' +more' : '') : '—';
+        const fileMB  = a.file_size ? (a.file_size / (1024 * 1024)).toFixed(1) + ' MB' : '';
+
+        return `
+          <div class="bg-white border border-gray-200 rounded-xl p-5 card-hover cursor-pointer" onclick="openDetailModal(${a.id})">
+            <div class="flex items-start justify-between mb-3">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${typeCls} capitalize">${a.type}</span>
+              <span class="text-xs text-gray-400 flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                ${a.download_count}
+              </span>
+            </div>
+            <h3 class="text-sm font-semibold text-gray-900 leading-snug mb-2 line-clamp-2">${esc(a.title)}</h3>
+            <p class="text-xs text-gray-500 mb-3">${esc(authors)}</p>
+            <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+              <span class="text-xs font-medium text-gray-500">${esc(a.department_code)}</span>
+              <span class="text-xs text-gray-400">${esc(a.school_year)} · ${SEM_LABEL[a.semester] || a.semester}</span>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function populateYearFilter(rows) {
+      const sel = document.getElementById('b-year');
+      const cur = sel.value;
+      const existing = new Set([...sel.options].map(o => o.value).filter(Boolean));
+      rows.forEach(a => {
+        if (a.school_year && !existing.has(a.school_year)) {
+          sel.insertAdjacentHTML('beforeend', `<option value="${esc(a.school_year)}">${esc(a.school_year)}</option>`);
+          existing.add(a.school_year);
+        }
+      });
+      sel.value = cur;
+    }
+
+    function renderBrowsePagination(p) {
+      const bar = document.getElementById('b-pagination');
+      if (p.totalPages <= 1) { bar.classList.add('hidden'); return; }
+      bar.classList.remove('hidden');
+      const s = (p.page - 1) * p.limit + 1, e = Math.min(p.page * p.limit, p.total);
+      document.getElementById('b-pag-info').textContent = `Showing ${s}–${e} of ${p.total}`;
+      document.getElementById('b-prev').disabled = p.page <= 1;
+      document.getElementById('b-next').disabled = p.page >= p.totalPages;
+      document.getElementById('b-page-nums').innerHTML = pagesToShow(p.page, p.totalPages)
+        .map(pg => pg === '…'
+          ? `<span class="px-2 py-1 text-xs text-gray-400">…</span>`
+          : `<button onclick="browseGoTo(${pg})" class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${pg === p.page ? 'bg-primary-600 text-white border-primary-600' : 'border-gray-300 bg-white hover:bg-gray-50 text-gray-600'}">${pg}</button>`
+        ).join('');
+    }
+
+    function browseGoTo(p)   { browsePage = p; loadBrowse(p); }
+    function browseChangePage(d) { browseGoTo(browsePage + d); }
+
+    const debouncedBrowse = debounce(() => { browsePage = 1; loadBrowse(1); }, 350);
+    document.getElementById('b-search').addEventListener('input', debouncedBrowse);
+    ['b-dept','b-type','b-year','b-semester'].forEach(id =>
+      document.getElementById(id).addEventListener('change', () => { browsePage = 1; loadBrowse(1); })
+    );
+
+    function resetBrowseFilters() {
+      ['b-search'].forEach(id => document.getElementById(id).value = '');
+      ['b-dept','b-type','b-year','b-semester'].forEach(id => document.getElementById(id).value = '');
+      browsePage = 1; loadBrowse(1);
+    }
+
+    /* ── Detail Modal ────────────────────────────────────────── */
+    async function openDetailModal(id) {
+      activeDetailId = id;
+      document.getElementById('detail-modal').classList.remove('hidden');
+      try {
+        const j = await get(`/api/v1/archive/${id}`);
+        const a = j.data;
+
+        document.getElementById('dm-type').textContent  = a.type?.toUpperCase() || '';
+        document.getElementById('dm-title').textContent = a.title;
+        document.getElementById('dm-dept').textContent  = `${a.department_code} — ${a.department_name}`;
+        document.getElementById('dm-period').textContent = `${a.school_year} · ${SEM_LABEL[a.semester] || a.semester}`;
+        document.getElementById('dm-downloads').querySelector('span').textContent = `${a.download_count} download${a.download_count !== 1 ? 's' : ''}`;
+        document.getElementById('dm-authors').textContent = a.authors || '—';
+
+        const advWrap = document.getElementById('dm-adviser-wrap');
+        advWrap.classList.toggle('hidden', !a.adviser);
+        if (a.adviser) document.getElementById('dm-adviser').textContent = a.adviser;
+
+        const absWrap = document.getElementById('dm-abstract-wrap');
+        absWrap.classList.toggle('hidden', !a.abstract);
+        if (a.abstract) document.getElementById('dm-abstract').textContent = a.abstract;
+
+        const kwWrap = document.getElementById('dm-keywords-wrap');
+        kwWrap.classList.toggle('hidden', !a.keywords);
+        if (a.keywords) {
+          document.getElementById('dm-keywords').innerHTML = a.keywords.split(',')
+            .map(k => `<span class="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">${esc(k.trim())}</span>`)
+            .join('');
+        }
+
+        document.getElementById('dm-filename').textContent = a.file_name;
+        document.getElementById('dm-filesize').textContent = a.file_size ? fmtSize(a.file_size) : '';
+        document.getElementById('dm-download-btn').href = `/api/v1/archive/${id}/download`;
+        document.getElementById('dm-meta').textContent =
+          `Archived by ${a.archived_by_name} on ${fmtDate(a.archived_at)}`;
+      } catch (err) {
+        document.getElementById('dm-title').textContent = err?.message || 'Failed to load';
+      }
+    }
+
+    function closeDetailModal() {
+      document.getElementById('detail-modal').classList.add('hidden');
+      activeDetailId = null;
+    }
+
+    async function removeFromDetail() {
+      if (!activeDetailId) return;
+      if (!confirm('Remove this document from the archive? The submission and file will not be deleted.')) return;
+      try {
+        await del(`/api/v1/archive/${activeDetailId}`);
+        showToast('Removed from archive', 'success');
+        closeDetailModal();
+        loadBrowse();
+        loadStats();
+      } catch (err) {
+        showToast(err?.message || 'Failed to remove', 'error');
+      }
+    }
+
+    /* ── Eligible / Promote ──────────────────────────────────── */
+    async function loadEligible(page = eligPage) {
+      const tbody = document.getElementById('eligible-tbody');
+      tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-10 text-center text-gray-400">Loading…</td></tr>';
+      try {
+        const j = await get(`/api/v1/archive/eligible?page=${page}&limit=10`);
+        const { data, pagination } = j.data;
+        eligPage       = pagination.page;
+        eligTotalPages = pagination.totalPages;
+        renderEligibleTable(data, pagination);
+        renderEligiblePagination(pagination);
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-10 text-center text-red-400">${esc(err?.message || 'Failed to load.')}</td></tr>`;
+      }
+    }
+
+    function renderEligibleTable(rows, pagination) {
+      const tbody = document.getElementById('eligible-tbody');
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-16 text-center text-gray-400">
+          <svg class="w-10 h-10 mx-auto mb-2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          All approved submissions have been archived.
+        </td></tr>`;
+        return;
+      }
+      const offset = (pagination.page - 1) * pagination.limit;
+      tbody.innerHTML = rows.map((s, i) => {
+        const typeCls = TYPE_BADGE[s.type] || 'bg-gray-100 text-gray-600';
+        const hasDocs = s.documents && s.documents.length > 0;
+        return `
+          <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+            <td class="px-4 py-3 text-xs text-gray-400">${offset + i + 1}</td>
+            <td class="px-4 py-3">
+              <p class="text-sm font-medium text-gray-800 leading-snug">${esc(s.title)}</p>
+              ${s.keywords ? `<p class="text-xs text-gray-400 mt-0.5 truncate max-w-xs">${esc(s.keywords)}</p>` : ''}
+            </td>
+            <td class="px-4 py-3">
+              <p class="text-sm text-gray-700">${esc(s.student_name)}</p>
+              ${s.student_number ? `<p class="text-xs text-gray-400">${esc(s.student_number)}</p>` : ''}
+            </td>
+            <td class="px-4 py-3 text-xs font-medium text-gray-600">${esc(s.department_code)}</td>
+            <td class="px-4 py-3">
+              <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${typeCls} capitalize">${s.type}</span>
+            </td>
+            <td class="px-4 py-3 text-xs text-gray-500">${esc(s.school_year)} · ${SEM_LABEL[s.semester] || s.semester}</td>
+            <td class="px-4 py-3 text-xs text-gray-400">${s.approved_at ? fmtDate(s.approved_at) : '—'}</td>
+            <td class="px-4 py-3 text-center">
+              ${hasDocs
+                ? `<button onclick='openPromoteModal(${JSON.stringify(s)})'
+                     class="inline-flex items-center gap-1 bg-primary-600 hover:bg-primary-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
+                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+                     Promote
+                   </button>`
+                : `<span class="text-xs text-gray-400 italic">No docs</span>`}
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    function renderEligiblePagination(p) {
+      const bar = document.getElementById('e-pagination');
+      if (p.totalPages <= 1) { bar.classList.add('hidden'); return; }
+      bar.classList.remove('hidden');
+      const s = (p.page - 1) * p.limit + 1, e = Math.min(p.page * p.limit, p.total);
+      document.getElementById('e-pag-info').textContent = `Showing ${s}–${e} of ${p.total}`;
+      document.getElementById('e-prev').disabled = p.page <= 1;
+      document.getElementById('e-next').disabled = p.page >= p.totalPages;
+      document.getElementById('e-page-nums').innerHTML = pagesToShow(p.page, p.totalPages)
+        .map(pg => pg === '…'
+          ? `<span class="px-2 py-1 text-xs text-gray-400">…</span>`
+          : `<button onclick="eligGoTo(${pg})" class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${pg === p.page ? 'bg-primary-600 text-white border-primary-600' : 'border-gray-300 bg-white hover:bg-gray-50 text-gray-600'}">${pg}</button>`
+        ).join('');
+    }
+
+    function eligGoTo(p)      { eligPage = p; loadEligible(p); }
+    function eligibleChangePage(d) { eligGoTo(eligPage + d); }
+
+    /* ── Promote Modal ───────────────────────────────────────── */
+    function openPromoteModal(submission) {
+      document.getElementById('pm-submission-id').value = submission.id;
+      document.getElementById('pm-title').textContent   = submission.title;
+      document.getElementById('pm-meta').textContent    =
+        `${submission.student_name} · ${submission.department_code} · ${submission.school_year} ${SEM_LABEL[submission.semester] || submission.semester}`;
+
+      /* pre-fill */
+      document.getElementById('pm-authors').value  = submission.student_name || '';
+      document.getElementById('pm-adviser').value  = submission.adviser_name || '';
+      document.getElementById('pm-keywords').value = submission.keywords || '';
+
+      /* populate document selector */
+      const docSel = document.getElementById('pm-document');
+      docSel.innerHTML = '<option value="">Select document…</option>';
+      (submission.documents || []).forEach(d => {
+        const label = `${d.doc_type.replace(/_/g, ' ')} — ${d.file_name}${d.is_current ? ' ✓' : ''}`;
+        docSel.insertAdjacentHTML('beforeend',
+          `<option value="${d.id}" ${d.is_current ? 'selected' : ''}>${esc(label)}</option>`);
+      });
+
+      document.getElementById('pm-error').classList.add('hidden');
+      document.getElementById('promote-modal').classList.remove('hidden');
+    }
+
+    function closePromoteModal() {
+      document.getElementById('promote-modal').classList.add('hidden');
+    }
+
+    async function submitPromote(e) {
+      e.preventDefault();
+      const btn   = document.getElementById('pm-submit');
+      const errEl = document.getElementById('pm-error');
+
+      const body = {
+        submission_id: parseInt(document.getElementById('pm-submission-id').value),
+        document_id:   parseInt(document.getElementById('pm-document').value),
+        authors:       document.getElementById('pm-authors').value.trim(),
+        adviser:       document.getElementById('pm-adviser').value.trim() || null,
+        keywords:      document.getElementById('pm-keywords').value.trim() || null,
+      };
+
+      if (!body.document_id) {
+        errEl.textContent = 'Please select a document.'; errEl.classList.remove('hidden'); return;
+      }
+
+      btn.disabled = true; btn.textContent = 'Archiving…'; errEl.classList.add('hidden');
+      try {
+        await post('/api/v1/archive', body);
+        showToast('Submission archived successfully', 'success');
+        closePromoteModal();
+        loadBrowse(1);
+        loadStats();
+        loadEligible(1);
+      } catch (err) {
+        errEl.textContent = err?.message || 'Something went wrong.';
+        errEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Archive Submission';
+      }
+    }
+
+    /* ── Helpers ─────────────────────────────────────────────── */
+    function pagesToShow(cur, tot) {
+      if (tot <= 7) return Array.from({ length: tot }, (_, i) => i + 1);
+      const s = new Set([1, tot, cur, cur-1, cur+1].filter(p => p >= 1 && p <= tot));
+      return [...s].sort((a,b)=>a-b).reduce((acc, p, i, arr) => {
+        if (i > 0 && p - arr[i-1] > 1) acc.push('…');
+        acc.push(p); return acc;
+      }, []);
+    }
+
+    function esc(str) {
+      return String(str ?? '')
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function fmtDate(str) {
+      if (!str) return '—';
+      return new Date(str).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    function fmtSize(bytes) {
+      if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+      return (bytes / 1024).toFixed(0) + ' KB';
+    }
+  </script>
+</body>
+</html>
