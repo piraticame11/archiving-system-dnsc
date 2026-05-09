@@ -1,6 +1,6 @@
 # Archiving System — DNSC
 
-Thesis and Capstone Archiving and Scheduling Management System for De La Salle University North Campus (DNSC).
+Thesis and Capstone Archiving and Scheduling Management System.
 
 ## Tech Stack
 
