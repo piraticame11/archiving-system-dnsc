@@ -4,13 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Panelist Dashboard — DNSC Research System</title>
+  <link rel="icon" type="image/webp" href="/assets/img/aw.webp">
   <link rel="stylesheet" href="/assets/css/app.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body class="bg-gray-50 font-sans">
 
   <nav class="bg-primary-700 text-white px-6 py-4 flex items-center justify-between shadow">
-    <span class="font-bold text-lg">DNSC Research System</span>
+    <div class="flex items-center gap-3">
+      <img src="/assets/img/aw.webp" alt="School Logo" class="w-9 h-9 object-contain rounded-lg">
+      <span class="font-bold text-lg">DNSC Research System</span>
+    </div>
     <div class="flex items-center gap-4">
       <span id="user-name" class="text-sm text-primary-100"></span>
       <button onclick="logout()" class="text-sm bg-primary-800 hover:bg-primary-900 px-3 py-1.5 rounded-lg transition-colors">Sign out</button>
@@ -46,7 +50,7 @@
   <script>
     requireAuthAsync('panelist').then(user => {
       if (!user) return;
-      document.getElementById('user-name').textContent = 'Panelist';
+      document.getElementById('user-name').textContent = user.full_name || user.email;
     });
   </script>
 </body>

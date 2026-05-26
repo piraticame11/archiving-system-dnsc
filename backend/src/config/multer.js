@@ -49,8 +49,26 @@ function csvFilter(req, file, cb) {
 
 const maxFileSizeMB = () => (Number(process.env.MAX_FILE_SIZE_MB) || 50) * 1024 * 1024;
 
+const excelStorage = multer.diskStorage({
+  destination(req, file, cb) { cb(null, makeUploadDir('student-imports')); },
+  filename(req, file, cb) { cb(null, `${Date.now()}_${file.originalname.replace(/\s/g, '_')}`); },
+});
+
+function excelFilter(req, file, cb) {
+  const allowed = [
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-excel',
+  ];
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (!allowed.includes(file.mimetype) && !['.xlsx', '.xls'].includes(ext)) {
+    return cb(new Error('Only Excel files (.xlsx, .xls) are allowed.'), false);
+  }
+  cb(null, true);
+}
+
 const uploadDocument = multer({ storage: documentStorage, fileFilter, limits: { fileSize: maxFileSizeMB() } });
 const uploadCsv      = multer({ storage: csvStorage, fileFilter: csvFilter, limits: { fileSize: 5 * 1024 * 1024 } });
 const uploadImrad    = multer({ storage: imradStorage, fileFilter, limits: { fileSize: maxFileSizeMB() } });
+const uploadExcel    = multer({ storage: excelStorage, fileFilter: excelFilter, limits: { fileSize: 10 * 1024 * 1024 } });
 
-module.exports = { uploadDocument, uploadCsv, uploadImrad };
+module.exports = { uploadDocument, uploadCsv, uploadImrad, uploadExcel };

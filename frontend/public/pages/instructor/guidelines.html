@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guidelines — DNSC Research System</title>
+  <link rel="icon" type="image/webp" href="/assets/img/aw.webp">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 font-sans min-h-screen">
+
+  <nav class="bg-primary-700 text-white px-6 py-4 flex items-center justify-between shadow sticky top-0 z-40">
+    <div class="flex items-center gap-3">
+      <a href="/pages/instructor/dashboard.html" class="text-primary-200 hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </a>
+      <img src="/assets/img/aw.webp" alt="School Logo" class="w-9 h-9 object-contain rounded-lg">
+      <span class="font-bold text-lg">DNSC Research System</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <span id="user-name" class="text-sm text-primary-100"></span>
+      <button onclick="logout()" class="text-sm bg-primary-800 hover:bg-primary-900 px-3 py-1.5 rounded-lg transition-colors">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="max-w-4xl mx-auto px-6 py-8">
+
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-gray-900">Guidelines & Templates</h1>
+      <p class="text-sm text-gray-500 mt-0.5">Download IMRAD templates and research guidelines shared by the admin</p>
+    </div>
+
+    <!-- Alert -->
+    <div id="alert" class="hidden mb-4 px-4 py-3 rounded-lg text-sm font-medium"></div>
+
+    <!-- Template list -->
+    <div id="template-list" class="space-y-3">
+      <p class="text-sm text-gray-400 text-center py-10">Loading templates…</p>
+    </div>
+
+    <!-- Empty state -->
+    <div id="empty-state" class="hidden bg-white border border-dashed border-gray-300 rounded-xl p-12 text-center">
+      <svg class="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      <p class="text-gray-500 font-medium mb-1">No templates available</p>
+      <p class="text-sm text-gray-400">The admin hasn't uploaded any guidelines yet.</p>
+    </div>
+  </div>
+
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/utils.js"></script>
+  <script>
+    function escHtml(s) { const d = document.createElement('div'); d.appendChild(document.createTextNode(s||'')); return d.innerHTML; }
+
+    function formatBytes(b) {
+      if (!b) return '—';
+      if (b < 1024) return b + ' B';
+      if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+      return (b/1048576).toFixed(1) + ' MB';
+    }
+
+    async function http(fn) {
+      const res = await fn(); const json = await res.json();
+      if (!res.ok) throw json; return json;
+    }
+    const get = path => http(() => apiGet(path));
+
+    requireAuthAsync('instructor').then(async user => {
+      if (!user) return;
+      document.getElementById('user-name').textContent = user.full_name || user.email;
+      loadTemplates();
+    });
+
+    async function loadTemplates() {
+      const list = document.getElementById('template-list');
+      try {
+        const res   = await get('/api/v1/imrad-templates?limit=50');
+        const items = res.data?.data || res.data || [];
+
+        if (!items.length) {
+          list.innerHTML = '';
+          document.getElementById('empty-state').classList.remove('hidden');
+          return;
+        }
+
+        list.innerHTML = items.map(t => `
+          <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-5 flex items-start gap-4">
+            <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+              <svg class="w-5 h-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="font-semibold text-gray-900">${escHtml(t.title)}</p>
+              ${t.description ? `<p class="text-sm text-gray-500 mt-0.5">${escHtml(t.description)}</p>` : ''}
+              <p class="text-xs text-gray-400 mt-1">${escHtml(t.file_name)} · ${formatBytes(t.file_size)} · Uploaded ${formatDate(t.created_at)}</p>
+            </div>
+            <button onclick="downloadTemplate(${t.id}, '${t.file_name.replace(/'/g,"\\'")}')"
+              class="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              Download
+            </button>
+          </div>`).join('');
+      } catch (err) {
+        list.innerHTML = `<p class="text-sm text-red-500 text-center py-6">${escHtml(err?.message || 'Failed to load templates.')}</p>`;
+      }
+    }
+
+    async function downloadTemplate(id, fileName) {
+      try {
+        const res = await fetch(`/api/v1/imrad-templates/${id}/download`, {
+          headers: { Authorization: `Bearer ${getAccessToken()}` },
+        });
+        if (!res.ok) { showAlert('Could not download template.', 'error'); return; }
+        const blob = await res.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url; a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        showAlert('Download failed.', 'error');
+      }
+    }
+
+    function showAlert(msg, type = 'error') {
+      const el = document.getElementById('alert');
+      el.textContent = msg;
+      el.className = type === 'success'
+        ? 'mb-4 px-4 py-3 rounded-lg text-sm font-medium bg-green-50 text-green-700 border border-green-200'
+        : 'mb-4 px-4 py-3 rounded-lg text-sm font-medium bg-red-50 text-red-700 border border-red-200';
+      el.classList.remove('hidden');
+      setTimeout(() => el.classList.add('hidden'), 4000);
+    }
+  </script>
+</body>
+</html>

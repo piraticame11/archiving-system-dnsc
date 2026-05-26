@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS venues (
+  id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name         VARCHAR(150) NOT NULL,
+  building     VARCHAR(100) NULL,
+  room_number  VARCHAR(30)  NULL,
+  capacity     TINYINT UNSIGNED NULL,
+  is_active    TINYINT(1) NOT NULL DEFAULT 1,
+  created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at   DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at   DATETIME NULL,
+  INDEX idx_active (is_active)
+);

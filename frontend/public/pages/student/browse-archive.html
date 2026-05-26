@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Research Archive — DNSC Research System</title>
+  <link rel="icon" type="image/webp" href="/assets/img/aw.webp">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .form-input { width:100%;padding:.5rem .75rem;font-size:.875rem;border:1px solid #d1d5db;border-radius:.5rem;outline:none;transition:border-color .15s,box-shadow .15s;background:#fff; }
+    .form-input:focus { border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.25); }
+    .result-card { transition: box-shadow .15s; }
+    .result-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+    .abstract-clamp { display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden; }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans min-h-screen">
+
+  <!-- Navbar -->
+  <nav class="bg-primary-700 text-white px-6 py-4 flex items-center justify-between shadow sticky top-0 z-40">
+    <div class="flex items-center gap-3">
+      <a href="/pages/student/dashboard.html" class="text-primary-200 hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </a>
+      <img src="/assets/img/aw.webp" alt="School Logo" class="w-9 h-9 object-contain rounded-lg">
+      <span class="font-bold text-lg">DNSC Research System</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <span id="user-name" class="text-sm text-primary-100"></span>
+      <button onclick="logout()" class="text-sm bg-primary-800 hover:bg-primary-900 px-3 py-1.5 rounded-lg transition-colors">Sign out</button>
+    </div>
+  </nav>
+
+  <!-- Hero search bar -->
+  <div class="bg-white border-b border-gray-200 px-6 py-8">
+    <div class="max-w-3xl mx-auto text-center">
+      <h1 class="text-2xl font-bold text-gray-900 mb-1">Research Archive</h1>
+      <p class="text-sm text-gray-500 mb-5">Search and explore published theses and capstone projects</p>
+      <div class="relative">
+        <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/></svg>
+        <input id="f-search" type="text" placeholder="Search by title, author, keyword, or abstract…"
+          class="w-full pl-12 pr-4 py-3 text-sm border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+      </div>
+    </div>
+  </div>
+
+  <div class="max-w-7xl mx-auto px-6 py-6 flex flex-col lg:flex-row gap-6">
+
+    <!-- Sidebar filters -->
+    <aside class="w-full lg:w-56 flex-shrink-0 space-y-4">
+      <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Filters</p>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Type</label>
+            <select id="f-type" class="form-input text-xs py-1.5">
+              <option value="">All Types</option>
+              <option value="thesis">Thesis</option>
+              <option value="capstone">Capstone</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Department</label>
+            <select id="f-dept" class="form-input text-xs py-1.5">
+              <option value="">All Departments</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">School Year</label>
+            <select id="f-year" class="form-input text-xs py-1.5">
+              <option value="">All Years</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Semester</label>
+            <select id="f-semester" class="form-input text-xs py-1.5">
+              <option value="">All Semesters</option>
+              <option value="1st">1st Semester</option>
+              <option value="2nd">2nd Semester</option>
+              <option value="summer">Summer</option>
+            </select>
+          </div>
+          <button onclick="resetFilters()" class="w-full text-xs text-gray-500 hover:text-gray-700 underline text-left mt-1">Reset filters</button>
+        </div>
+      </div>
+
+      <!-- Stats card -->
+      <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Archive Stats</p>
+        <div id="stats-block" class="space-y-2 text-xs text-gray-600"></div>
+      </div>
+    </aside>
+
+    <!-- Results -->
+    <main class="flex-1 min-w-0">
+
+      <!-- Alert -->
+      <div id="alert" class="hidden mb-4 px-4 py-3 rounded-lg text-sm font-medium"></div>
+
+      <!-- Result count + sort -->
+      <div class="flex items-center justify-between mb-4">
+        <p id="result-info" class="text-sm text-gray-500"></p>
+      </div>
+
+      <!-- Result list -->
+      <div id="results" class="space-y-4">
+        <div class="text-center py-16 text-sm text-gray-400">Loading archive…</div>
+      </div>
+
+      <!-- Pagination -->
+      <div id="pagination" class="hidden mt-6 flex items-center justify-between">
+        <p id="page-info" class="text-sm text-gray-500"></p>
+        <div class="flex gap-2">
+          <button id="btn-prev" onclick="changePage(-1)" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Previous</button>
+          <button id="btn-next" onclick="changePage(1)"  class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Next</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Detail Modal -->
+  <div id="detail-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <h2 class="text-lg font-bold text-gray-900">Study Details</h2>
+        <button onclick="closeDetail()" class="text-gray-400 hover:text-gray-600 transition-colors">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="detail-body" class="overflow-y-auto px-6 py-5 space-y-4 flex-1"></div>
+      <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+        <button onclick="closeDetail()" class="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Close</button>
+        <button id="view-btn" onclick="viewDoc()" class="hidden items-center gap-1.5 px-4 py-2 text-sm font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 border border-primary-200 rounded-lg transition-colors">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+          View
+        </button>
+        <button id="download-btn" onclick="downloadDoc()" class="hidden items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Download
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/utils.js"></script>
+  <script>
+    let currentPage = 1;
+    let totalPages  = 1;
+    let totalItems  = 0;
+    let searchTimer = null;
+
+    requireAuthAsync('student', 'instructor', 'panelist', 'admin', 'superadmin').then(user => {
+      if (!user) return;
+      document.getElementById('user-name').textContent = user.full_name || user.email;
+      loadDepts();
+      populateYears();
+      loadStats();
+      loadArchive();
+
+      document.getElementById('f-search').addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => { currentPage = 1; loadArchive(); }, 400);
+      });
+      ['f-type','f-dept','f-year','f-semester'].forEach(id =>
+        document.getElementById(id).addEventListener('change', () => { currentPage = 1; loadArchive(); }));
+    });
+
+    async function loadDepts() {
+      try {
+        const res = await apiGet('/api/v1/departments?limit=100');
+        const json = await res.json();
+        const depts = json.data?.data || json.data || [];
+        const sel = document.getElementById('f-dept');
+        depts.forEach(d => {
+          const o = document.createElement('option');
+          o.value = d.id; o.textContent = d.name; sel.appendChild(o);
+        });
+      } catch {}
+    }
+
+    function populateYears() {
+      const sel = document.getElementById('f-year');
+      const now = new Date().getFullYear();
+      for (let y = now; y >= now - 8; y--) {
+        const o = document.createElement('option');
+        o.value = `${y}-${y+1}`; o.textContent = `${y}-${y+1}`; sel.appendChild(o);
+      }
+    }
+
+    async function loadStats() {
+      try {
+        const res  = await apiGet('/api/v1/archive/stats');
+        const json = await res.json();
+        const d    = json.data;
+        document.getElementById('stats-block').innerHTML = `
+          <div class="flex justify-between"><span>Total Studies</span><span class="font-semibold text-gray-800">${d.total ?? 0}</span></div>
+          <div class="flex justify-between"><span>Thesis</span><span class="font-semibold text-gray-800">${d.thesis_count ?? 0}</span></div>
+          <div class="flex justify-between"><span>Capstone</span><span class="font-semibold text-gray-800">${d.capstone_count ?? 0}</span></div>
+          <div class="flex justify-between"><span>Total Downloads</span><span class="font-semibold text-gray-800">${d.total_downloads ?? 0}</span></div>`;
+      } catch {}
+    }
+
+    async function loadArchive() {
+      const search   = document.getElementById('f-search').value.trim();
+      const type     = document.getElementById('f-type').value;
+      const dept     = document.getElementById('f-dept').value;
+      const year     = document.getElementById('f-year').value;
+      const semester = document.getElementById('f-semester').value;
+
+      const params = new URLSearchParams({ page: currentPage, limit: 10 });
+      if (search)   params.set('search', search);
+      if (type)     params.set('type', type);
+      if (dept)     params.set('department_id', dept);
+      if (year)     params.set('school_year', year);
+      if (semester) params.set('semester', semester);
+
+      const resultsEl = document.getElementById('results');
+      resultsEl.innerHTML = '<div class="text-center py-16 text-sm text-gray-400">Loading…</div>';
+      document.getElementById('result-info').textContent = '';
+
+      try {
+        const res  = await apiGet(`/api/v1/archive?${params}`);
+        const json = await res.json();
+        if (!res.ok) throw json;
+
+        const items = json.data?.data || json.data || [];
+        totalPages  = json.data?.pagination?.totalPages || json.data?.totalPages || 1;
+        totalItems  = json.data?.pagination?.total || json.data?.total || items.length;
+
+        document.getElementById('result-info').textContent =
+          totalItems === 0 ? 'No results found' : `${totalItems} result${totalItems !== 1 ? 's' : ''}`;
+
+        document.getElementById('pagination').classList.toggle('hidden', totalPages <= 1);
+        updatePagination();
+
+        if (!items.length) {
+          resultsEl.innerHTML = `
+            <div class="text-center py-20">
+              <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <p class="text-sm text-gray-500">No studies found matching your search.</p>
+              <button onclick="resetFilters()" class="mt-2 text-sm text-primary-600 hover:underline">Clear filters</button>
+            </div>`;
+          return;
+        }
+
+        resultsEl.innerHTML = items.map(item => `
+          <div class="result-card bg-white border border-gray-200 rounded-xl p-5 shadow-sm cursor-pointer" onclick="openDetail(${item.id})">
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap mb-1">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${item.type === 'thesis' ? 'bg-purple-100 text-purple-700' : 'bg-cyan-100 text-cyan-700'}">${capitalize(item.type)}</span>
+                  <span class="text-xs text-gray-400">${escHtml(item.department_name || '')} · ${item.school_year} · ${item.semester} Sem</span>
+                </div>
+                <h3 class="font-semibold text-gray-900 text-base leading-snug hover:text-primary-700 transition-colors">${escHtml(item.title)}</h3>
+                <p class="text-xs text-primary-700 font-medium mt-1">${escHtml(item.authors)}</p>
+                ${item.adviser ? `<p class="text-xs text-gray-500 mt-0.5">Adviser: ${escHtml(item.adviser)}</p>` : ''}
+                ${item.abstract ? `<p class="text-xs text-gray-600 mt-2 abstract-clamp leading-relaxed">${escHtml(item.abstract)}</p>` : ''}
+                ${item.keywords ? `<p class="text-xs text-gray-400 mt-1.5">${escHtml(item.keywords)}</p>` : ''}
+              </div>
+              <div class="flex-shrink-0 text-right hidden sm:block">
+                <p class="text-xs text-gray-400">${formatDate(item.archived_at)}</p>
+                <p class="text-xs text-gray-400 mt-1">${item.download_count || 0} download${item.download_count !== 1 ? 's' : ''}</p>
+              </div>
+            </div>
+          </div>`).join('');
+
+      } catch(err) {
+        resultsEl.innerHTML = `<div class="text-center py-10 text-sm text-red-500">${escHtml(err?.message || 'Failed to load archive.')}</div>`;
+      }
+    }
+
+    let _currentArchiveId   = null;
+    let _currentArchiveName = null;
+
+    async function openDetail(id) {
+      const body   = document.getElementById('detail-body');
+      const dlBtn  = document.getElementById('download-btn');
+      const vwBtn  = document.getElementById('view-btn');
+      body.innerHTML = '<p class="text-sm text-gray-400 text-center py-8">Loading…</p>';
+      dlBtn.classList.add('hidden');
+      vwBtn.classList.add('hidden');
+      _currentArchiveId = id;
+      document.getElementById('detail-modal').classList.remove('hidden');
+
+      try {
+        const res  = await apiGet(`/api/v1/archive/${id}`);
+        const json = await res.json();
+        if (!res.ok) throw json;
+        const item = json.data;
+
+        body.innerHTML = `
+          <div>
+            <div class="flex items-center gap-2 flex-wrap mb-2">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${item.type === 'thesis' ? 'bg-purple-100 text-purple-700' : 'bg-cyan-100 text-cyan-700'}">${capitalize(item.type)}</span>
+              <span class="text-xs text-gray-400">${escHtml(item.department_name || '')} · ${item.school_year} · ${item.semester} Semester</span>
+            </div>
+            <h3 class="text-lg font-bold text-gray-900 leading-snug">${escHtml(item.title)}</h3>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <div>
+              <p class="text-xs font-medium text-gray-400 uppercase mb-0.5">Authors</p>
+              <p class="text-gray-800 font-medium">${escHtml(item.authors)}</p>
+            </div>
+            ${item.adviser ? `<div>
+              <p class="text-xs font-medium text-gray-400 uppercase mb-0.5">Adviser</p>
+              <p class="text-gray-800">${escHtml(item.adviser)}</p>
+            </div>` : ''}
+            <div>
+              <p class="text-xs font-medium text-gray-400 uppercase mb-0.5">Archived</p>
+              <p class="text-gray-600">${formatDate(item.archived_at)}</p>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-gray-400 uppercase mb-0.5">Downloads</p>
+              <p class="text-gray-600">${item.download_count || 0}</p>
+            </div>
+          </div>
+          ${item.abstract ? `
+          <div>
+            <p class="text-xs font-medium text-gray-400 uppercase mb-1">Abstract</p>
+            <p class="text-sm text-gray-700 leading-relaxed text-justify">${escHtml(item.abstract)}</p>
+          </div>` : ''}
+          ${item.keywords ? `
+          <div>
+            <p class="text-xs font-medium text-gray-400 uppercase mb-1">Keywords</p>
+            <div class="flex flex-wrap gap-1.5">
+              ${item.keywords.split(',').map(k => `<span class="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs">${escHtml(k.trim())}</span>`).join('')}
+            </div>
+          </div>` : ''}
+          <div>
+            <p class="text-xs font-medium text-gray-400 uppercase mb-1">File</p>
+            <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <svg class="w-5 h-5 text-primary-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-gray-800 truncate">${escHtml(item.file_name || 'Document')}</p>
+                <p class="text-xs text-gray-500">${formatBytes(item.file_size)}</p>
+              </div>
+            </div>
+          </div>`;
+
+        _currentArchiveName = item.file_name || 'document';
+        dlBtn.classList.remove('hidden');
+        dlBtn.classList.add('inline-flex');
+        vwBtn.classList.remove('hidden');
+        vwBtn.classList.add('inline-flex');
+
+      } catch(err) {
+        body.innerHTML = `<p class="text-sm text-red-500">${escHtml(err?.message || 'Failed to load.')}</p>`;
+      }
+    }
+
+    async function _fetchDocBlob() {
+      const res = await apiFetch(`/api/v1/archive/${_currentArchiveId}/download`);
+      if (!res.ok) { const j = await res.json().catch(()=>{}); throw new Error(j?.message || 'Failed to fetch document.'); }
+      return res.blob();
+    }
+
+    async function viewDoc() {
+      const btn = document.getElementById('view-btn');
+      btn.disabled = true; btn.textContent = 'Opening…';
+      try {
+        const blob = await _fetchDocBlob();
+        const url  = URL.createObjectURL(blob);
+        const tab  = window.open(url, '_blank');
+        // Revoke after the new tab has had time to load the blob
+        setTimeout(() => URL.revokeObjectURL(url), 30000);
+        if (!tab) alert('Pop-up blocked. Please allow pop-ups for this site.');
+      } catch(e) {
+        alert(e.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg> View`;
+      }
+    }
+
+    async function downloadDoc() {
+      const btn = document.getElementById('download-btn');
+      btn.disabled = true; btn.textContent = 'Downloading…';
+      try {
+        const blob = await _fetchDocBlob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url; a.download = _currentArchiveName; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      } catch(e) {
+        alert(e.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg> Download`;
+      }
+    }
+
+    function closeDetail() {
+      document.getElementById('detail-modal').classList.add('hidden');
+      _currentArchiveId = null; _currentArchiveName = null;
+    }
+
+    function updatePagination() {
+      document.getElementById('btn-prev').disabled = currentPage <= 1;
+      document.getElementById('btn-next').disabled = currentPage >= totalPages;
+      document.getElementById('page-info').textContent = `Page ${currentPage} of ${totalPages}`;
+    }
+
+    function changePage(dir) {
+      currentPage = Math.max(1, Math.min(totalPages, currentPage + dir));
+      loadArchive();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetFilters() {
+      ['f-type','f-dept','f-year','f-semester'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('f-search').value = '';
+      currentPage = 1;
+      loadArchive();
+    }
+
+    function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+    function escHtml(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function formatDate(d) { return d ? new Date(d).toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric' }) : ''; }
+    function formatBytes(b) {
+      if (!b) return '';
+      if (b < 1024) return `${b} B`;
+      if (b < 1048576) return `${(b/1024).toFixed(1)} KB`;
+      return `${(b/1048576).toFixed(1)} MB`;
+    }
+  </script>
+</body>
+</html>

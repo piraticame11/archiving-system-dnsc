@@ -81,4 +81,42 @@ async function resetPassword(req, res, next) {
   }
 }
 
-module.exports = { list, getOne, create, update, remove, toggleActive, resetPassword };
+async function importStudents(req, res, next) {
+  try {
+    if (!req.file) return send400(res, 'No file uploaded.');
+    const department_id = req.body.department_id ? Number(req.body.department_id) : null;
+    const results = await service.importStudents(req.file.path, department_id);
+    sendSuccess(res, results, `Import complete. Created: ${results.created}, Skipped: ${results.skipped.length}, Errors: ${results.errors.length}`);
+  } catch (err) {
+    if (err.statusCode === 400) return send400(res, err.message);
+    next(err);
+  }
+}
+
+async function exportCredentials(req, res, next) {
+  try {
+    const credentials = req.body.credentials;
+    if (!Array.isArray(credentials) || !credentials.length) {
+      return send400(res, 'credentials array is required and must not be empty.');
+    }
+    const buffer = service.generateCredentialsExport(credentials);
+    res.setHeader('Content-Disposition', 'attachment; filename="student_credentials.xlsx"');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function downloadImportTemplate(req, res, next) {
+  try {
+    const buffer = service.generateStudentImportTemplate();
+    res.setHeader('Content-Disposition', 'attachment; filename="student_import_template.xlsx"');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { list, getOne, create, update, remove, toggleActive, resetPassword, importStudents, downloadImportTemplate, exportCredentials };

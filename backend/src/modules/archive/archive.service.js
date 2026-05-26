@@ -50,7 +50,7 @@ async function listArchive({ search, department_id, school_year, semester, type,
 
   const [[{ total }]] = await db.query(`SELECT COUNT(*) AS total ${from}`, params);
   const [rows] = await db.query(
-    `SELECT a.id, a.title, a.authors, a.adviser, a.school_year, a.semester,
+    `SELECT a.id, a.title, a.abstract, a.authors, a.adviser, a.school_year, a.semester,
             a.type, a.keywords, a.archived_at, a.download_count, a.submission_id,
             d.name AS department_name, d.code AS department_code,
             CONCAT(u.first_name, ' ', u.last_name) AS archived_by_name,

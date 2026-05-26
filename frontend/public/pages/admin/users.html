@@ -1,0 +1,616 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Users "” DNSC Research System</title>
+  <link rel="icon" type="image/webp" href="/assets/img/aw.webp">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .form-input { width:100%;padding:.5rem .75rem;font-size:.875rem;border:1px solid #d1d5db;border-radius:.5rem;outline:none;transition:border-color .15s,box-shadow .15s;background:#fff; }
+    .form-input:focus { border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.25); }
+    tr:hover td { background:#f8fafc; }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans min-h-screen">
+
+  <!-- Navbar -->
+  <nav class="bg-primary-700 text-white px-6 py-4 flex items-center justify-between shadow sticky top-0 z-40">
+    <div class="flex items-center gap-3">
+      <a href="/pages/admin/dashboard.html" class="text-primary-200 hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </a>
+      <img src="/assets/img/aw.webp" alt="School Logo" class="w-9 h-9 object-contain rounded-lg">
+      <span class="font-bold text-lg">DNSC Research System</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <span id="user-name" class="text-sm text-primary-100"></span>
+      <button onclick="logout()" class="text-sm bg-primary-800 hover:bg-primary-900 px-3 py-1.5 rounded-lg transition-colors">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="max-w-7xl mx-auto px-6 py-8">
+
+    <!-- Page header -->
+    <div class="mb-6 flex items-start justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">Users</h1>
+        <p class="text-sm text-gray-500 mt-0.5">Manage system accounts, roles, and access</p>
+      </div>
+      <button onclick="openImportModal()"
+        class="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors shadow-sm whitespace-nowrap">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        Import Students
+      </button>
+    </div>
+
+    <!-- Stats row -->
+    <div id="stats-row" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6"></div>
+
+    <!-- Alert -->
+    <div id="alert" class="hidden mb-4 px-4 py-3 rounded-lg text-sm font-medium"></div>
+
+    <!-- Filters -->
+    <div class="bg-white border border-gray-200 rounded-xl px-4 py-3 flex flex-wrap items-center gap-3 mb-5 shadow-sm">
+      <div class="relative flex-1 min-w-52">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/></svg>
+        <input id="f-search" type="text" placeholder="Search name or email…"
+          class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+      </div>
+      <select id="f-role" class="form-input w-auto text-sm py-2">
+        <option value="">All Roles</option>
+        <option value="student">Student</option>
+        <option value="instructor">Instructor</option>
+        <option value="panelist">Panelist</option>
+        <option value="admin">Admin</option>
+        <option value="superadmin">Superadmin</option>
+      </select>
+      <select id="f-status" class="form-input w-auto text-sm py-2">
+        <option value="">All Statuses</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+      <button onclick="resetFilters()" class="px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Reset</button>
+    </div>
+
+    <!-- Table -->
+    <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-50 border-b border-gray-200">
+              <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Name / Email</th>
+              <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Role</th>
+              <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Department</th>
+              <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Student No.</th>
+              <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Status</th>
+              <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Joined</th>
+              <th class="text-right px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <tr id="loading-row">
+              <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-400">Loading users…</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div id="pagination" class="hidden border-t border-gray-200 px-4 py-3 flex items-center justify-between">
+        <p id="page-info" class="text-sm text-gray-500"></p>
+        <div class="flex gap-2">
+          <button id="btn-prev" onclick="changePage(-1)" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Previous</button>
+          <button id="btn-next" onclick="changePage(1)"  class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Next</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reset Password Modal -->
+  <div id="reset-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+      <div class="flex items-center justify-between mb-5">
+        <h2 class="text-lg font-bold text-gray-900">Reset Password</h2>
+        <button onclick="closeResetModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="mb-4">
+        <p class="text-sm text-gray-500 mb-0.5">User</p>
+        <p id="reset-user-name" class="font-medium text-gray-900 text-sm"></p>
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">New Password <span class="text-red-500">*</span></label>
+        <input id="reset-password" type="password" placeholder="Min. 8 characters" class="form-input">
+        <p id="err-password" class="text-xs text-red-600 mt-1 hidden"></p>
+      </div>
+
+      <div class="mb-5">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Confirm Password <span class="text-red-500">*</span></label>
+        <input id="reset-confirm" type="password" placeholder="Re-enter new password" class="form-input">
+        <p id="err-confirm" class="text-xs text-red-600 mt-1 hidden"></p>
+      </div>
+
+      <div id="reset-alert" class="hidden mb-4 px-3 py-2 rounded-lg text-sm text-red-700 bg-red-50 border border-red-200"></div>
+
+      <div class="flex gap-3">
+        <button onclick="closeResetModal()" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+        <button id="btn-save-reset" onclick="submitResetPassword()" class="flex-1 px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">Reset Password</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Students Modal -->
+  <div id="import-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+      <div class="flex items-center justify-between mb-5">
+        <h2 class="text-lg font-bold text-gray-900">Import Students</h2>
+        <button onclick="closeImportModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Instructions -->
+      <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800 mb-5 space-y-2">
+        <p class="font-semibold">Excel Format Instructions</p>
+        <ul class="list-disc list-inside space-y-1 text-blue-700 text-xs">
+          <li>Columns (in order): <strong>first_name, last_name, birthdate, id_number</strong></li>
+          <li>Birthdate format: <strong>MM/DD/YYYY</strong> (e.g. 02/11/2003)</li>
+          <li>ID number format: <strong>YYYY-NNNNN</strong> (e.g. 2021-00163)</li>
+          <li>Email will be auto-generated: initials + lastname + id + @aces.edu.ph</li>
+          <li>Default password: <strong>welcome@MMDDYYYY</strong></li>
+          <li>Example: Howard Glen Gloria → <em>hggloria2021-00163@aces.edu.ph</em></li>
+        </ul>
+        <button onclick="downloadTemplate()"
+          class="mt-1 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 hover:text-blue-900 underline">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Download Excel Template
+        </button>
+      </div>
+
+      <!-- Department -->
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Department <span class="text-red-500">*</span></label>
+        <select id="import-department" class="form-input text-sm py-2">
+          <option value="">Loading departments…</option>
+        </select>
+        <p id="err-import-dept" class="text-xs text-red-600 mt-1 hidden">Please select a department.</p>
+      </div>
+
+      <!-- File Upload -->
+      <div id="import-drop-zone"
+        class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-primary-400 hover:bg-primary-50 transition-colors mb-4"
+        onclick="document.getElementById('import-file').click()"
+        ondragover="importDragOver(event)" ondragleave="importDragLeave(event)" ondrop="importDrop(event)">
+        <svg class="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <p class="text-sm font-medium text-gray-600" id="import-drop-label">Click to browse or drag &amp; drop</p>
+        <p class="text-xs text-gray-400 mt-0.5">.xlsx or .xls · Max 10 MB</p>
+      </div>
+      <input id="import-file" type="file" accept=".xlsx,.xls" class="hidden" onchange="importFileSelect(event)">
+
+      <div id="import-file-preview" class="hidden mb-4 flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+        <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <div class="flex-1 min-w-0">
+          <p id="import-file-name" class="text-sm font-medium text-gray-800 truncate"></p>
+          <p id="import-file-size" class="text-xs text-gray-400"></p>
+        </div>
+        <button onclick="clearImportFile()" class="text-gray-400 hover:text-gray-600">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Results -->
+      <div id="import-results" class="hidden mb-4 rounded-xl border p-4 text-sm space-y-2"></div>
+
+      <div class="flex gap-3">
+        <button onclick="closeImportModal()" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+        <button id="btn-import" onclick="submitImport()" disabled
+          class="flex-1 px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-colors">
+          Import
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/utils.js"></script>
+  <script>
+    async function http(fn) {
+      const res = await fn(); const json = await res.json();
+      if (!res.ok) throw json; return json;
+    }
+    const get   = path      => http(() => apiGet(path));
+    const post  = (path, b) => http(() => apiPost(path, b));
+    const patch = (path, b) => http(() => apiPatch(path, b));
+
+    let currentPage  = 1;
+    let totalPages   = 1;
+    let searchTimer  = null;
+    let resetUserId  = null;
+    let allUsers     = [];
+
+    const ROLE_CONFIG = {
+      student:    { label: 'Student',    bg: 'bg-blue-100',    text: 'text-blue-700'    },
+      instructor: { label: 'Instructor', bg: 'bg-indigo-100',  text: 'text-indigo-700'  },
+      panelist:   { label: 'Panelist',   bg: 'bg-orange-100',  text: 'text-orange-700'  },
+      admin:      { label: 'Admin',      bg: 'bg-primary-100', text: 'text-primary-700' },
+      superadmin: { label: 'Superadmin', bg: 'bg-red-100',     text: 'text-red-700'     },
+    };
+
+    function roleBadge(role) {
+      const c = ROLE_CONFIG[role] || { label: role, bg: 'bg-gray-100', text: 'text-gray-700' };
+      return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${c.bg} ${c.text}">${c.label}</span>`;
+    }
+
+    function statusBadge(active) {
+      return active
+        ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Active</span>`
+        : `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">Inactive</span>`;
+    }
+
+    requireAuthAsync('admin', 'superadmin').then(user => {
+      if (!user) return;
+      document.getElementById('user-name').textContent = user.full_name || user.email;
+      loadUsers();
+
+      ['f-role', 'f-status'].forEach(id =>
+        document.getElementById(id).addEventListener('change', () => { currentPage = 1; loadUsers(); }));
+      document.getElementById('f-search').addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => { currentPage = 1; loadUsers(); }, 350);
+      });
+    });
+
+    async function loadUsers() {
+      const params = new URLSearchParams({ page: currentPage, limit: 15 });
+      const search = document.getElementById('f-search').value.trim();
+      const role   = document.getElementById('f-role').value;
+      const status = document.getElementById('f-status').value;
+      if (search) params.set('search', search);
+      if (role)   params.set('role', role);
+      if (status === 'active')   params.set('is_active', 'true');
+      if (status === 'inactive') params.set('is_active', 'false');
+
+      const tbody = document.getElementById('table-body');
+      tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-sm text-gray-400">Loading…</td></tr>`;
+
+      try {
+        const res   = await get(`/api/v1/users?${params}`);
+        const items = res.data?.data || [];
+        totalPages  = res.data?.pagination?.totalPages || res.data?.totalPages || 1;
+        allUsers    = items;
+
+        renderStats(items, res.data?.pagination?.total || items.length);
+        document.getElementById('pagination').classList.toggle('hidden', totalPages <= 1);
+
+        if (!items.length) {
+          tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-10 text-center text-sm text-gray-400">No users found</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = items.map(u => `
+          <tr class="border-b border-gray-100">
+            <td class="px-4 py-3">
+              <p class="font-medium text-gray-900">${escHtml(u.first_name + ' ' + u.last_name)}</p>
+              <p class="text-xs text-gray-400 mt-0.5">${escHtml(u.email)}</p>
+            </td>
+            <td class="px-4 py-3">${roleBadge(u.role)}</td>
+            <td class="px-4 py-3 text-sm text-gray-600">${escHtml(u.department_name || '"”')}</td>
+            <td class="px-4 py-3 text-sm text-gray-600">${escHtml(u.student_number || '"”')}</td>
+            <td class="px-4 py-3">${statusBadge(u.is_active)}</td>
+            <td class="px-4 py-3 text-sm text-gray-500">${formatDate(u.created_at)}</td>
+            <td class="px-4 py-3">
+              <div class="flex items-center justify-end gap-2">
+                <button onclick="toggleActive(${u.id}, ${u.is_active})"
+                  class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${u.is_active
+                    ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                    : 'bg-green-50 text-green-700 hover:bg-green-100'}">
+                  ${u.is_active ? 'Deactivate' : 'Activate'}
+                </button>
+                <button onclick="openResetModal(${u.id}, '${escAttr(u.first_name + ' ' + u.last_name)}')"
+                  class="px-3 py-1.5 text-xs font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors">
+                  Reset Password
+                </button>
+              </div>
+            </td>
+          </tr>`).join('');
+
+        updatePagination();
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-sm text-red-500">${escHtml(err?.message || 'Failed to load.')}</td></tr>`;
+      }
+    }
+
+    function renderStats(users, total) {
+      const active   = users.filter(u => u.is_active).length;
+      const inactive = users.filter(u => !u.is_active).length;
+      const byRole   = {};
+      users.forEach(u => { byRole[u.role] = (byRole[u.role] || 0) + 1; });
+
+      const cards = [
+        { label: 'Total (page)',  value: users.length, color: 'text-primary-700' },
+        { label: 'Active',        value: active,        color: 'text-green-700'   },
+        { label: 'Inactive',      value: inactive,      color: 'text-gray-600'    },
+        { label: 'Students',      value: byRole.student    || 0, color: 'text-blue-700'   },
+        { label: 'Instructors',   value: byRole.instructor || 0, color: 'text-indigo-700' },
+        { label: 'Panelists',     value: byRole.panelist   || 0, color: 'text-orange-700' },
+      ];
+
+      document.getElementById('stats-row').innerHTML = cards.map(c => `
+        <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+          <p class="text-xs font-medium text-gray-500 mb-1">${c.label}</p>
+          <p class="text-2xl font-bold ${c.color}">${c.value}</p>
+        </div>`).join('');
+    }
+
+    async function toggleActive(id, currentlyActive) {
+      try {
+        await patch(`/api/v1/users/${id}/toggle-active`);
+        showAlert(`User ${currentlyActive ? 'deactivated' : 'activated'} successfully.`, 'success');
+        loadUsers();
+      } catch (err) {
+        showAlert(err?.message || 'Failed to update user status.', 'error');
+      }
+    }
+
+    function openResetModal(id, name) {
+      resetUserId = id;
+      document.getElementById('reset-user-name').textContent = name;
+      document.getElementById('reset-password').value = '';
+      document.getElementById('reset-confirm').value  = '';
+      document.getElementById('err-password').classList.add('hidden');
+      document.getElementById('err-confirm').classList.add('hidden');
+      document.getElementById('reset-alert').classList.add('hidden');
+      document.getElementById('reset-modal').classList.remove('hidden');
+    }
+
+    function closeResetModal() {
+      document.getElementById('reset-modal').classList.add('hidden');
+      resetUserId = null;
+    }
+
+    async function submitResetPassword() {
+      const pwd     = document.getElementById('reset-password').value;
+      const confirm = document.getElementById('reset-confirm').value;
+      const errPwd  = document.getElementById('err-password');
+      const errCfm  = document.getElementById('err-confirm');
+      const alertEl = document.getElementById('reset-alert');
+      errPwd.classList.add('hidden');
+      errCfm.classList.add('hidden');
+      alertEl.classList.add('hidden');
+
+      let valid = true;
+      if (!pwd || pwd.length < 8) {
+        errPwd.textContent = 'Password must be at least 8 characters.';
+        errPwd.classList.remove('hidden');
+        valid = false;
+      }
+      if (pwd !== confirm) {
+        errCfm.textContent = 'Passwords do not match.';
+        errCfm.classList.remove('hidden');
+        valid = false;
+      }
+      if (!valid) return;
+
+      const btn = document.getElementById('btn-save-reset');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      try {
+        await post(`/api/v1/users/${resetUserId}/reset-password`, { password: pwd });
+        closeResetModal();
+        showAlert('Password reset successfully.', 'success');
+      } catch (err) {
+        alertEl.textContent = err?.message || 'Failed to reset password.';
+        alertEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Reset Password';
+      }
+    }
+
+    function updatePagination() {
+      document.getElementById('btn-prev').disabled = currentPage <= 1;
+      document.getElementById('btn-next').disabled = currentPage >= totalPages;
+      document.getElementById('page-info').textContent = `Page ${currentPage} of ${totalPages}`;
+    }
+
+    function changePage(dir) {
+      currentPage = Math.max(1, Math.min(totalPages, currentPage + dir));
+      loadUsers();
+    }
+
+    function resetFilters() {
+      document.getElementById('f-search').value = '';
+      document.getElementById('f-role').value   = '';
+      document.getElementById('f-status').value = '';
+      currentPage = 1;
+      loadUsers();
+    }
+
+    function showAlert(msg, type = 'error') {
+      const el = document.getElementById('alert');
+      el.textContent = msg;
+      el.className = `mb-4 px-4 py-3 rounded-lg text-sm font-medium ${
+        type === 'success' ? 'bg-green-50 border border-green-200 text-green-800'
+                           : 'bg-red-50 border border-red-200 text-red-800'}`;
+      el.classList.remove('hidden');
+      setTimeout(() => el.classList.add('hidden'), 4000);
+    }
+
+    function escHtml(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function escAttr(s) {
+      return String(s || '').replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function formatDate(d) {
+      return d ? new Date(d).toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric' }) : '””';
+    }
+
+    // ── Import Students ──────────────────────────────────────────────────────
+    let importFile = null;
+
+    async function openImportModal() {
+      clearImportFile();
+      document.getElementById('import-results').classList.add('hidden');
+      document.getElementById('err-import-dept').classList.add('hidden');
+      document.getElementById('import-modal').classList.remove('hidden');
+      await loadDepartments();
+    }
+
+    async function loadDepartments() {
+      const sel = document.getElementById('import-department');
+      sel.innerHTML = '<option value="">Loading…</option>';
+      try {
+        const res  = await get('/api/v1/departments');
+        const list = res.data || [];
+        sel.innerHTML = '<option value="">— Select Department —</option>' +
+          list.map(d => `<option value="${d.id}">${escHtml(d.name)} (${escHtml(d.code)})</option>`).join('');
+      } catch (_) {
+        sel.innerHTML = '<option value="">Failed to load departments</option>';
+      }
+    }
+
+    function closeImportModal() {
+      document.getElementById('import-modal').classList.add('hidden');
+      clearImportFile();
+    }
+
+    function importFileSelect(e) {
+      const f = e.target.files[0];
+      if (f) setImportFile(f);
+    }
+
+    function importDragOver(e) {
+      e.preventDefault();
+      document.getElementById('import-drop-zone').classList.add('border-primary-400', 'bg-primary-50');
+    }
+    function importDragLeave(e) {
+      document.getElementById('import-drop-zone').classList.remove('border-primary-400', 'bg-primary-50');
+    }
+    function importDrop(e) {
+      e.preventDefault();
+      importDragLeave(e);
+      const f = e.dataTransfer.files[0];
+      if (f) setImportFile(f);
+    }
+
+    function setImportFile(f) {
+      importFile = f;
+      document.getElementById('import-drop-label').textContent = 'File selected';
+      document.getElementById('import-file-name').textContent = f.name;
+      document.getElementById('import-file-size').textContent = (f.size / 1024).toFixed(1) + ' KB';
+      document.getElementById('import-file-preview').classList.remove('hidden');
+      document.getElementById('btn-import').disabled = false;
+      document.getElementById('import-results').classList.add('hidden');
+    }
+
+    function clearImportFile() {
+      importFile = null;
+      document.getElementById('import-file').value = '';
+      document.getElementById('import-drop-label').textContent = 'Click to browse or drag & drop';
+      document.getElementById('import-file-preview').classList.add('hidden');
+      document.getElementById('btn-import').disabled = true;
+    }
+
+    async function downloadCredentials(credentials) {
+      try {
+        const token = getAccessToken();
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const res = await fetch('/api/v1/users/export-credentials', {
+          method: 'POST', headers, credentials: 'include',
+          body: JSON.stringify({ credentials }),
+        });
+        if (!res.ok) { showAlert('Credentials export failed.', 'error'); return; }
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'student_credentials.xlsx';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      } catch (_) {
+        showAlert('Could not download credentials file.', 'error');
+      }
+    }
+
+    async function downloadTemplate() {
+      const token = getAccessToken();
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch('/api/v1/users/import-template', { headers, credentials: 'include' });
+      if (!res.ok) { showAlert('Failed to download template.', 'error'); return; }
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'student_import_template.xlsx';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    async function submitImport() {
+      if (!importFile) return;
+
+      const deptId  = document.getElementById('import-department').value;
+      const errDept = document.getElementById('err-import-dept');
+      errDept.classList.add('hidden');
+      if (!deptId) {
+        errDept.classList.remove('hidden');
+        return;
+      }
+
+      const btn = document.getElementById('btn-import');
+      btn.disabled = true; btn.textContent = 'Importing…';
+      document.getElementById('import-results').classList.add('hidden');
+
+      try {
+        const fd = new FormData();
+        fd.append('file', importFile);
+        fd.append('department_id', deptId);
+        const res  = await apiPostForm('/api/v1/users/import-students', fd);
+        const json = await res.json();
+
+        if (!res.ok) throw json;
+
+        const { created, skipped, errors } = json.data;
+        const resultsEl = document.getElementById('import-results');
+        let html = `<p class=”font-semibold text-gray-800 mb-2”>Import Results</p>
+          <p class=”text-green-700”><strong>${created}</strong> student(s) created.</p>`;
+
+        if (skipped.length) {
+          html += `<p class=”text-yellow-700 mt-1”><strong>${skipped.length}</strong> skipped (already exist):</p>
+            <ul class=”list-disc list-inside text-xs text-yellow-600 ml-2 max-h-24 overflow-y-auto”>
+              ${skipped.map(s => `<li>Row ${s.row}: ${escHtml(s.email)}</li>`).join('')}
+            </ul>`;
+        }
+        if (errors.length) {
+          html += `<p class=”text-red-700 mt-1”><strong>${errors.length}</strong> error(s):</p>
+            <ul class=”list-disc list-inside text-xs text-red-600 ml-2 max-h-24 overflow-y-auto”>
+              ${errors.map(e => `<li>Row ${e.row}: ${escHtml(e.reason)}</li>`).join('')}
+            </ul>`;
+        }
+
+        const borderColor = errors.length ? 'border-red-200 bg-red-50' : skipped.length ? 'border-yellow-200 bg-yellow-50' : 'border-green-200 bg-green-50';
+        resultsEl.className = `mb-4 rounded-xl border p-4 text-sm space-y-1 ${borderColor}`;
+        resultsEl.innerHTML = html;
+        resultsEl.classList.remove('hidden');
+
+        if (created > 0) {
+          clearImportFile();
+          loadUsers();
+          showAlert(`${created} student(s) imported. Downloading credentials…`, 'success');
+          await downloadCredentials(json.data.credentials);
+        }
+      } catch (err) {
+        showAlert(err?.message || 'Import failed.', 'error');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Import';
+      }
+    }
+  </script>
+</body>
+</html>
+

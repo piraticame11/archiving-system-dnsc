@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submit Title — DNSC Research System</title>
+  <link rel="icon" type="image/webp" href="/assets/img/aw.webp">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .form-input {
+      width: 100%; padding: .5rem .75rem; font-size: .875rem;
+      border: 1px solid #d1d5db; border-radius: .5rem; outline: none;
+      transition: border-color .15s, box-shadow .15s; background: #fff;
+    }
+    .form-input:focus { border-color: #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,.25); }
+    .form-input:disabled { background: #f9fafb; color: #6b7280; cursor: not-allowed; }
+    .field-error { font-size: .75rem; color: #dc2626; margin-top: .25rem; }
+    .drop-zone {
+      border: 2px dashed #d1d5db; border-radius: .75rem; padding: 2rem 1.5rem;
+      text-align: center; cursor: pointer; transition: border-color .15s, background .15s;
+    }
+    .drop-zone:hover, .drop-zone.dragover { border-color: #22c55e; background: #f0fdf4; }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans min-h-screen">
+
+  <!-- Navbar -->
+  <nav class="bg-primary-700 text-white px-6 py-4 flex items-center justify-between shadow sticky top-0 z-40">
+    <div class="flex items-center gap-3">
+      <a href="/pages/student/dashboard.html" class="text-primary-200 hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </a>
+      <img src="/assets/img/aw.webp" alt="School Logo" class="w-9 h-9 object-contain rounded-lg">
+      <span class="font-bold text-lg">DNSC Research System</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <span id="user-name" class="text-sm text-primary-100"></span>
+      <button onclick="logout()" class="text-sm bg-primary-800 hover:bg-primary-900 px-3 py-1.5 rounded-lg transition-colors">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="max-w-2xl mx-auto px-6 py-10">
+
+    <!-- Page header -->
+    <div class="mb-8">
+      <h1 class="text-2xl font-bold text-gray-900">Submit Research Title</h1>
+      <p class="text-sm text-gray-500 mt-1">Fill in your research details and attach your document. It will be saved as a draft until you submit for review.</p>
+    </div>
+
+    <!-- Alert -->
+    <div id="alert" class="hidden mb-5 px-4 py-3 rounded-lg text-sm font-medium"></div>
+
+    <form id="submit-form" novalidate>
+
+      <!-- ── Section 1: Research Details ── -->
+      <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-5">
+        <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Research Details</h2>
+
+        <!-- Title -->
+        <div class="mb-5">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Title <span class="text-red-500">*</span></label>
+          <input id="f-title" type="text" placeholder="Enter your research title" class="form-input" maxlength="500">
+          <p id="err-title" class="field-error hidden"></p>
+          <p class="text-xs text-gray-400 mt-1">Maximum 500 characters</p>
+        </div>
+
+        <!-- Type & Semester row -->
+        <div class="grid grid-cols-2 gap-4 mb-5">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Type <span class="text-red-500">*</span></label>
+            <select id="f-type" class="form-input">
+              <option value="">Select type…</option>
+              <option value="thesis">Thesis</option>
+              <option value="capstone">Capstone</option>
+            </select>
+            <p id="err-type" class="field-error hidden"></p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Semester <span class="text-red-500">*</span></label>
+            <select id="f-semester" class="form-input">
+              <option value="">Select semester…</option>
+              <option value="1st">1st Semester</option>
+              <option value="2nd">2nd Semester</option>
+              <option value="summer">Summer</option>
+            </select>
+            <p id="err-semester" class="field-error hidden"></p>
+          </div>
+        </div>
+
+        <!-- School Year -->
+        <div class="mb-5">
+          <label class="block text-sm font-medium text-gray-700 mb-1">School Year <span class="text-red-500">*</span></label>
+          <input id="f-school-year" type="text" placeholder="e.g. 2024-2025" class="form-input" maxlength="9">
+          <p id="err-school-year" class="field-error hidden"></p>
+          <p class="text-xs text-gray-400 mt-1">Format: YYYY-YYYY</p>
+        </div>
+
+        <!-- Abstract / Introduction -->
+        <div class="mb-5">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Abstract / Introduction <span class="text-red-500">*</span></label>
+          <textarea id="f-abstract" rows="6" placeholder="Write the abstract or introduction of your research…"
+            class="form-input resize-y" style="min-height:120px;max-height:400px;"></textarea>
+          <p id="err-abstract" class="field-error hidden"></p>
+        </div>
+
+        <!-- Keywords -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Keywords <span class="text-gray-400 font-normal">(optional)</span></label>
+          <input id="f-keywords" type="text" placeholder="e.g. machine learning, IoT, data science" class="form-input">
+          <p class="text-xs text-gray-400 mt-1">Separate keywords with commas</p>
+        </div>
+      </div>
+
+      <!-- ── Section 2: Document Upload ── -->
+      <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Document</h2>
+          <span class="text-xs text-gray-400">PDF or DOCX · max 20 MB</span>
+        </div>
+
+        <!-- Document type -->
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Document Type <span class="text-red-500">*</span></label>
+          <select id="f-doc-type" class="form-input">
+            <option value="">Select document type…</option>
+            <option value="title_proposal">Title Proposal</option>
+            <option value="full_document">Full Document</option>
+            <option value="imrad">IMRaD</option>
+            <option value="presentation">Presentation</option>
+            <option value="other">Other</option>
+          </select>
+          <p id="err-doc-type" class="field-error hidden"></p>
+        </div>
+
+        <!-- Drop zone -->
+        <div id="drop-zone" class="drop-zone" onclick="document.getElementById('file-input').click()">
+          <svg class="w-10 h-10 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          <p class="text-sm font-medium text-gray-600">Click to select or drag &amp; drop</p>
+          <p class="text-xs text-gray-400 mt-0.5">PDF or DOCX, max 20 MB</p>
+        </div>
+        <input id="file-input" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden">
+        <p id="err-file" class="field-error hidden"></p>
+
+        <!-- Selected file preview -->
+        <div id="file-preview" class="hidden mt-3 flex items-center gap-3 p-3 bg-primary-50 border border-primary-200 rounded-lg">
+          <svg class="w-6 h-6 text-primary-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+          <div class="flex-1 min-w-0">
+            <p id="file-name" class="text-sm font-medium text-primary-800 truncate"></p>
+            <p id="file-size" class="text-xs text-primary-600"></p>
+          </div>
+          <button type="button" onclick="clearFile()" class="text-primary-400 hover:text-primary-600 transition-colors flex-shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <!-- Upload progress (shown during save) -->
+        <div id="progress-wrap" class="hidden mt-4">
+          <div class="flex justify-between text-xs text-gray-500 mb-1">
+            <span>Uploading document…</span>
+            <span id="progress-pct">0%</span>
+          </div>
+          <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div id="progress-bar" class="h-full bg-primary-500 rounded-full transition-all" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Actions ── -->
+      <div class="flex items-center justify-between pt-1">
+        <a href="/pages/student/dashboard.html" class="text-sm text-gray-500 hover:text-gray-700 transition-colors">Cancel</a>
+        <div class="flex items-center gap-3">
+          <button type="button" id="btn-save-draft" data-label="Save as Draft"
+            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+            Save as Draft
+          </button>
+          <button type="submit" id="btn-submit" data-label="Submit for Review"
+            class="px-5 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
+            Submit for Review
+          </button>
+        </div>
+      </div>
+
+    </form>
+
+    <!-- Info box -->
+    <div class="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
+      <div class="flex gap-3">
+        <svg class="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <div>
+          <p class="text-sm font-medium text-blue-800">How it works</p>
+          <ul class="text-sm text-blue-700 mt-1 space-y-0.5 list-disc list-inside">
+            <li>Save as Draft — editable, not yet sent to admin</li>
+            <li>Submit for Review — locks the title, sends it to admin</li>
+            <li>You can upload additional documents later from My Submissions</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/utils.js"></script>
+  <script>
+    async function http(fn) {
+      const res = await fn(); const json = await res.json();
+      if (!res.ok) throw json; return json;
+    }
+    const post = (path, b) => http(() => apiPost(path, b));
+
+    let selectedFile = null;
+
+    requireAuthAsync('student').then(async user => {
+      if (!user) return;
+      document.getElementById('user-name').textContent = user.full_name || 'Student';
+
+      // Pre-fill current school year
+      const now = new Date();
+      const y1 = now.getMonth() >= 5 ? now.getFullYear() : now.getFullYear() - 1;
+      document.getElementById('f-school-year').value = `${y1}-${y1 + 1}`;
+
+      await checkGroupAccess(user.id);
+    });
+
+    async function checkGroupAccess(userId) {
+      try {
+        const res = await apiGet('/api/v1/groups/my').then(r => r.json());
+        const group = res.data;
+        if (group && group.leader_id !== userId) {
+          lockPage();
+        }
+      } catch (_) {}
+    }
+
+    function lockPage() {
+      // Show locked banner
+      showAlert('Only group leaders can submit titles. Contact your group leader to submit on behalf of the group.', 'warning');
+
+      // Disable all form inputs and buttons
+      ['f-title','f-type','f-semester','f-school-year','f-abstract','f-keywords',
+       'f-doc-type','btn-save-draft','btn-submit'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.disabled = true; el.title = 'Only group leaders can submit'; }
+      });
+
+      // Disable drop zone
+      const dz = document.getElementById('drop-zone');
+      if (dz) {
+        dz.onclick = null;
+        dz.style.cursor = 'not-allowed';
+        dz.style.opacity = '0.5';
+        dz.style.pointerEvents = 'none';
+      }
+    }
+
+    /* ── Drag & drop ── */
+    const dropZone = document.getElementById('drop-zone');
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault(); dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+    });
+    document.getElementById('file-input').addEventListener('change', e => {
+      if (e.target.files[0]) setFile(e.target.files[0]);
+    });
+
+    function setFile(file) {
+      const allowed = ['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (!allowed.includes(file.type) && !file.name.match(/\.(pdf|docx)$/i)) {
+        showErr('err-file', 'Only PDF or DOCX files are allowed.'); return;
+      }
+      if (file.size > 20 * 1024 * 1024) {
+        showErr('err-file', 'File must be 20 MB or smaller.'); return;
+      }
+      hideErr('err-file');
+      selectedFile = file;
+      document.getElementById('file-name').textContent = file.name;
+      document.getElementById('file-size').textContent = formatBytes(file.size);
+      document.getElementById('file-preview').classList.remove('hidden');
+      dropZone.classList.add('hidden');
+    }
+
+    function clearFile() {
+      selectedFile = null;
+      document.getElementById('file-input').value = '';
+      document.getElementById('file-preview').classList.add('hidden');
+      dropZone.classList.remove('hidden');
+    }
+
+    /* ── Validation ── */
+    function clearErrors() {
+      ['err-title','err-type','err-semester','err-school-year','err-abstract','err-doc-type','err-file'].forEach(hideErr);
+    }
+
+    function validate(requireFile) {
+      clearErrors(); let ok = true;
+      const title    = document.getElementById('f-title').value.trim();
+      const type     = document.getElementById('f-type').value;
+      const sem      = document.getElementById('f-semester').value;
+      const sy       = document.getElementById('f-school-year').value.trim();
+      const abstract = document.getElementById('f-abstract').value.trim();
+      const docType  = document.getElementById('f-doc-type').value;
+
+      if (!title)    { showErr('err-title',    'Title is required'); ok = false; }
+      if (!type)     { showErr('err-type',     'Please select a type'); ok = false; }
+      if (!sem)      { showErr('err-semester', 'Please select a semester'); ok = false; }
+      if (!sy)       { showErr('err-school-year', 'School year is required'); ok = false; }
+      else if (!/^\d{4}-\d{4}$/.test(sy)) { showErr('err-school-year', 'Format must be YYYY-YYYY'); ok = false; }
+      if (!abstract) { showErr('err-abstract', 'Abstract / Introduction is required'); ok = false; }
+
+      if (selectedFile && !docType) {
+        showErr('err-doc-type', 'Please select a document type for your file.'); ok = false;
+      }
+      if (requireFile && !selectedFile) {
+        showErr('err-file', 'Please attach a document before submitting for review.'); ok = false;
+      }
+      return ok;
+    }
+
+    function showErr(id, msg) {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = msg; el.classList.remove('hidden'); }
+    }
+    function hideErr(id) {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = ''; el.classList.add('hidden'); }
+    }
+
+    /* ── Payload ── */
+    function getPayload() {
+      return {
+        title:       document.getElementById('f-title').value.trim(),
+        type:        document.getElementById('f-type').value,
+        semester:    document.getElementById('f-semester').value,
+        school_year: document.getElementById('f-school-year').value.trim(),
+        abstract:    document.getElementById('f-abstract').value.trim(),
+        keywords:    document.getElementById('f-keywords').value.trim() || null,
+      };
+    }
+
+    /* ── Upload document after submission is created ── */
+    function uploadDocument(submissionId) {
+      return new Promise((resolve, reject) => {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('doc_type', document.getElementById('f-doc-type').value);
+
+        document.getElementById('progress-wrap').classList.remove('hidden');
+
+        const xhr = new XMLHttpRequest();
+        const token = getAccessToken();
+        xhr.open('POST', `/api/v1/submissions/${submissionId}/documents`);
+        if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        xhr.withCredentials = true;
+        xhr.upload.onprogress = e => {
+          if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            document.getElementById('progress-bar').style.width = pct + '%';
+            document.getElementById('progress-pct').textContent = pct + '%';
+          }
+        };
+        xhr.onload = () => {
+          const json = JSON.parse(xhr.responseText);
+          if (xhr.status >= 200 && xhr.status < 300) resolve(json);
+          else reject(json);
+        };
+        xhr.onerror = () => reject({ message: 'Network error during upload.' });
+        xhr.send(formData);
+      });
+    }
+
+    /* ── Disable all form inputs ── */
+    function setFormDisabled(disabled) {
+      ['f-title','f-type','f-semester','f-school-year','f-abstract','f-keywords','f-doc-type',
+       'btn-save-draft','btn-submit'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = disabled;
+      });
+    }
+
+    /* ── Save as Draft ── */
+    document.getElementById('btn-save-draft').addEventListener('click', async () => {
+      if (!validate(false)) return;
+      hideAlert();
+      const btn = document.getElementById('btn-save-draft');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      setFormDisabled(true);
+      try {
+        const sub = await post('/api/v1/submissions', getPayload());
+        const subId = sub.data.id;
+
+        if (selectedFile) {
+          btn.textContent = 'Uploading…';
+          await uploadDocument(subId);
+        }
+
+        showAlert('Draft saved successfully!', 'success');
+        setTimeout(() => window.location.href = '/pages/student/my-submissions.html', 1500);
+      } catch(err) {
+        showAlert(err?.message || 'Failed to save. Please try again.');
+        setFormDisabled(false);
+        btn.disabled = false; btn.textContent = 'Save as Draft';
+        document.getElementById('progress-wrap').classList.add('hidden');
+      }
+    });
+
+    /* ── Submit for Review ── */
+    document.getElementById('submit-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      if (!validate(true)) return;
+      hideAlert();
+      const btn = document.getElementById('btn-submit');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      setFormDisabled(true);
+      try {
+        const sub = await post('/api/v1/submissions', getPayload());
+        const subId = sub.data.id;
+
+        btn.textContent = 'Uploading document…';
+        await uploadDocument(subId);
+
+        btn.textContent = 'Submitting…';
+        await http(() => apiPost(`/api/v1/submissions/${subId}/submit`));
+
+        showAlert('Submitted for review successfully!', 'success');
+        setTimeout(() => window.location.href = '/pages/student/my-submissions.html', 1500);
+      } catch(err) {
+        showAlert(err?.message || 'Submission failed. Please try again.');
+        setFormDisabled(false);
+        btn.disabled = false; btn.textContent = 'Submit for Review';
+        document.getElementById('progress-wrap').classList.add('hidden');
+      }
+    });
+
+    function showAlert(msg, type = 'error') {
+      const el = document.getElementById('alert');
+      el.textContent = msg;
+      const styles = {
+        success: 'bg-green-50 border border-green-200 text-green-800',
+        warning: 'bg-amber-50 border border-amber-200 text-amber-800',
+        error:   'bg-red-50 border border-red-200 text-red-800',
+      };
+      el.className = `mb-5 px-4 py-3 rounded-lg text-sm font-medium ${styles[type] || styles.error}`;
+      el.classList.remove('hidden');
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    function hideAlert() { document.getElementById('alert').classList.add('hidden'); }
+
+    function formatBytes(b) {
+      if (!b) return '';
+      if (b < 1024) return `${b} B`;
+      if (b < 1048576) return `${(b/1024).toFixed(1)} KB`;
+      return `${(b/1048576).toFixed(1)} MB`;
+    }
+  </script>
+</body>
+</html>

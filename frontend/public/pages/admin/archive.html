@@ -1,10 +1,31 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Archive — DNSC Research System</title>
-  <link rel="stylesheet" href="/assets/css/app.css">
+  <title>Archive &mdash; DNSC Research System</title>
+  <link rel="icon" type="image/webp" href="/assets/img/aw.webp">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              200: '#bbf7d0',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              800: '#166534',
+              900: '#14532d',
+            }
+          }
+        }
+      }
+    }
+  </script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     .form-input {
@@ -12,12 +33,30 @@
       border: 1px solid #d1d5db; border-radius: .5rem; outline: none;
       transition: border-color .15s, box-shadow .15s; background: #fff;
     }
-    .form-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,.25); }
+    .form-input:focus { border-color: #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,.25); }
     .tab-btn { transition: color .15s, border-color .15s; }
-    .tab-btn.active { color: #1d4ed8; border-bottom-color: #1d4ed8; }
+    .tab-btn.active { color: #15803d; border-bottom-color: #15803d; }
     .tab-btn:not(.active) { color: #6b7280; border-bottom-color: transparent; }
     .card-hover { transition: box-shadow .15s, transform .15s; }
     .card-hover:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); transform: translateY(-1px); }
+
+    /* Dynamically-generated element styles */
+    .promote-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #16a34a; color: #fff; border: none; cursor: pointer;
+      padding: 6px 14px; border-radius: 8px;
+      font-size: .75rem; font-weight: 600;
+      transition: background-color .15s;
+    }
+    .promote-btn:hover { background: #15803d; }
+    .type-pill {
+      display: inline-flex; align-items: center;
+      padding: 2px 10px; border-radius: 9999px;
+      font-size: .75rem; font-weight: 500; text-transform: capitalize;
+    }
+    .type-pill-thesis   { background: #e0e7ff; color: #4338ca; }
+    .type-pill-capstone { background: #ccfbf1; color: #0f766e; }
+    .type-pill-default  { background: #f3f4f6; color: #4b5563; }
   </style>
 </head>
 <body class="bg-gray-50 font-sans min-h-screen">
@@ -28,6 +67,7 @@
       <a href="/pages/admin/dashboard.html" id="back-link" class="text-primary-200 hover:text-white transition-colors">
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
       </a>
+      <img src="/assets/img/aw.webp" onerror="this.src='https://placehold.co/100x100?text=Logo'" alt="School Logo" class="w-9 h-9 object-contain rounded-lg">
       <span class="font-bold text-lg">DNSC Research System</span>
     </div>
     <div class="flex items-center gap-4">
@@ -61,7 +101,7 @@
       </nav>
     </div>
 
-    <!-- ── TAB: BROWSE ──────────────────────────────────────────── -->
+    <!-- ── TAB: BROWSE ────────────────────────────────────── -->
     <div id="pane-browse">
       <!-- Filters -->
       <div class="bg-white border border-gray-200 rounded-xl px-4 py-3 flex flex-wrap items-center gap-3 mb-5 shadow-sm">
@@ -101,15 +141,15 @@
         <span id="b-pag-info" class="text-xs text-gray-500"></span>
         <div class="flex items-center gap-1">
           <button id="b-prev" onclick="browseChangePage(-1)"
-            class="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-40 transition-colors">← Prev</button>
+            class="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-40 transition-colors">&larr; Prev</button>
           <div id="b-page-nums" class="flex items-center gap-1"></div>
           <button id="b-next" onclick="browseChangePage(1)"
-            class="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-40 transition-colors">Next →</button>
+            class="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-40 transition-colors">Next &rarr;</button>
         </div>
       </div>
     </div>
 
-    <!-- ── TAB: PROMOTE ─────────────────────────────────────────── -->
+    <!-- ── TAB: PROMOTE ───────────────────────────────────── -->
     <div id="pane-promote" class="hidden">
       <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5 flex items-start gap-3">
         <svg class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -142,17 +182,17 @@
           <span id="e-pag-info" class="text-xs text-gray-500"></span>
           <div class="flex items-center gap-1">
             <button id="e-prev" onclick="eligibleChangePage(-1)"
-              class="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-40 transition-colors">← Prev</button>
+              class="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-40 transition-colors">&larr; Prev</button>
             <div id="e-page-nums" class="flex items-center gap-1"></div>
             <button id="e-next" onclick="eligibleChangePage(1)"
-              class="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-40 transition-colors">Next →</button>
+              class="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-40 transition-colors">Next &rarr;</button>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ── DETAIL MODAL ─────────────────────────────────────────────── -->
+  <!-- ── DETAIL MODAL ────────────────────────────────────────── -->
   <div id="detail-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-black/40" onclick="closeDetailModal()"></div>
     <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-screen overflow-y-auto">
@@ -203,11 +243,11 @@
               <p id="dm-filesize" class="text-xs text-gray-400"></p>
             </div>
           </div>
-          <a id="dm-download-btn" href="#" target="_blank"
+          <button id="dm-download-btn" onclick="downloadArchive()"
             class="flex items-center gap-1.5 bg-primary-600 hover:bg-primary-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
             Download
-          </a>
+          </button>
         </div>
         <!-- archived by -->
         <p id="dm-meta" class="text-xs text-gray-400"></p>
@@ -223,7 +263,7 @@
     </div>
   </div>
 
-  <!-- ── PROMOTE MODAL ────────────────────────────────────────────── -->
+  <!-- ── PROMOTE MODAL ────────────────────────────────────────── -->
   <div id="promote-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-black/40" onclick="closePromoteModal()"></div>
     <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-screen overflow-y-auto">
@@ -288,21 +328,22 @@
   <script src="/assets/js/api.js"></script>
   <script src="/assets/js/utils.js"></script>
   <script>
-    /* ── API wrappers ─────────────────────────────────────────── */
+    /* ── API wrappers ────────────────────────────────────────────── */
     async function http(fn) {
       const r = await fn(); const j = await r.json();
       if (!r.ok) throw j; return j;
     }
-    const get  = p     => http(() => apiGet(p));
+    const get  = p   => http(() => apiGet(p));
     const post = (p,b) => http(() => apiPost(p,b));
-    const del  = p     => http(() => apiDelete(p));
+    const del  = p   => http(() => apiDelete(p));
 
-    /* ── State ───────────────────────────────────────────────── */
+    /* ── State ───────────────────────────────────────────────────── */
     let browsePage = 1, browseTotalPages = 1;
     let eligPage   = 1, eligTotalPages   = 1;
     let userRole   = null;
     let activeDetailId = null;
     let departments = [];
+    let eligibleMap = {};
 
     const TYPE_BADGE = {
       thesis:   'bg-indigo-100 text-indigo-700',
@@ -310,7 +351,7 @@
     };
     const SEM_LABEL = { '1st': '1st Sem', '2nd': '2nd Sem', summer: 'Summer' };
 
-    /* ── Init ────────────────────────────────────────────────── */
+    /* ── Init ────────────────────────────────────────────────────── */
     requireAuthAsync('admin', 'superadmin').then(user => {
       if (!user) return;
       userRole = user.role;
@@ -330,7 +371,7 @@
       });
     });
 
-    /* ── Tabs ────────────────────────────────────────────────── */
+    /* ── Tabs ────────────────────────────────────────────────────── */
     function switchTab(tab) {
       ['browse','promote'].forEach(t => {
         document.getElementById(`pane-${t}`).classList.toggle('hidden', t !== tab);
@@ -339,25 +380,25 @@
       if (tab === 'promote' && eligPage === 1) loadEligible();
     }
 
-    /* ── Departments ─────────────────────────────────────────── */
+    /* ── Departments ─────────────────────────────────────────────── */
     async function loadDepts() {
       try {
         const j = await get('/api/v1/departments');
         departments = j.data || [];
         const sel = document.getElementById('b-dept');
         departments.forEach(d => {
-          sel.insertAdjacentHTML('beforeend', `<option value="${d.id}">${d.code} — ${d.name}</option>`);
+          sel.insertAdjacentHTML('beforeend', `<option value="${d.id}">${d.code} &mdash; ${d.name}</option>`);
         });
       } catch (_) {}
     }
 
-    /* ── Stats cards ─────────────────────────────────────────── */
+    /* ── Stats cards ─────────────────────────────────────────────── */
     async function loadStats() {
       try {
         const j   = await get('/api/v1/archive/stats');
         const row = document.getElementById('stats-row');
         row.innerHTML = [
-          statCard('Total Documents', j.data.total,           'bg-primary-50 text-primary-700'),
+          statCard('Total Documents', j.data.total,          'bg-primary-50 text-primary-700'),
           statCard('Thesis',          j.data.thesis_count,    'bg-indigo-50 text-indigo-700'),
           statCard('Capstone',        j.data.capstone_count,  'bg-teal-50 text-teal-700'),
           statCard('Total Downloads', j.data.total_downloads, 'bg-green-50 text-green-700'),
@@ -372,7 +413,7 @@
       </div>`;
     }
 
-    /* ── Browse ──────────────────────────────────────────────── */
+    /* ── Browse ──────────────────────────────────────────────────── */
     async function loadBrowse(page = browsePage) {
       const search   = document.getElementById('b-search').value.trim();
       const dept     = document.getElementById('b-dept').value;
@@ -420,7 +461,7 @@
 
       grid.innerHTML = rows.map(a => {
         const typeCls = TYPE_BADGE[a.type] || 'bg-gray-100 text-gray-600';
-        const authors = a.authors ? a.authors.split(',').map(s => s.trim()).slice(0, 2).join(', ') + (a.authors.split(',').length > 2 ? ' +more' : '') : '—';
+        const authors = a.authors ? a.authors.split(',').map(s => s.trim()).slice(0, 2).join(', ') + (a.authors.split(',').length > 2 ? ' +more' : '') : '&mdash;';
         const fileMB  = a.file_size ? (a.file_size / (1024 * 1024)).toFixed(1) + ' MB' : '';
 
         return `
@@ -436,7 +477,7 @@
             <p class="text-xs text-gray-500 mb-3">${esc(authors)}</p>
             <div class="flex items-center justify-between pt-3 border-t border-gray-100">
               <span class="text-xs font-medium text-gray-500">${esc(a.department_code)}</span>
-              <span class="text-xs text-gray-400">${esc(a.school_year)} · ${SEM_LABEL[a.semester] || a.semester}</span>
+              <span class="text-xs text-gray-400">${esc(a.school_year)} &middot; ${SEM_LABEL[a.semester] || a.semester}</span>
             </div>
           </div>`;
       }).join('');
@@ -485,7 +526,7 @@
       browsePage = 1; loadBrowse(1);
     }
 
-    /* ── Detail Modal ────────────────────────────────────────── */
+    /* ── Detail Modal ────────────────────────────────────────────── */
     async function openDetailModal(id) {
       activeDetailId = id;
       document.getElementById('detail-modal').classList.remove('hidden');
@@ -495,10 +536,10 @@
 
         document.getElementById('dm-type').textContent  = a.type?.toUpperCase() || '';
         document.getElementById('dm-title').textContent = a.title;
-        document.getElementById('dm-dept').textContent  = `${a.department_code} — ${a.department_name}`;
-        document.getElementById('dm-period').textContent = `${a.school_year} · ${SEM_LABEL[a.semester] || a.semester}`;
+        document.getElementById('dm-dept').textContent  = `${a.department_code} &mdash; ${a.department_name}`;
+        document.getElementById('dm-period').textContent = `${a.school_year} &middot; ${SEM_LABEL[a.semester] || a.semester}`;
         document.getElementById('dm-downloads').querySelector('span').textContent = `${a.download_count} download${a.download_count !== 1 ? 's' : ''}`;
-        document.getElementById('dm-authors').textContent = a.authors || '—';
+        document.getElementById('dm-authors').textContent = a.authors || '&mdash;';
 
         const advWrap = document.getElementById('dm-adviser-wrap');
         advWrap.classList.toggle('hidden', !a.adviser);
@@ -518,7 +559,6 @@
 
         document.getElementById('dm-filename').textContent = a.file_name;
         document.getElementById('dm-filesize').textContent = a.file_size ? fmtSize(a.file_size) : '';
-        document.getElementById('dm-download-btn').href = `/api/v1/archive/${id}/download`;
         document.getElementById('dm-meta').textContent =
           `Archived by ${a.archived_by_name} on ${fmtDate(a.archived_at)}`;
       } catch (err) {
@@ -545,7 +585,7 @@
       }
     }
 
-    /* ── Eligible / Promote ──────────────────────────────────── */
+    /* ── Eligible / Promote ──────────────────────────────────────── */
     async function loadEligible(page = eligPage) {
       const tbody = document.getElementById('eligible-tbody');
       tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-10 text-center text-gray-400">Loading…</td></tr>';
@@ -564,44 +604,42 @@
     function renderEligibleTable(rows, pagination) {
       const tbody = document.getElementById('eligible-tbody');
       if (!rows.length) {
-        tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-16 text-center text-gray-400">
-          <svg class="w-10 h-10 mx-auto mb-2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          All approved submissions have been archived.
-        </td></tr>`;
+        tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-16 text-center text-gray-400">All approved submissions have been archived.</td></tr>';
         return;
       }
+      
       const offset = (pagination.page - 1) * pagination.limit;
-      tbody.innerHTML = rows.map((s, i) => {
+      eligibleMap = {};
+      rows.forEach(s => { eligibleMap[s.id] = s; });
+
+      // Cleaned up and transformed inline styles to tailwind classes
+      const html = rows.map((s, i) => {
         const typeCls = TYPE_BADGE[s.type] || 'bg-gray-100 text-gray-600';
         const hasDocs = s.documents && s.documents.length > 0;
-        return `
-          <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-            <td class="px-4 py-3 text-xs text-gray-400">${offset + i + 1}</td>
-            <td class="px-4 py-3">
-              <p class="text-sm font-medium text-gray-800 leading-snug">${esc(s.title)}</p>
-              ${s.keywords ? `<p class="text-xs text-gray-400 mt-0.5 truncate max-w-xs">${esc(s.keywords)}</p>` : ''}
-            </td>
-            <td class="px-4 py-3">
-              <p class="text-sm text-gray-700">${esc(s.student_name)}</p>
-              ${s.student_number ? `<p class="text-xs text-gray-400">${esc(s.student_number)}</p>` : ''}
-            </td>
-            <td class="px-4 py-3 text-xs font-medium text-gray-600">${esc(s.department_code)}</td>
-            <td class="px-4 py-3">
-              <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${typeCls} capitalize">${s.type}</span>
-            </td>
-            <td class="px-4 py-3 text-xs text-gray-500">${esc(s.school_year)} · ${SEM_LABEL[s.semester] || s.semester}</td>
-            <td class="px-4 py-3 text-xs text-gray-400">${s.approved_at ? fmtDate(s.approved_at) : '—'}</td>
-            <td class="px-4 py-3 text-center">
-              ${hasDocs
-                ? `<button onclick='openPromoteModal(${JSON.stringify(s)})'
-                     class="inline-flex items-center gap-1 bg-primary-600 hover:bg-primary-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
-                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
-                     Promote
-                   </button>`
-                : `<span class="text-xs text-gray-400 italic">No docs</span>`}
-            </td>
-          </tr>`;
+        
+        const actionCell = hasDocs
+          ? `<td class="px-4 py-3 text-center"><button onclick="openPromoteModal(${s.id})" class="promote-btn">Promote</button></td>`
+          : `<td class="px-4 py-3 text-center text-xs text-gray-400 italic">No docs</td>`;
+          
+        return `<tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-xs text-gray-400">${offset + i + 1}</td>
+          <td class="px-4 py-3">
+            <p class="text-sm font-medium text-gray-900 leading-snug">${esc(s.title)}</p>
+            ${s.keywords ? `<p class="text-xs text-gray-400 mt-0.5 truncate max-w-xs">${esc(s.keywords)}</p>` : ''}
+          </td>
+          <td class="px-4 py-3">
+            <p class="text-sm text-gray-700">${esc(s.student_name)}</p>
+            ${s.student_number ? `<p class="text-xs text-gray-400">${esc(s.student_number)}</p>` : ''}
+          </td>
+          <td class="px-4 py-3 text-xs font-medium text-gray-600">${esc(s.department_code)}</td>
+          <td class="px-4 py-3"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${typeCls}">${esc(s.type)}</span></td>
+          <td class="px-4 py-3 text-xs text-gray-500">${esc(s.school_year)} &middot; ${SEM_LABEL[s.semester] || s.semester}</td>
+          <td class="px-4 py-3 text-xs text-gray-400">${s.approved_at ? fmtDate(s.approved_at) : '&mdash;'}</td>
+          ${actionCell}
+        </tr>`;
       }).join('');
+
+      tbody.innerHTML = html;
     }
 
     function renderEligiblePagination(p) {
@@ -622,12 +660,15 @@
     function eligGoTo(p)      { eligPage = p; loadEligible(p); }
     function eligibleChangePage(d) { eligGoTo(eligPage + d); }
 
-    /* ── Promote Modal ───────────────────────────────────────── */
-    function openPromoteModal(submission) {
+    /* ── Promote Modal ───────────────────────────────────────────── */
+    function openPromoteModal(id) {
+      const submission = eligibleMap[id];
+      if (!submission) return;
+
       document.getElementById('pm-submission-id').value = submission.id;
       document.getElementById('pm-title').textContent   = submission.title;
       document.getElementById('pm-meta').textContent    =
-        `${submission.student_name} · ${submission.department_code} · ${submission.school_year} ${SEM_LABEL[submission.semester] || submission.semester}`;
+        `${submission.student_name} &middot; ${submission.department_code} &middot; ${submission.school_year} ${SEM_LABEL[submission.semester] || submission.semester}`;
 
       /* pre-fill */
       document.getElementById('pm-authors').value  = submission.student_name || '';
@@ -638,7 +679,7 @@
       const docSel = document.getElementById('pm-document');
       docSel.innerHTML = '<option value="">Select document…</option>';
       (submission.documents || []).forEach(d => {
-        const label = `${d.doc_type.replace(/_/g, ' ')} — ${d.file_name}${d.is_current ? ' ✓' : ''}`;
+        const label = `${d.doc_type.replace(/_/g, ' ')} &mdash; ${d.file_name}${d.is_current ? ' ✓' : ''}`;
         docSel.insertAdjacentHTML('beforeend',
           `<option value="${d.id}" ${d.is_current ? 'selected' : ''}>${esc(label)}</option>`);
       });
@@ -684,7 +725,37 @@
       }
     }
 
-    /* ── Helpers ─────────────────────────────────────────────── */
+    /* ── Download (authenticated) ────────────────────────────────── */
+    async function downloadArchive() {
+      if (!activeDetailId) return;
+      const btn = document.getElementById('dm-download-btn');
+      btn.disabled = true;
+      const origHTML = btn.innerHTML;
+      btn.textContent = 'Downloading…';
+      try {
+        const res = await apiFetch(`/api/v1/archive/${activeDetailId}/download`);
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          showToast(j.message || 'Download failed', 'error');
+          return;
+        }
+        const disposition = res.headers.get('Content-Disposition') || '';
+        const nameMatch   = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^"';\r\n]+)/i);
+        const fileName    = nameMatch ? decodeURIComponent(nameMatch[1]) : `archive-${activeDetailId}`;
+        const blob = await res.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url; a.download = fileName; a.click();
+        URL.revokeObjectURL(url);
+      } catch (_) {
+        showToast('Download failed', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = origHTML;
+      }
+    }
+
+    /* ── Helpers ─────────────────────────────────────────────────── */
     function pagesToShow(cur, tot) {
       if (tot <= 7) return Array.from({ length: tot }, (_, i) => i + 1);
       const s = new Set([1, tot, cur, cur-1, cur+1].filter(p => p >= 1 && p <= tot));
@@ -700,7 +771,7 @@
     }
 
     function fmtDate(str) {
-      if (!str) return '—';
+      if (!str) return '&mdash;';
       return new Date(str).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
     }
 

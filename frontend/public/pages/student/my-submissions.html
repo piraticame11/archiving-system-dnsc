@@ -1,0 +1,369 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Submissions "” DNSC Research System</title>
+  <link rel="icon" type="image/webp" href="/assets/img/aw.webp">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .form-input {
+      width: 100%; padding: .5rem .75rem; font-size: .875rem;
+      border: 1px solid #d1d5db; border-radius: .5rem; outline: none;
+      transition: border-color .15s, box-shadow .15s; background: #fff;
+    }
+    .form-input:focus { border-color: #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,.25); }
+    .status-badge { display:inline-flex; align-items:center; gap:.3rem; padding:.25rem .6rem; border-radius:9999px; font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans min-h-screen">
+
+  <!-- Navbar -->
+  <nav class="bg-primary-700 text-white px-6 py-4 flex items-center justify-between shadow sticky top-0 z-40">
+    <div class="flex items-center gap-3">
+      <a href="/pages/student/dashboard.html" class="text-primary-200 hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </a>
+      <img src="/assets/img/aw.webp" alt="School Logo" class="w-9 h-9 object-contain rounded-lg">
+      <span class="font-bold text-lg">DNSC Research System</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <span id="user-name" class="text-sm text-primary-100"></span>
+      <button onclick="logout()" class="text-sm bg-primary-800 hover:bg-primary-900 px-3 py-1.5 rounded-lg transition-colors">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="max-w-5xl mx-auto px-6 py-8">
+
+    <!-- Page header -->
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">My Submissions</h1>
+        <p class="text-sm text-gray-500 mt-0.5">Track the status of your thesis / capstone submissions</p>
+      </div>
+      <a href="/pages/student/submit-title.html"
+        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        New Submission
+      </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white border border-gray-200 rounded-xl px-4 py-3 flex flex-wrap items-center gap-3 mb-5 shadow-sm">
+      <select id="f-status" class="form-input w-auto text-sm py-2">
+        <option value="">All Statuses</option>
+        <option value="draft">Draft</option>
+        <option value="submitted">Submitted</option>
+        <option value="under_review">Under Review</option>
+        <option value="revision_required">Revision Required</option>
+        <option value="approved">Approved</option>
+        <option value="rejected">Rejected</option>
+      </select>
+      <select id="f-type" class="form-input w-auto text-sm py-2">
+        <option value="">All Types</option>
+        <option value="thesis">Thesis</option>
+        <option value="capstone">Capstone</option>
+      </select>
+      <select id="f-year" class="form-input w-auto text-sm py-2">
+        <option value="">All Years</option>
+      </select>
+    </div>
+
+    <!-- Alert -->
+    <div id="alert" class="hidden mb-4 px-4 py-3 rounded-lg text-sm font-medium"></div>
+
+    <!-- List -->
+    <div id="submissions-list" class="space-y-3"></div>
+
+    <!-- Empty state -->
+    <div id="empty-state" class="hidden bg-white border border-dashed border-gray-300 rounded-xl p-12 text-center">
+      <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      <p class="text-gray-500 font-medium">No submissions yet</p>
+      <p class="text-sm text-gray-400 mt-1">Start by submitting a new title</p>
+      <a href="/pages/student/submit-title.html" class="inline-block mt-4 px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">Submit a Title</a>
+    </div>
+
+    <!-- Pagination -->
+    <div id="pagination" class="hidden flex items-center justify-between mt-6">
+      <p id="page-info" class="text-sm text-gray-500"></p>
+      <div class="flex gap-2">
+        <button id="btn-prev" onclick="changePage(-1)" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Previous</button>
+        <button id="btn-next" onclick="changePage(1)"  class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail Modal -->
+  <div id="detail-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <h2 class="text-lg font-bold text-gray-900">Submission Details</h2>
+        <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="modal-body" class="overflow-y-auto px-6 py-5 space-y-4 flex-1"></div>
+      <div id="modal-footer" class="px-6 py-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3"></div>
+    </div>
+  </div>
+
+  <!-- Delete Confirm Modal -->
+  <div id="delete-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+      <div class="text-center mb-4">
+        <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+          <svg class="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        </div>
+        <h3 class="text-lg font-bold text-gray-900">Delete Submission?</h3>
+        <p class="text-sm text-gray-500 mt-1">This action cannot be undone.</p>
+      </div>
+      <div class="flex gap-3">
+        <button onclick="closeDeleteModal()" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+        <button id="btn-confirm-delete" class="flex-1 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/utils.js"></script>
+  <script>
+    async function http(fn) {
+      const res = await fn(); const json = await res.json();
+      if (!res.ok) throw json; return json;
+    }
+    const get = path => http(() => apiGet(path));
+    const del = path => http(() => apiDelete(path));
+
+    let currentPage = 1;
+    let totalPages  = 1;
+    let deleteId    = null;
+
+    const STATUS_CONFIG = {
+      draft:             { label: 'Draft',            bg: 'bg-gray-100',   text: 'text-gray-700'  },
+      submitted:         { label: 'Submitted',        bg: 'bg-blue-100',   text: 'text-blue-700'  },
+      under_review:      { label: 'Under Review',     bg: 'bg-yellow-100', text: 'text-yellow-700'},
+      revision_required: { label: 'Revision Required',bg: 'bg-orange-100', text: 'text-orange-700'},
+      approved:          { label: 'Approved',         bg: 'bg-green-100',  text: 'text-green-700' },
+      rejected:          { label: 'Rejected',         bg: 'bg-red-100',    text: 'text-red-700'   },
+    };
+
+    function statusBadge(status) {
+      const c = STATUS_CONFIG[status] || { label: status, bg: 'bg-gray-100', text: 'text-gray-700' };
+      return `<span class="status-badge ${c.bg} ${c.text}">${c.label}</span>`;
+    }
+
+    function typeBadge(type) {
+      const cls = type === 'thesis' ? 'bg-purple-100 text-purple-700' : 'bg-cyan-100 text-cyan-700';
+      return `<span class="status-badge ${cls}">${type}</span>`;
+    }
+
+    requireAuthAsync('student').then(user => {
+      if (!user) return;
+      document.getElementById('user-name').textContent = user.full_name || 'Student';
+      populateYears();
+      loadSubmissions();
+      ['f-status','f-type','f-year'].forEach(id =>
+        document.getElementById(id).addEventListener('change', () => { currentPage = 1; loadSubmissions(); }));
+    });
+
+    function populateYears() {
+      const sel = document.getElementById('f-year');
+      const now = new Date().getFullYear();
+      for (let y = now; y >= now - 5; y--) {
+        const opt = document.createElement('option');
+        opt.value = `${y}-${y+1}`; opt.textContent = `${y}-${y+1}`;
+        sel.appendChild(opt);
+      }
+    }
+
+    async function loadSubmissions() {
+      const params = new URLSearchParams({ page: currentPage, limit: 10 });
+      const status = document.getElementById('f-status').value;
+      const type   = document.getElementById('f-type').value;
+      const year   = document.getElementById('f-year').value;
+      if (status) params.set('status', status);
+      if (type)   params.set('type', type);
+      if (year)   params.set('school_year', year);
+
+      const list = document.getElementById('submissions-list');
+      list.innerHTML = '<p class="text-sm text-gray-400 py-6 text-center">Loading…</p>';
+
+      try {
+        const res = await get(`/api/v1/submissions?${params}`);
+        const items = res.data?.data || res.data || [];
+        totalPages = res.data?.totalPages || 1;
+
+        document.getElementById('empty-state').classList.toggle('hidden', items.length > 0);
+        document.getElementById('pagination').classList.toggle('hidden', totalPages <= 1);
+        list.innerHTML = '';
+
+        if (!items.length) return;
+
+        items.forEach(sub => {
+          const card = document.createElement('div');
+          card.className = 'bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer';
+          card.innerHTML = `
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex-1 min-w-0">
+                <h3 class="font-semibold text-gray-900 truncate">${escHtml(sub.title)}</h3>
+                <div class="flex items-center flex-wrap gap-2 mt-2">
+                  ${statusBadge(sub.status)}
+                  ${typeBadge(sub.type)}
+                  <span class="text-xs text-gray-400">${sub.school_year} Â· ${sub.semester} Sem</span>
+                </div>
+                ${sub.status === 'revision_required' && sub.latest_remarks
+                  ? `<p class="text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 mt-2"><strong>Remarks:</strong> ${escHtml(sub.latest_remarks)}</p>`
+                  : ''}
+              </div>
+              <div class="flex items-center gap-2 flex-shrink-0">
+                ${sub.status === 'draft'
+                  ? `<button onclick="event.stopPropagation();openDeleteModal(${sub.id})" class="p-1.5 text-gray-400 hover:text-red-500 transition-colors" title="Delete">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </button>`
+                  : ''}
+                <button onclick="event.stopPropagation();openDetail(${sub.id})" class="p-1.5 text-primary-500 hover:text-primary-700 transition-colors" title="View details">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="flex items-center gap-4 mt-3 text-xs text-gray-400">
+              <span>Submitted ${formatDate(sub.created_at)}</span>
+              ${sub.documents_count > 0 ? `<span class="flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>${sub.documents_count} doc${sub.documents_count > 1?'s':''}</span>` : ''}
+            </div>`;
+          card.addEventListener('click', () => openDetail(sub.id));
+          list.appendChild(card);
+        });
+
+        updatePagination();
+      } catch(err) {
+        list.innerHTML = '';
+        showAlert(err?.message || 'Failed to load submissions.');
+      }
+    }
+
+    function updatePagination() {
+      document.getElementById('btn-prev').disabled = currentPage <= 1;
+      document.getElementById('btn-next').disabled = currentPage >= totalPages;
+      document.getElementById('page-info').textContent = `Page ${currentPage} of ${totalPages}`;
+    }
+
+    function changePage(dir) {
+      currentPage = Math.max(1, Math.min(totalPages, currentPage + dir));
+      loadSubmissions();
+    }
+
+    async function openDetail(id) {
+      const body   = document.getElementById('modal-body');
+      const footer = document.getElementById('modal-footer');
+      body.innerHTML   = '<p class="text-sm text-gray-400 text-center py-8">Loading…</p>';
+      footer.innerHTML = '';
+      document.getElementById('detail-modal').classList.remove('hidden');
+
+      try {
+        const res = await get(`/api/v1/submissions/${id}`);
+        const sub = res.data;
+
+        body.innerHTML = `
+          <div>
+            <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Title</p>
+            <p class="font-semibold text-gray-900">${escHtml(sub.title)}</p>
+          </div>
+          <div class="flex flex-wrap gap-4">
+            <div><p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Status</p>${statusBadge(sub.status)}</div>
+            <div><p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Type</p>${typeBadge(sub.type)}</div>
+            <div><p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">School Year</p><p class="text-sm font-medium">${sub.school_year}</p></div>
+            <div><p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Semester</p><p class="text-sm font-medium">${sub.semester}</p></div>
+          </div>
+          ${sub.abstract ? `<div><p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Abstract</p><p class="text-sm text-gray-700 leading-relaxed">${escHtml(sub.abstract)}</p></div>` : ''}
+          ${sub.keywords ? `<div><p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Keywords</p><p class="text-sm text-gray-700">${escHtml(sub.keywords)}</p></div>` : ''}
+          ${sub.documents?.length ? `
+            <div>
+              <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Documents</p>
+              <div class="space-y-2">
+                ${sub.documents.map(d => `
+                  <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <svg class="w-5 h-5 text-primary-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm font-medium text-gray-800 truncate">${escHtml(d.file_name)}</p>
+                      <p class="text-xs text-gray-500">${d.doc_type.replace('_',' ')} Â· ${formatBytes(d.file_size)}</p>
+                    </div>
+                  </div>`).join('')}
+              </div>
+            </div>` : ''}
+          ${sub.history?.length ? `
+            <div>
+              <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Status History</p>
+              <div class="space-y-2">
+                ${sub.history.map(h => `
+                  <div class="flex items-start gap-3 text-sm">
+                    <div class="w-2 h-2 rounded-full bg-primary-400 mt-1.5 flex-shrink-0"></div>
+                    <div>
+                      <span class="font-medium">${(h.new_status||h.status||'').replace(/_/g,' ')}</span>
+                      ${h.remarks ? `<span class="text-gray-500"> "” ${escHtml(h.remarks)}</span>` : ''}
+                      <p class="text-xs text-gray-400">${formatDate(h.changed_at||h.created_at)}</p>
+                    </div>
+                  </div>`).join('')}
+              </div>
+            </div>` : ''}`;
+
+        footer.innerHTML = `
+          ${sub.status === 'draft'
+            ? `<button onclick="submitForReview(${sub.id})" class="px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">Submit for Review</button>`
+            : '<span></span>'}
+          <a href="/pages/student/upload-document.html?id=${sub.id}" class="px-4 py-2 text-sm font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors">Upload Document</a>`;
+      } catch(err) {
+        body.innerHTML = `<p class="text-sm text-red-600">${err?.message || 'Failed to load details.'}</p>`;
+      }
+    }
+
+    async function submitForReview(id) {
+      try {
+        await http(() => apiPost(`/api/v1/submissions/${id}/submit`));
+        closeModal();
+        showAlert('Submitted for review!', 'success');
+        loadSubmissions();
+      } catch(err) { showAlert(err?.message || 'Failed to submit.'); }
+    }
+
+    function closeModal()       { document.getElementById('detail-modal').classList.add('hidden'); }
+    function openDeleteModal(id){ deleteId = id; document.getElementById('delete-modal').classList.remove('hidden'); }
+    function closeDeleteModal() { deleteId = null; document.getElementById('delete-modal').classList.add('hidden'); }
+
+    document.getElementById('btn-confirm-delete').addEventListener('click', async () => {
+      if (!deleteId) return;
+      try {
+        await del(`/api/v1/submissions/${deleteId}`);
+        closeDeleteModal();
+        showAlert('Submission deleted.', 'success');
+        loadSubmissions();
+      } catch(err) { showAlert(err?.message || 'Failed to delete.'); closeDeleteModal(); }
+    });
+
+    function showAlert(msg, type = 'error') {
+      const el = document.getElementById('alert');
+      el.textContent = msg;
+      el.className = `mb-4 px-4 py-3 rounded-lg text-sm font-medium ${
+        type === 'success' ? 'bg-green-50 border border-green-200 text-green-800'
+                           : 'bg-red-50 border border-red-200 text-red-800'}`;
+      el.classList.remove('hidden');
+      setTimeout(() => el.classList.add('hidden'), 4000);
+    }
+
+    function escHtml(s) {
+      return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function formatDate(d) {
+      return d ? new Date(d).toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric' }) : '"”';
+    }
+    function formatBytes(b) {
+      if (!b) return '';
+      if (b < 1024) return `${b} B`;
+      if (b < 1048576) return `${(b/1024).toFixed(1)} KB`;
+      return `${(b/1048576).toFixed(1)} MB`;
+    }
+  </script>
+</body>
+</html>
+

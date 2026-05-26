@@ -1,0 +1,14 @@
+CREATE TABLE IF NOT EXISTS imrad_templates (
+  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  title       VARCHAR(200) NOT NULL,
+  description TEXT NULL,
+  file_name   VARCHAR(255) NOT NULL,
+  file_path   VARCHAR(512) NOT NULL,
+  file_size   INT UNSIGNED NOT NULL,
+  mime_type   VARCHAR(100) NOT NULL,
+  uploaded_by INT UNSIGNED NOT NULL,
+  created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at  DATETIME NULL,
+  FOREIGN KEY (uploaded_by) REFERENCES users(id)
+);

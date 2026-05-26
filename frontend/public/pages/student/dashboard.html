@@ -4,13 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Student Dashboard — DNSC Research System</title>
+  <link rel="icon" type="image/webp" href="/assets/img/aw.webp">
   <link rel="stylesheet" href="/assets/css/app.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body class="bg-gray-50 font-sans">
 
   <nav class="bg-primary-700 text-white px-6 py-4 flex items-center justify-between shadow">
-    <span class="font-bold text-lg">DNSC Research System</span>
+    <div class="flex items-center gap-3">
+      <img src="/assets/img/aw.webp" alt="School Logo" class="w-9 h-9 object-contain rounded-lg">
+      <span class="font-bold text-lg">DNSC Research System</span>
+    </div>
     <div class="flex items-center gap-4">
       <span id="user-name" class="text-sm text-primary-100"></span>
       <button onclick="logout()" class="text-sm bg-primary-800 hover:bg-primary-900 px-3 py-1.5 rounded-lg transition-colors">Sign out</button>
@@ -22,12 +26,21 @@
     <p class="text-gray-500 text-sm mb-8">Submit your research title, upload documents, and track your progress.</p>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-      <a href="/pages/student/submit-title.html" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+      <a href="/pages/student/my-group.html" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+        <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mb-3">
+          <svg class="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </div>
+        <p class="font-semibold text-gray-800">My Group</p>
+        <p class="text-xs text-gray-500 mt-1">Create or join a thesis/capstone group</p>
+      </a>
+
+      <a id="card-submit-title" href="/pages/student/submit-title.html" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
         <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mb-3">
           <svg class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         </div>
         <p class="font-semibold text-gray-800">Submit Title</p>
         <p class="text-xs text-gray-500 mt-1">Propose a new thesis or capstone title</p>
+        <p id="card-submit-title-note" class="hidden text-xs text-amber-600 font-medium mt-2">Only group leaders can submit</p>
       </a>
 
       <a href="/pages/student/my-submissions.html" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
@@ -54,12 +67,21 @@
         <p class="text-xs text-gray-500 mt-1">View evaluation results and feedback</p>
       </a>
 
-      <a href="/pages/student/upload-document.html" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+      <a id="card-upload-doc" href="/pages/student/upload-document.html" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
         <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mb-3">
           <svg class="w-5 h-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
         </div>
         <p class="font-semibold text-gray-800">Upload Document</p>
         <p class="text-xs text-gray-500 mt-1">Upload your research documents</p>
+        <p id="card-upload-doc-note" class="hidden text-xs text-amber-600 font-medium mt-2">Only group leaders can submit</p>
+      </a>
+
+      <a href="/pages/student/browse-archive.html" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+        <div class="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center mb-3">
+          <svg class="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+        </div>
+        <p class="font-semibold text-gray-800">Research Archive</p>
+        <p class="text-xs text-gray-500 mt-1">Browse and search previous studies</p>
       </a>
     </div>
   </div>
@@ -68,10 +90,34 @@
   <script src="/assets/js/api.js"></script>
   <script src="/assets/js/utils.js"></script>
   <script>
-    requireAuthAsync('student').then(user => {
+    requireAuthAsync('student').then(async user => {
       if (!user) return;
-      document.getElementById('user-name').textContent = 'Student';
+      document.getElementById('user-name').textContent = `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Student';
+      await checkGroupRole(user.id);
     });
+
+    async function checkGroupRole(userId) {
+      try {
+        const res = await apiGet('/api/v1/groups/my').then(r => r.json());
+        const group = res.data;
+        if (group && group.leader_id !== userId) {
+          disableSubmissionCards();
+        }
+      } catch (_) {}
+    }
+
+    function disableSubmissionCards() {
+      ['card-submit-title', 'card-upload-doc'].forEach(id => {
+        const card = document.getElementById(id);
+        if (!card) return;
+        card.removeAttribute('href');
+        card.style.cursor = 'not-allowed';
+        card.classList.remove('hover:shadow-md');
+        card.classList.add('opacity-60');
+        card.addEventListener('click', e => e.preventDefault());
+        document.getElementById(id + '-note').classList.remove('hidden');
+      });
+    }
   </script>
 </body>
 </html>

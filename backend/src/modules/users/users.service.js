@@ -1,5 +1,8 @@
 const db       = require('../../config/database');
 const bcrypt   = require('bcryptjs');
+const path     = require('path');
+const fs       = require('fs');
+const XLSX     = require('xlsx');
 const { paginatedResponse } = require('../../utils/pagination');
 
 async function listUsers({ search, role, status, page, limit }) {
@@ -128,4 +131,145 @@ async function resetPassword(id, newPassword) {
   await db.query('UPDATE users SET password_hash = ? WHERE id = ?', [hash, id]);
 }
 
-module.exports = { listUsers, getUserById, createUser, updateUser, deleteUser, toggleActive, resetPassword };
+function parseBirthdate(val) {
+  const s = String(val || '').trim();
+
+  // YYYY-MM-DD
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return { year: m[1], month: m[2], day: m[3] };
+
+  // MM/DD/YYYY or M/D/YYYY
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return { year: m[3], month: m[1].padStart(2, '0'), day: m[2].padStart(2, '0') };
+
+  // MM-DD-YYYY
+  m = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (m) return { year: m[3], month: m[1].padStart(2, '0'), day: m[2].padStart(2, '0') };
+
+  // Excel serial date (number)
+  const n = Number(s);
+  if (!isNaN(n) && n > 1000) {
+    const d = XLSX.SSF.parse_date_code(n);
+    if (d) return {
+      year: String(d.y),
+      month: String(d.m).padStart(2, '0'),
+      day:   String(d.d).padStart(2, '0'),
+    };
+  }
+
+  return null;
+}
+
+async function importStudents(filePath, department_id) {
+  let workbook;
+  try {
+    workbook = XLSX.readFile(filePath);
+  } finally {
+    try { fs.unlinkSync(filePath); } catch (_) {}
+  }
+
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const rows  = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' });
+
+  const dataRows = rows.slice(1).filter(r => r.some(c => String(c).trim()));
+
+  const [[studentRole]] = await db.query('SELECT id FROM roles WHERE name = ?', ['student']);
+  if (!studentRole) throw Object.assign(new Error('Student role not found'), { statusCode: 500 });
+
+  if (department_id) {
+    const [[dept]] = await db.query('SELECT id FROM departments WHERE id = ?', [department_id]);
+    if (!dept) throw Object.assign(new Error('Selected department does not exist'), { statusCode: 400 });
+  }
+
+  const results = { created: 0, skipped: [], errors: [], credentials: [] };
+
+  for (let i = 0; i < dataRows.length; i++) {
+    const row = dataRows[i];
+    const rowNum = i + 2;
+
+    const first_name  = String(row[0] || '').trim();
+    const last_name   = String(row[1] || '').trim();
+    const birthdateRaw = String(row[2] || '').trim();
+    const id_number   = String(row[3] || '').trim();
+
+    if (!first_name || !last_name || !birthdateRaw || !id_number) {
+      results.errors.push({ row: rowNum, reason: 'Missing required fields (first_name, last_name, birthdate, id_number)' });
+      continue;
+    }
+
+    const bd = parseBirthdate(birthdateRaw);
+    if (!bd) {
+      results.errors.push({ row: rowNum, reason: `Invalid birthdate format: "${birthdateRaw}". Use MM/DD/YYYY or YYYY-MM-DD.` });
+      continue;
+    }
+
+    const initials  = first_name.split(/\s+/).map(w => w[0]).join('').toLowerCase();
+    const emailBase = last_name.toLowerCase().replace(/\s+/g, '');
+    const email     = `${initials}${emailBase}${id_number}@aces.edu.ph`;
+    const password  = `welcome@${bd.month}${bd.day}${bd.year}`;
+
+    const [[existing]] = await db.query(
+      'SELECT id FROM users WHERE email = ? AND deleted_at IS NULL', [email]
+    );
+    if (existing) {
+      results.skipped.push({ row: rowNum, email, reason: 'Account already exists' });
+      continue;
+    }
+
+    try {
+      const password_hash = await bcrypt.hash(password, 10);
+      await db.query(
+        `INSERT INTO users (role_id, department_id, student_number, first_name, last_name, email,
+                            password_hash, is_active, is_email_verified)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1)`,
+        [studentRole.id, department_id || null, id_number, first_name, last_name, email, password_hash]
+      );
+      results.created++;
+      results.credentials.push({ first_name, last_name, email, password });
+    } catch (err) {
+      results.errors.push({ row: rowNum, reason: err.message });
+    }
+  }
+
+  return results;
+}
+
+function generateCredentialsExport(credentials) {
+  const wb = XLSX.utils.book_new();
+
+  const wsData = [
+    ['First Name', 'Last Name', 'Email (Username)', 'Default Password'],
+    ...credentials.map(c => [c.first_name, c.last_name, c.email, c.password]),
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [{ wch: 22 }, { wch: 22 }, { wch: 40 }, { wch: 20 }];
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Credentials');
+  return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+}
+
+function generateStudentImportTemplate() {
+  const wb = XLSX.utils.book_new();
+
+  const wsData = [
+    ['first_name', 'last_name', 'birthdate', 'id_number'],
+    ['Howard Glen', 'Gloria',   '02/11/2003', '2021-00163'],
+    ['Maria Clara', 'Santos',   '07/04/2002', '2022-00045'],
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  ws['!cols'] = [
+    { wch: 20 },
+    { wch: 20 },
+    { wch: 15 },
+    { wch: 15 },
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Students');
+
+  return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+}
+
+module.exports = { listUsers, getUserById, createUser, updateUser, deleteUser, toggleActive, resetPassword, importStudents, generateStudentImportTemplate, generateCredentialsExport };

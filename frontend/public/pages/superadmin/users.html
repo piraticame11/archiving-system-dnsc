@@ -1,9 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>User Management — DNSC Research System</title>
+  <title>User Management "” DNSC Research System</title>
+  <link rel="icon" type="image/webp" href="/assets/img/aw.webp">
   <link rel="stylesheet" href="/assets/css/app.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -15,6 +16,7 @@
       <a href="/pages/superadmin/dashboard.html" class="text-primary-200 hover:text-white transition-colors">
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
       </a>
+      <img src="/assets/img/aw.webp" alt="School Logo" class="w-9 h-9 object-contain rounded-lg">
       <span class="font-bold text-lg">DNSC Research System</span>
     </div>
     <div class="flex items-center gap-4">
@@ -93,19 +95,19 @@
         <div class="flex items-center gap-1">
           <button id="btn-prev" onclick="changePage(-1)"
             class="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-            ← Prev
+            â† Prev
           </button>
           <div id="page-numbers" class="flex items-center gap-1"></div>
           <button id="btn-next" onclick="changePage(1)"
             class="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-            Next →
+            Next â†’
           </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ─── Create / Edit Modal ─────────────────────────────────── -->
+  <!-- â”€â”€â”€ Create / Edit Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
   <div id="user-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-black/40" onclick="closeUserModal()"></div>
     <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-screen overflow-y-auto">
@@ -193,7 +195,7 @@
     </div>
   </div>
 
-  <!-- ─── Reset Password Modal ──────────────────────────────────── -->
+  <!-- â”€â”€â”€ Reset Password Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
   <div id="reset-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-black/40" onclick="closeResetModal()"></div>
     <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-sm">
@@ -222,7 +224,7 @@
     </div>
   </div>
 
-  <!-- ─── Delete Confirm Modal ─────────────────────────────────── -->
+  <!-- â”€â”€â”€ Delete Confirm Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
   <div id="delete-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-black/40" onclick="closeDeleteModal()"></div>
     <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-sm">
@@ -251,8 +253,8 @@
       transition: border-color 0.15s, box-shadow 0.15s;
     }
     .form-input:focus {
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 2px rgba(59,130,246,0.25);
+      border-color: #22c55e;
+      box-shadow: 0 0 0 2px rgba(34,197,94,0.25);
     }
     .form-input[disabled] { background: #f9fafb; cursor: not-allowed; }
   </style>
@@ -261,7 +263,7 @@
   <script src="/assets/js/api.js"></script>
   <script src="/assets/js/utils.js"></script>
   <script>
-    /* ── API wrappers — parse JSON and throw on non-OK ──────── */
+    /* â”€â”€ API wrappers "” parse JSON and throw on non-OK â”€â”€â”€â”€â”€â”€â”€â”€ */
     async function http(fn) {
       const res  = await fn();
       const json = await res.json();
@@ -273,7 +275,7 @@
     const patch = (path, b)   => http(() => apiPatch(path, b));
     const del   = path        => http(() => apiDelete(path));
 
-    /* ── State ───────────────────────────────────────────────── */
+    /* â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
     let currentPage  = 1;
     let totalPages   = 1;
     let resetUserId  = null;
@@ -294,26 +296,26 @@
       student:    'Student',
     };
 
-    /* ── Init ────────────────────────────────────────────────── */
+    /* â”€â”€ Init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
     requireAuthAsync('superadmin').then(user => {
       if (!user) return;
       document.getElementById('user-name').textContent = 'Super Administrator';
       loadDepartments().then(() => loadUsers());
     });
 
-    /* ── Departments ─────────────────────────────────────────── */
+    /* â”€â”€ Departments â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
     async function loadDepartments() {
       try {
         const json = await get('/api/v1/departments');
         const sel  = document.getElementById('f-department');
         (json.data || []).forEach(d => {
           sel.insertAdjacentHTML('beforeend',
-            `<option value="${d.id}">${d.code} — ${d.name}</option>`);
+            `<option value="${d.id}">${d.code} "” ${d.name}</option>`);
         });
       } catch (_) {}
     }
 
-    /* ── Load / Render users ─────────────────────────────────── */
+    /* â”€â”€ Load / Render users â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
     async function loadUsers(page = currentPage) {
       const search = document.getElementById('search-input').value.trim();
       const role   = document.getElementById('role-filter').value;
@@ -375,8 +377,8 @@
             <td class="px-4 py-3">
               <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${roleBadge}">${roleLabel}</span>
             </td>
-            <td class="px-4 py-3 text-gray-600 text-xs">${u.department_code ? `<span class="font-medium">${esc(u.department_code)}</span>` : '<span class="text-gray-300">—</span>'}</td>
-            <td class="px-4 py-3 text-gray-600 text-xs">${u.student_number ? esc(u.student_number) : '<span class="text-gray-300">—</span>'}</td>
+            <td class="px-4 py-3 text-gray-600 text-xs">${u.department_code ? `<span class="font-medium">${esc(u.department_code)}</span>` : '<span class="text-gray-300">"”</span>'}</td>
+            <td class="px-4 py-3 text-gray-600 text-xs">${u.student_number ? esc(u.student_number) : '<span class="text-gray-300">"”</span>'}</td>
             <td class="px-4 py-3">
               <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusCls}">${statusText}</span>
             </td>
@@ -443,7 +445,7 @@
       const start = (p.page - 1) * p.limit + 1;
       const end   = Math.min(p.page * p.limit, p.total);
       document.getElementById('pagination-info').textContent =
-        `Showing ${start}–${end} of ${p.total} users`;
+        `Showing ${start}"“${end} of ${p.total} users`;
 
       document.getElementById('btn-prev').disabled = p.page <= 1;
       document.getElementById('btn-next').disabled = p.page >= p.totalPages;
@@ -472,7 +474,7 @@
     function goToPage(p)   { currentPage = p; loadUsers(p); }
     function changePage(d) { goToPage(currentPage + d); }
 
-    /* ── Filters ─────────────────────────────────────────────── */
+    /* â”€â”€ Filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
     const debouncedLoad = debounce(() => { currentPage = 1; loadUsers(1); }, 350);
     document.getElementById('search-input').addEventListener('input', debouncedLoad);
     document.getElementById('role-filter').addEventListener('change',   () => { currentPage = 1; loadUsers(1); });
@@ -486,7 +488,7 @@
       loadUsers(1);
     }
 
-    /* ── Create / Edit Modal ─────────────────────────────────── */
+    /* â”€â”€ Create / Edit Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
     function openCreateModal() {
       document.getElementById('modal-title').textContent     = 'Add New User';
       document.getElementById('form-user-id').value          = '';
@@ -576,7 +578,7 @@
       }
     }
 
-    /* ── Reset Password Modal ────────────────────────────────── */
+    /* â”€â”€ Reset Password Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
     function openResetModal(id, name) {
       resetUserId = id;
       document.getElementById('reset-modal-label').textContent = `Set a new password for ${name}.`;
@@ -612,7 +614,7 @@
       }
     }
 
-    /* ── Toggle Active ───────────────────────────────────────── */
+    /* â”€â”€ Toggle Active â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
     async function openToggleActive(id, currentStatus) {
       const action = currentStatus ? 'deactivate' : 'activate';
       if (!confirm(`Are you sure you want to ${action} this user?`)) return;
@@ -625,7 +627,7 @@
       }
     }
 
-    /* ── Delete Modal ────────────────────────────────────────── */
+    /* â”€â”€ Delete Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
     function openDeleteModal(id, name) {
       deleteUserId = id;
       document.getElementById('delete-modal-label').textContent =
@@ -652,7 +654,7 @@
       }
     }
 
-    /* ── Helpers ─────────────────────────────────────────────── */
+    /* â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
     function showFormError(el, msg) { el.textContent = msg; el.classList.remove('hidden'); }
 
     function esc(str) {
@@ -661,7 +663,7 @@
     }
 
     function fmtDate(str) {
-      if (!str) return '—';
+      if (!str) return '"”';
       return new Date(str).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
     }
 
@@ -672,3 +674,4 @@
   </script>
 </body>
 </html>
+

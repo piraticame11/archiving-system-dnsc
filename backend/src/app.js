@@ -10,6 +10,14 @@ const authRoutes        = require('./modules/auth/auth.routes');
 const departmentRoutes  = require('./modules/departments/departments.routes');
 const userRoutes        = require('./modules/users/users.routes');
 const archiveRoutes     = require('./modules/archive/archive.routes');
+const submissionRoutes  = require('./modules/submissions/submissions.routes');
+const venueRoutes         = require('./modules/venues/venues.routes');
+const scheduleRoutes      = require('./modules/schedules/schedules.routes');
+const imradTemplateRoutes = require('./modules/imrad_templates/imrad_templates.routes');
+const panelistRoutes      = require('./modules/panelists/panelists.routes');
+const evaluationRoutes    = require('./modules/evaluations/evaluations.routes');
+const adviserRoutes       = require('./modules/adviser/adviser.routes');
+const groupRoutes         = require('./modules/groups/groups.routes');
 const { errorHandler }  = require('./middleware/errorHandler');
 
 const app = express();
@@ -39,7 +47,15 @@ app.get('/api/v1/health', async (req, res) => {
 app.use('/api/v1/auth',        authRoutes);
 app.use('/api/v1/departments', departmentRoutes);
 app.use('/api/v1/users',       userRoutes);
-app.use('/api/v1/archive',    archiveRoutes);
+app.use('/api/v1/archive',      archiveRoutes);
+app.use('/api/v1/submissions', submissionRoutes);
+app.use('/api/v1/venues',          venueRoutes);
+app.use('/api/v1/schedules',       scheduleRoutes);
+app.use('/api/v1/imrad-templates', imradTemplateRoutes);
+app.use('/api/v1/panelists',       panelistRoutes);
+app.use('/api/v1/evaluations',     evaluationRoutes);
+app.use('/api/v1/adviser',         adviserRoutes);
+app.use('/api/v1/groups',          groupRoutes);
 
 // Serve frontend static files
 app.use(express.static(path.join(__dirname, '../../frontend/public')));
