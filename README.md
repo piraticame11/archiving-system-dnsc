@@ -1,4 +1,4 @@
-# Archiving System — DNSC
+﻿# ACES Archiving System
 
 Thesis and Capstone Archiving and Scheduling Management System.
 
@@ -27,8 +27,8 @@ Make sure you have the following installed before proceeding:
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/piraticame11/archiving-system-dnsc.git
-cd archiving-system-dnsc
+git clone https://github.com/piraticame11/aces-archiving-system.git
+cd aces-archiving-system
 ```
 
 ### 2. Install dependencies
@@ -123,7 +123,7 @@ Change these in your `.env` before running migrations, or update the account aft
 ## Project Structure
 
 ```
-archiving-system-dnsc/
+aces-archiving-system/
 ├── backend/
 │   ├── migrations/          # SQL migration files (run in order)
 │   ├── src/

@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Student Dashboard — DNSC Research System</title>
+  <title>Student Dashboard — ACES Research System</title>
   <link rel="icon" type="image/webp" href="/assets/img/aw.webp">
   <link rel="stylesheet" href="/assets/css/app.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -13,7 +13,7 @@
   <nav class="bg-primary-700 text-white px-6 py-4 flex items-center justify-between shadow">
     <div class="flex items-center gap-3">
       <img src="/assets/img/aw.webp" alt="School Logo" class="w-9 h-9 object-contain rounded-lg">
-      <span class="font-bold text-lg">DNSC Research System</span>
+      <span class="font-bold text-lg">ACES Research System</span>
     </div>
     <div class="flex items-center gap-4">
       <span id="user-name" class="text-sm text-primary-100"></span>
@@ -38,7 +38,7 @@
         <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mb-3">
           <svg class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         </div>
-        <p class="font-semibold text-gray-800">Submit Title</p>
+        <p class="font-semibold text-gray-800">Submit</p>
         <p class="text-xs text-gray-500 mt-1">Propose a new thesis or capstone title</p>
         <p id="card-submit-title-note" class="hidden text-xs text-amber-600 font-medium mt-2">Only group leaders can submit</p>
       </a>
@@ -65,15 +65,6 @@
         </div>
         <p class="font-semibold text-gray-800">My Scores</p>
         <p class="text-xs text-gray-500 mt-1">View evaluation results and feedback</p>
-      </a>
-
-      <a id="card-upload-doc" href="/pages/student/upload-document.html" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
-        <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mb-3">
-          <svg class="w-5 h-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-        </div>
-        <p class="font-semibold text-gray-800">Upload Document</p>
-        <p class="text-xs text-gray-500 mt-1">Upload your research documents</p>
-        <p id="card-upload-doc-note" class="hidden text-xs text-amber-600 font-medium mt-2">Only group leaders can submit</p>
       </a>
 
       <a href="/pages/student/browse-archive.html" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
@@ -107,7 +98,7 @@
     }
 
     function disableSubmissionCards() {
-      ['card-submit-title', 'card-upload-doc'].forEach(id => {
+      ['card-submit-title'].forEach(id => {
         const card = document.getElementById(id);
         if (!card) return;
         card.removeAttribute('href');

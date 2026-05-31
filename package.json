@@ -1,5 +1,5 @@
-{
-  "name": "archiving-system-dnsc",
+﻿{
+  "name": "aces-archiving-system",
   "version": "1.0.0",
   "description": "Thesis and Capstone Archiving and Scheduling Management System",
   "scripts": {

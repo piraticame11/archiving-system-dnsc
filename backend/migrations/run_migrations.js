@@ -1,5 +1,5 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
-const fs = require('fs');
+const fs   = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
 
@@ -15,15 +15,33 @@ async function run() {
 
   console.log('Connected to MySQL. Running migrations...\n');
 
-  const dir = path.join(__dirname);
+  // Ensure tracking table exists
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS _migrations (
+      filename   VARCHAR(255) NOT NULL PRIMARY KEY,
+      applied_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Which files have already been applied?
+  const [appliedRows] = await conn.query('SELECT filename FROM _migrations');
+  const applied = new Set(appliedRows.map(r => r.filename));
+
+  const dir   = path.join(__dirname);
   const files = fs.readdirSync(dir)
     .filter(f => f.endsWith('.sql'))
     .sort();
 
   for (const file of files) {
+    if (applied.has(file)) {
+      console.log(`  - ${file} (already applied)`);
+      continue;
+    }
+
     const sql = fs.readFileSync(path.join(dir, file), 'utf8');
     try {
       await conn.query(sql);
+      await conn.query('INSERT INTO _migrations (filename) VALUES (?)', [file]);
       console.log(`  ✓ ${file}`);
     } catch (err) {
       console.error(`  ✗ ${file}: ${err.message}`);
@@ -34,12 +52,10 @@ async function run() {
 
   const bcrypt = require('bcryptjs');
 
-  // Fetch role IDs
   const [roleRows] = await conn.query(`SELECT id, name FROM roles`);
   const roleMap = {};
   roleRows.forEach(r => { roleMap[r.name] = r.id; });
 
-  // Fetch a department ID for seeded users
   const [[dept]] = await conn.query(`SELECT id FROM departments LIMIT 1`);
   const deptId = dept ? dept.id : null;
 

@@ -13,13 +13,13 @@ const listRules = [
   query('department_id').optional().isInt({ min: 1 }),
   query('type').optional().isIn(TYPES),
   query('school_year').optional().isString().trim(),
+  query('semester').optional().isIn(SEMESTERS),
 ];
 
 const createRules = [
   body('title').trim().notEmpty().withMessage('Title is required')
     .isLength({ max: 500 }).withMessage('Title must be 500 characters or fewer'),
-  body('abstract').trim().notEmpty().withMessage('Abstract / Introduction is required'),
-  body('keywords').optional({ nullable: true }).isString().trim(),
+  body('adviser_id').isInt({ min: 1 }).withMessage('Please select an adviser'),
   body('type').isIn(TYPES).withMessage('Type must be thesis or capstone'),
   body('school_year').trim().notEmpty().withMessage('School year is required')
     .matches(/^\d{4}-\d{4}$/).withMessage('School year must be in YYYY-YYYY format'),
@@ -29,8 +29,6 @@ const createRules = [
 const updateRules = [
   param('id').isInt({ min: 1 }),
   body('title').optional().trim().notEmpty().isLength({ max: 500 }),
-  body('abstract').optional({ nullable: true }).isString().trim(),
-  body('keywords').optional({ nullable: true }).isString().trim(),
   body('type').optional().isIn(TYPES),
   body('school_year').optional().trim().matches(/^\d{4}-\d{4}$/),
   body('semester').optional().isIn(SEMESTERS),

@@ -106,4 +106,159 @@ async function getMyAdvisees(adviserId, { search, status, page, limit }) {
   return paginatedResponse(rows, total, page, limit);
 }
 
-module.exports = { bulkAssign, getMyAdvisees };
+/* ─── All submitted titles (for similarity checking) ──────────────── */
+async function getAllSubmittedTitles(instructorId) {
+  const [rows] = await db.query(
+    `SELECT ts.id, ts.title, ts.type, ts.school_year, ts.semester, ts.status,
+            ts.submitted_at, ts.adviser_id, ts.group_id,
+            CONCAT(st.first_name, ' ', st.last_name) AS student_name,
+            st.student_number,
+            COALESCE(
+              CONCAT(adv.first_name, ' ', adv.last_name),
+              CONCAT(gadv.first_name, ' ', gadv.last_name)
+            ) AS adviser_name,
+            d.name AS department_name,
+            (ts.adviser_id = ? OR tg.adviser_id = ?) AS is_mine
+     FROM thesis_submissions ts
+     JOIN users st            ON ts.student_id    = st.id
+     JOIN departments d       ON ts.department_id = d.id
+     LEFT JOIN users adv      ON ts.adviser_id    = adv.id
+     LEFT JOIN thesis_groups tg  ON ts.group_id   = tg.id
+     LEFT JOIN users gadv     ON tg.adviser_id    = gadv.id
+     WHERE ts.status IN ('submitted', 'under_review') AND ts.deleted_at IS NULL
+     ORDER BY ts.submitted_at DESC`,
+    [instructorId, instructorId]
+  );
+  return rows;
+}
+
+/* ─── Instructor approves their advisee's title ───────────────────── */
+async function approveTitle(submissionId, instructorId, remarks) {
+  const [[sub]] = await db.query(
+    `SELECT id, status, adviser_id, group_id FROM thesis_submissions WHERE id = ? AND deleted_at IS NULL`,
+    [submissionId]
+  );
+  if (!sub) throw Object.assign(new Error('Submission not found'), { statusCode: 404 });
+
+  let isAdviser = sub.adviser_id === instructorId;
+  if (!isAdviser && sub.group_id) {
+    const [[grp]] = await db.query(
+      'SELECT adviser_id FROM thesis_groups WHERE id = ? AND deleted_at IS NULL',
+      [sub.group_id]
+    );
+    isAdviser = grp?.adviser_id === instructorId;
+  }
+  if (!isAdviser)
+    throw Object.assign(new Error('You are not the adviser for this submission.'), { statusCode: 403 });
+
+  if (!['submitted', 'under_review'].includes(sub.status))
+    throw Object.assign(new Error('Only submitted or under-review titles can be approved.'), { statusCode: 400 });
+
+  await db.query(
+    `UPDATE thesis_submissions SET status = 'approved', approved_at = NOW() WHERE id = ?`,
+    [submissionId]
+  );
+  await db.query(
+    `INSERT INTO submission_history (submission_id, changed_by, old_status, new_status, remarks)
+     VALUES (?, ?, ?, 'approved', ?)`,
+    [submissionId, instructorId, sub.status, remarks || null]
+  );
+}
+
+/* ─── Instructor rejects their advisee's title ───────────────────── */
+async function rejectTitle(submissionId, instructorId, remarks) {
+  if (!remarks || !remarks.trim())
+    throw Object.assign(new Error('A reason is required when rejecting a title.'), { statusCode: 400 });
+
+  const [[sub]] = await db.query(
+    `SELECT id, status, adviser_id, group_id FROM thesis_submissions WHERE id = ? AND deleted_at IS NULL`,
+    [submissionId]
+  );
+  if (!sub) throw Object.assign(new Error('Submission not found.'), { statusCode: 404 });
+
+  let isAdviser = sub.adviser_id === instructorId;
+  if (!isAdviser && sub.group_id) {
+    const [[grp]] = await db.query(
+      'SELECT adviser_id FROM thesis_groups WHERE id = ? AND deleted_at IS NULL',
+      [sub.group_id]
+    );
+    isAdviser = grp?.adviser_id === instructorId;
+  }
+  if (!isAdviser)
+    throw Object.assign(new Error('You are not the adviser for this submission.'), { statusCode: 403 });
+
+  if (!['submitted', 'under_review'].includes(sub.status))
+    throw Object.assign(new Error('Only submitted or under-review titles can be rejected.'), { statusCode: 400 });
+
+  await db.query(
+    `UPDATE thesis_submissions SET status = 'rejected' WHERE id = ?`,
+    [submissionId]
+  );
+  await db.query(
+    `INSERT INTO submission_history (submission_id, changed_by, old_status, new_status, remarks)
+     VALUES (?, ?, ?, 'rejected', ?)`,
+    [submissionId, instructorId, sub.status, remarks.trim()]
+  );
+}
+
+/* ─── Remove adviser from a group ─────────────────────────────────── */
+async function removeFromGroup(groupId, adviserId) {
+  const [[group]] = await db.query(
+    'SELECT id, adviser_id FROM thesis_groups WHERE id = ? AND deleted_at IS NULL',
+    [groupId]
+  );
+  if (!group) throw Object.assign(new Error('Group not found.'), { statusCode: 404 });
+  if (group.adviser_id !== adviserId)
+    throw Object.assign(new Error('You are not the adviser of this group.'), { statusCode: 403 });
+
+  await db.query('UPDATE thesis_groups SET adviser_id = NULL WHERE id = ?', [groupId]);
+}
+
+/* ─── My groups: groups where instructor is set as adviser ─────────── */
+async function getMyGroups(adviserId) {
+  const [groups] = await db.query(
+    `SELECT tg.id, tg.name, tg.join_code, tg.title, tg.school_year, tg.max_members, tg.created_at,
+            tg.leader_id,
+            CONCAT(l.first_name, ' ', l.last_name) AS leader_name,
+            d.name AS department_name, d.code AS department_code
+     FROM thesis_groups tg
+     JOIN users l       ON tg.leader_id     = l.id
+     JOIN departments d ON tg.department_id = d.id
+     WHERE tg.adviser_id = ? AND tg.deleted_at IS NULL
+     ORDER BY tg.created_at DESC`,
+    [adviserId]
+  );
+
+  for (const group of groups) {
+    const [members] = await db.query(
+      `SELECT gm.student_id, gm.joined_at,
+              CONCAT(u.first_name, ' ', u.last_name) AS name,
+              u.student_number, u.email
+       FROM group_members gm
+       JOIN users u ON gm.student_id = u.id
+       WHERE gm.group_id = ?
+       ORDER BY gm.joined_at ASC`,
+      [group.id]
+    );
+    group.members = members;
+    group.member_count = members.length;
+  }
+
+  return groups;
+}
+
+/* ─── List all active instructors (for student adviser selection) ──── */
+async function listAdvisers() {
+  const [rows] = await db.query(
+    `SELECT u.id, u.first_name, u.last_name, u.email,
+            d.name AS department_name, d.code AS department_code
+     FROM users u
+     JOIN roles r        ON u.role_id       = r.id
+     LEFT JOIN departments d ON u.department_id = d.id
+     WHERE r.name = 'instructor' AND u.is_active = 1 AND u.deleted_at IS NULL
+     ORDER BY u.last_name ASC, u.first_name ASC`
+  );
+  return rows;
+}
+
+module.exports = { bulkAssign, getMyAdvisees, getAllSubmittedTitles, approveTitle, rejectTitle, getMyGroups, removeFromGroup, listAdvisers };

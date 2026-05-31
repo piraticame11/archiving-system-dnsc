@@ -99,13 +99,14 @@ async function getEligible({ page, limit }) {
     [limit, offset]
   );
 
-  /* attach available documents per submission */
+  /* attach full_document files only — those are the only promotable documents */
   if (rows.length) {
     const ids = rows.map(r => r.id);
     const [docs] = await db.query(
       `SELECT id, submission_id, doc_type, file_name, file_size, is_current
        FROM submission_documents
        WHERE submission_id IN (${ids.map(() => '?').join(',')})
+         AND doc_type = 'full_document'
        ORDER BY version DESC`,
       ids
     );
@@ -138,12 +139,13 @@ async function promoteToArchive({ submission_id, document_id, authors, adviser, 
   const [[existing]] = await db.query('SELECT id FROM archive WHERE submission_id = ?', [submission_id]);
   if (existing) throw Object.assign(new Error('Submission is already archived'), { statusCode: 409 });
 
-  /* validate document belongs to submission */
+  /* validate document belongs to submission and is a full document */
   const [[doc]] = await db.query(
-    'SELECT id FROM submission_documents WHERE id = ? AND submission_id = ?',
+    `SELECT id FROM submission_documents
+     WHERE id = ? AND submission_id = ? AND doc_type = 'full_document'`,
     [document_id, submission_id]
   );
-  if (!doc) throw Object.assign(new Error('Document not found for this submission'), { statusCode: 400 });
+  if (!doc) throw Object.assign(new Error('Only full documents can be archived'), { statusCode: 400 });
 
   const [result] = await db.query(
     `INSERT INTO archive

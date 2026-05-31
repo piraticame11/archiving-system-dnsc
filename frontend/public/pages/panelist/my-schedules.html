@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Schedules "” DNSC Research System</title>
+  <title>My Schedules "” ACES Research System</title>
   <link rel="icon" type="image/webp" href="/assets/img/aw.webp">
   <link rel="stylesheet" href="/assets/css/app.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -22,7 +22,7 @@
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
       </a>
       <img src="/assets/img/aw.webp" alt="School Logo" class="w-9 h-9 object-contain rounded-lg">
-      <span class="font-bold text-lg">DNSC Research System</span>
+      <span class="font-bold text-lg">ACES Research System</span>
     </div>
     <div class="flex items-center gap-4">
       <span id="user-name" class="text-sm text-primary-100"></span>
@@ -114,6 +114,32 @@
       return `<span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${c.cls}">${c.label}</span>`;
     }
 
+    const TIME_SLOTS = {
+      '8:00-9:00':  '8:00 – 9:00 AM',
+      '9:00-10:00': '9:00 – 10:00 AM',
+      '10:00-11:00':'10:00 – 11:00 AM',
+      '11:00-12:00':'11:00 AM – 12:00 PM',
+      '13:00-14:00':'1:00 – 2:00 PM',
+      '14:00-15:00':'2:00 – 3:00 PM',
+      '15:00-16:00':'3:00 – 4:00 PM',
+      '16:00-17:00':'4:00 – 5:00 PM',
+    };
+    function slotLabel(v) { return TIME_SLOTS[v] || v || '–'; }
+    function slotsLabel(arr) {
+      if (!arr || !arr.length) return '–';
+      if (arr.length === 1) return slotLabel(arr[0]);
+      const first = slotLabel(arr[0]).split('–')[0].trim();
+      const last  = (slotLabel(arr[arr.length-1]).split('–')[1] || '').trim();
+      return `${first} – ${last} (${arr.length}hr)`;
+    }
+
+    function fmtDate(d) {
+      if (!d) return '–';
+      const s = String(d).split('T')[0];
+      const [y, m, day] = s.split('-');
+      return new Date(+y, +m-1, +day).toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric' });
+    }
+
     requireAuthAsync('panelist').then(user => {
       if (!user) return;
       document.getElementById('user-name').textContent = user.full_name || user.email;
@@ -151,28 +177,33 @@
         }
 
         grid.innerHTML = items.map(s => {
-          const sc  = STATUS_CFG[s.status] || { label: s.status, cls: 'bg-gray-100 text-gray-700' };
-          const dt  = new Date(s.scheduled_at);
-          const upcoming = dt > new Date() && s.status === 'scheduled';
+          const dateStr  = s.scheduled_date ? String(s.scheduled_date).split('T')[0] : '';
+          const upcoming = dateStr >= new Date().toISOString().slice(0,10) && s.status === 'scheduled';
+          const cardTitle = s.submission_title || s.group_names || `Schedule #${s.id}`;
+          const cardSub   = !s.submission_title && s.group_titles
+            ? `<p class="text-xs text-gray-400 mt-0.5 line-clamp-1">${escHtml(s.group_titles)}</p>` : '';
           return `
           <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-5 hover:shadow-md transition-shadow">
             <div class="flex items-start justify-between gap-2 mb-3">
-              <h3 class="font-semibold text-gray-900 text-sm leading-snug line-clamp-2">${escHtml(s.submission_title)}</h3>
+              <div>
+                <h3 class="font-semibold text-gray-900 text-sm leading-snug line-clamp-2">${escHtml(cardTitle)}</h3>
+                ${cardSub}
+              </div>
               ${badge(s.status)}
             </div>
             <div class="space-y-1.5 text-xs text-gray-500 mb-4">
               <p class="flex items-center gap-1.5">
                 <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                ${formatDate(s.scheduled_at, true)}
+                ${fmtDate(dateStr)}
+              </p>
+              <p class="flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                ${escHtml(slotsLabel(s.time_slots))}
               </p>
               ${s.venue_name ? `<p class="flex items-center gap-1.5">
                 <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 ${escHtml(s.venue_name)}
               </p>` : ''}
-              <p class="flex items-center gap-1.5">
-                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                ${s.duration_min || 60} min Â· ${(s.submission_type || s.defense_type || '').replace(/_/g,' ')}
-              </p>
             </div>
             <div class="flex gap-2">
               <button onclick="openDetail(${s.id})"
@@ -220,23 +251,38 @@
       try {
         const res = await get(`/api/v1/schedules/${id}`);
         const s   = res.data;
-        document.getElementById('detail-title').textContent = s.submission_title || 'Schedule Details';
 
         const panelHtml = s.panelists?.length
-          ? s.panelists.map(p => `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-50 text-primary-700">${escHtml(p.full_name)}</span>`).join('')
-          : '<span class="text-gray-400 text-xs">None assigned</span>';
+          ? s.panelists.map(p => `<span class=”inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-50 text-primary-700”>${escHtml(p.full_name)}</span>`).join('')
+          : '<span class=”text-gray-400 text-xs”>None assigned</span>';
+
+        const groupsHtml = s.groups?.length
+          ? s.groups.map(g => `
+            <div class=”bg-gray-50 rounded-lg p-3 border border-gray-100”>
+              <p class=”font-semibold text-gray-800 text-sm”>${escHtml(g.name)}</p>
+              ${g.group_title ? `<p class=”text-xs text-gray-500 mt-0.5”>${escHtml(g.group_title)}</p>` : ''}
+            </div>`).join('')
+          : s.submission_title
+            ? `<p class=”text-sm text-gray-700”>${escHtml(s.submission_title)}</p>`
+            : '<span class=”text-gray-400 text-xs”>No groups assigned</span>';
+
+        document.getElementById('detail-title').textContent =
+          s.groups?.length ? s.groups.map(g => g.name).join(', ') : (s.submission_title || 'Schedule Details');
 
         document.getElementById('detail-body').innerHTML = `
-          <div class="grid grid-cols-2 gap-4 text-sm">
-            <div><p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Status</p>${badge(s.status)}</div>
-            <div><p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Type</p><p class="text-gray-800">${escHtml((s.defense_type || s.submission_type || '').replace(/_/g,' '))}</p></div>
-            <div><p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Date & Time</p><p class="text-gray-800">${formatDate(s.scheduled_at, true)}</p></div>
-            <div><p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Duration</p><p class="text-gray-800">${s.duration_min || 60} minutes</p></div>
-            <div><p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Venue</p><p class="text-gray-800">${escHtml(s.venue_name || '"”')}</p></div>
-            <div><p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">School Year</p><p class="text-gray-800">${escHtml(s.school_year || '"”')}</p></div>
+          <div>
+            <p class=”text-xs text-gray-400 uppercase tracking-wide mb-2”>Groups / Research Titles</p>
+            <div class=”space-y-2”>${groupsHtml}</div>
           </div>
-          ${s.notes ? `<div><p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Notes</p><p class="text-sm text-gray-700">${escHtml(s.notes)}</p></div>` : ''}
-          <div><p class="text-xs text-gray-400 uppercase tracking-wide mb-2">Panelists</p><div class="flex flex-wrap gap-2">${panelHtml}</div></div>`;
+          <div class=”grid grid-cols-2 gap-4 text-sm”>
+            <div><p class=”text-xs text-gray-400 uppercase tracking-wide mb-0.5”>Status</p>${badge(s.status)}</div>
+            <div><p class=”text-xs text-gray-400 uppercase tracking-wide mb-0.5”>Date</p><p class=”text-gray-800”>${fmtDate(s.scheduled_date)}</p></div>
+            <div><p class=”text-xs text-gray-400 uppercase tracking-wide mb-0.5”>Timeslot</p><p class=”text-gray-800”>${escHtml(slotsLabel(s.time_slots))}</p></div>
+            <div><p class=”text-xs text-gray-400 uppercase tracking-wide mb-0.5”>Venue</p><p class=”text-gray-800”>${escHtml(s.venue_name || '–')}</p></div>
+            ${s.school_year ? `<div class=”col-span-2”><p class=”text-xs text-gray-400 uppercase tracking-wide mb-0.5”>School Year</p><p class=”text-gray-800”>${escHtml(s.school_year)}</p></div>` : ''}
+          </div>
+          ${s.notes ? `<div><p class=”text-xs text-gray-400 uppercase tracking-wide mb-1”>Notes</p><p class=”text-sm text-gray-700”>${escHtml(s.notes)}</p></div>` : ''}
+          <div><p class=”text-xs text-gray-400 uppercase tracking-wide mb-2”>Panelists</p><div class=”flex flex-wrap gap-2”>${panelHtml}</div></div>`;
 
         document.getElementById('detail-footer').innerHTML = s.status !== 'cancelled'
           ? `<a href="/pages/panelist/evaluate.html?id=${s.id}" class="block w-full text-center px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">Go to Evaluate</a>`

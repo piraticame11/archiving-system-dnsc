@@ -18,7 +18,7 @@ const BASE_SELECT = `
   LEFT JOIN users adv ON ts.adviser_id    = adv.id`;
 
 /* ─── list ────────────────────────────────────────────────────────── */
-async function listSubmissions({ search, status, department_id, type, school_year, page, limit, student_id, adviser_id }) {
+async function listSubmissions({ search, status, department_id, type, school_year, semester, page, limit, student_id, adviser_id, require_full_document }) {
   const offset     = (page - 1) * limit;
   const conditions = ['ts.deleted_at IS NULL'];
   const params     = [];
@@ -32,8 +32,15 @@ async function listSubmissions({ search, status, department_id, type, school_yea
   if (department_id) { conditions.push('ts.department_id = ?');  params.push(department_id); }
   if (type)          { conditions.push('ts.type = ?');           params.push(type); }
   if (school_year)   { conditions.push('ts.school_year = ?');    params.push(school_year); }
+  if (semester)      { conditions.push('ts.semester = ?');       params.push(semester); }
   if (student_id)    { conditions.push('ts.student_id = ?');     params.push(student_id); }
   if (adviser_id)    { conditions.push('ts.adviser_id = ?');     params.push(adviser_id); }
+  if (require_full_document) {
+    conditions.push(`EXISTS (
+      SELECT 1 FROM submission_documents sd
+      WHERE sd.submission_id = ts.id AND sd.doc_type = 'full_document'
+    )`);
+  }
 
   const where = `WHERE ${conditions.join(' AND ')}`;
   const from  = `FROM thesis_submissions ts
@@ -98,7 +105,7 @@ async function getById(id) {
 }
 
 /* ─── create (student) ────────────────────────────────────────────── */
-async function createSubmission({ student_id, title, abstract, keywords, type, school_year, semester, department_id }) {
+async function createSubmission({ student_id, title, adviser_id, type, school_year, semester, department_id }) {
   /* enforce group leader-only submission */
   const groupRole = await groupService.getStudentGroupRole(student_id);
   if (groupRole.inGroup && !groupRole.isLeader) {
@@ -108,33 +115,70 @@ async function createSubmission({ student_id, title, abstract, keywords, type, s
     );
   }
 
-  /* check student doesn't already have a non-rejected active submission for same period */
+  /* max 3 title submissions per student per period (rejected attempts still count) */
+  const [[{ total }]] = await db.query(
+    `SELECT COUNT(*) AS total FROM thesis_submissions
+     WHERE student_id = ? AND school_year = ? AND semester = ?
+       AND deleted_at IS NULL`,
+    [student_id, school_year, semester]
+  );
+  if (total >= 3) throw Object.assign(
+    new Error('You have reached the maximum of 3 title submissions for this period.'),
+    { statusCode: 409 }
+  );
+
+  /* block if student already has an active (non-rejected) submission — must wait for result first */
   const [[dup]] = await db.query(
     `SELECT id FROM thesis_submissions
      WHERE student_id = ? AND school_year = ? AND semester = ?
        AND status NOT IN ('rejected') AND deleted_at IS NULL`,
     [student_id, school_year, semester]
   );
-  if (dup) throw Object.assign(new Error('You already have an active submission for this school year and semester.'), { statusCode: 409 });
+  if (dup) throw Object.assign(
+    new Error('You already have an active submission under review. You may resubmit once it is rejected.'),
+    { statusCode: 409 }
+  );
 
-  /* if the student is a group leader, also check that the group has no active submission yet */
+  /* if the student is a group leader, apply the same limits at group level */
   if (groupRole.inGroup && groupRole.isLeader) {
+    const [[{ groupTotal }]] = await db.query(
+      `SELECT COUNT(*) AS groupTotal FROM thesis_submissions
+       WHERE group_id = ? AND school_year = ? AND semester = ?
+         AND deleted_at IS NULL`,
+      [groupRole.groupId, school_year, semester]
+    );
+    if (groupTotal >= 3) throw Object.assign(
+      new Error('Your group has reached the maximum of 3 title submissions for this period.'),
+      { statusCode: 409 }
+    );
+
     const [[groupDup]] = await db.query(
       `SELECT id FROM thesis_submissions
        WHERE group_id = ? AND school_year = ? AND semester = ?
          AND status NOT IN ('rejected') AND deleted_at IS NULL`,
       [groupRole.groupId, school_year, semester]
     );
-    if (groupDup) throw Object.assign(new Error('Your group already has an active submission for this period.'), { statusCode: 409 });
+    if (groupDup) throw Object.assign(
+      new Error('Your group already has an active submission under review. You may resubmit once it is rejected.'),
+      { statusCode: 409 }
+    );
   }
+
+  /* verify adviser exists and is an active instructor */
+  const [[adviser]] = await db.query(
+    `SELECT u.id FROM users u JOIN roles r ON u.role_id = r.id
+     WHERE u.id = ? AND r.name = 'instructor' AND u.is_active = 1 AND u.deleted_at IS NULL`,
+    [adviser_id]
+  );
+  if (!adviser) throw Object.assign(new Error('Selected adviser is invalid or no longer active.'), { statusCode: 400 });
 
   const groupId = groupRole.isLeader ? groupRole.groupId : null;
 
   const [result] = await db.query(
     `INSERT INTO thesis_submissions
-       (student_id, group_id, department_id, title, abstract, keywords, type, school_year, semester, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
-    [student_id, groupId, department_id, title, abstract || null, keywords || null, type, school_year, semester]
+       (student_id, group_id, department_id, adviser_id, title, type, school_year, semester, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
+    [student_id, groupId, department_id, adviser_id, title, type, school_year, semester]
   );
   return getById(result.insertId);
 }
@@ -145,10 +189,8 @@ async function updateSubmission(id, fields, actorId) {
   if (!sub) throw Object.assign(new Error('Submission not found'), { statusCode: 404 });
 
   const updates = {};
-  const { title, abstract, keywords, type, school_year, semester } = fields;
+  const { title, type, school_year, semester } = fields;
   if (title       !== undefined) updates.title       = title;
-  if (abstract    !== undefined) updates.abstract    = abstract || null;
-  if (keywords    !== undefined) updates.keywords    = keywords || null;
   if (type        !== undefined) updates.type        = type;
   if (school_year !== undefined) updates.school_year = school_year;
   if (semester    !== undefined) updates.semester    = semester;

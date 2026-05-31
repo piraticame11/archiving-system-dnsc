@@ -1,18 +1,41 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Evaluate "” DNSC Research System</title>
+  <title>Evaluate – ACES Research System</title>
   <link rel="icon" type="image/webp" href="/assets/img/aw.webp">
   <link rel="stylesheet" href="/assets/css/app.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     .form-input { width:100%;padding:.5rem .75rem;font-size:.875rem;border:1px solid #d1d5db;border-radius:.5rem;outline:none;transition:border-color .15s,box-shadow .15s;background:#fff; }
     .form-input:focus { border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.25); }
-    .score-display { font-size:3.5rem; font-weight:800; line-height:1; }
-    input[type=range]::-webkit-slider-thumb { width:22px; height:22px; border-radius:50%; background:#22c55e; cursor:pointer; -webkit-appearance:none; }
-    input[type=range]::-webkit-slider-runnable-track { height:6px; border-radius:3px; }
+
+    /* carousel */
+    .carousel-nav-btn {
+      display:flex;align-items:center;justify-content:center;
+      width:2.25rem;height:2.25rem;border-radius:50%;
+      border:1.5px solid #d1d5db;background:#fff;cursor:pointer;
+      transition:background .15s,border-color .15s;flex-shrink:0;
+    }
+    .carousel-nav-btn:hover:not(:disabled) { background:#f3f4f6;border-color:#9ca3af; }
+    .carousel-nav-btn:disabled { opacity:.35;cursor:default; }
+
+    /* progress dots */
+    .progress-dot {
+      width:.65rem;height:.65rem;border-radius:50%;border:2px solid #d1d5db;
+      background:#fff;cursor:pointer;transition:all .15s;flex-shrink:0;
+    }
+    .progress-dot.submitted  { background:#22c55e;border-color:#22c55e; }
+    .progress-dot.draft      { background:#facc15;border-color:#facc15; }
+    .progress-dot.active     { border-color:#6366f1;box-shadow:0 0 0 2px rgba(99,102,241,.25); }
+
+    /* slide transition */
+    .slide-enter { animation: slideIn .2s ease; }
+    @keyframes slideIn { from { opacity:0;transform:translateY(6px); } to { opacity:1;transform:none; } }
+
+    input[type=range]::-webkit-slider-thumb { width:22px;height:22px;border-radius:50%;background:#22c55e;cursor:pointer;-webkit-appearance:none; }
+    input[type=range]::-webkit-slider-runnable-track { height:6px;border-radius:3px; }
   </style>
 </head>
 <body class="bg-gray-50 font-sans min-h-screen">
@@ -24,7 +47,7 @@
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
       </a>
       <img src="/assets/img/aw.webp" alt="School Logo" class="w-9 h-9 object-contain rounded-lg">
-      <span class="font-bold text-lg">DNSC Research System</span>
+      <span class="font-bold text-lg">ACES Research System</span>
     </div>
     <div class="flex items-center gap-4">
       <span id="user-name" class="text-sm text-primary-100"></span>
@@ -38,122 +61,221 @@
   <!-- No schedule selected -->
   <div id="no-schedule" class="hidden max-w-3xl mx-auto px-6 py-16 text-center">
     <p class="text-gray-500 mb-4">No schedule selected. Go to My Schedules and click Evaluate on a specific defense.</p>
-    <a href="/pages/panelist/my-schedules.html" class="text-primary-600 hover:underline text-sm font-medium">â† Back to My Schedules</a>
+    <a href="/pages/panelist/my-schedules.html" class="text-primary-600 hover:underline text-sm font-medium">← Back to My Schedules</a>
   </div>
 
   <!-- Main content -->
-  <div id="main-content" class="hidden max-w-3xl mx-auto px-6 py-8 space-y-6">
+  <div id="main-content" class="hidden max-w-3xl mx-auto px-6 py-8 space-y-5">
 
     <!-- Alert -->
     <div id="alert" class="hidden px-4 py-3 rounded-lg text-sm font-medium"></div>
 
-    <!-- Schedule Info Card -->
-    <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
-      <div class="flex items-start justify-between gap-3 mb-4">
+    <!-- Schedule meta card -->
+    <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
+      <div class="flex items-start justify-between gap-3 mb-3">
         <div>
-          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Submission</p>
-          <h1 id="sub-title" class="text-xl font-bold text-gray-900"></h1>
+          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Defense Schedule</p>
+          <h1 id="sched-heading" class="text-xl font-bold text-gray-900"></h1>
         </div>
         <span id="sched-status-badge"></span>
       </div>
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
         <div>
-          <p class="text-xs text-gray-400 mb-0.5">Student</p>
-          <p id="student-name" class="font-medium text-gray-800"></p>
-          <p id="student-number" class="text-xs text-gray-500"></p>
+          <p class="text-xs text-gray-400 mb-0.5">Date</p>
+          <p id="sched-date" class="font-medium text-gray-800"></p>
         </div>
         <div>
-          <p class="text-xs text-gray-400 mb-0.5">Date & Time</p>
-          <p id="sched-date" class="font-medium text-gray-800"></p>
+          <p class="text-xs text-gray-400 mb-0.5">Time</p>
+          <p id="sched-time" class="font-medium text-gray-800"></p>
         </div>
         <div>
           <p class="text-xs text-gray-400 mb-0.5">Venue</p>
           <p id="sched-venue" class="font-medium text-gray-800"></p>
         </div>
-        <div>
-          <p class="text-xs text-gray-400 mb-0.5">Type</p>
-          <p id="sched-type" class="font-medium text-gray-800"></p>
-        </div>
-        <div>
+        <div id="school-year-cell" class="hidden">
           <p class="text-xs text-gray-400 mb-0.5">School Year</p>
           <p id="sched-year" class="font-medium text-gray-800"></p>
         </div>
-        <div>
-          <p class="text-xs text-gray-400 mb-0.5">Duration</p>
-          <p id="sched-duration" class="font-medium text-gray-800"></p>
+      </div>
+    </div>
+
+    <!-- ─── MULTI-GROUP CAROUSEL ─── -->
+    <div id="carousel-section" class="hidden">
+
+      <!-- Carousel header: navigation + progress -->
+      <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+        <div class="flex items-center gap-3">
+          <button id="btn-prev" class="carousel-nav-btn" onclick="navigate(-1)" disabled>
+            <svg class="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+
+          <div class="flex-1">
+            <p class="text-xs text-gray-400 mb-1.5 text-center">Presenting Groups</p>
+            <div id="progress-dots" class="flex items-center justify-center gap-2"></div>
+          </div>
+
+          <button id="btn-next" class="carousel-nav-btn" onclick="navigate(1)">
+            <svg class="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+
+        <!-- current group counter -->
+        <p id="group-counter" class="text-center text-xs text-gray-500 mt-2 font-medium"></p>
+      </div>
+
+      <!-- Current group info -->
+      <div id="group-info-card" class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mt-3 slide-enter">
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0">
+            <p class="text-xs text-indigo-400 uppercase tracking-wide mb-0.5">Group</p>
+            <p id="ci-name" class="font-bold text-indigo-900 text-base leading-tight"></p>
+            <p id="ci-title" class="text-sm text-indigo-700 mt-1 leading-snug"></p>
+          </div>
+          <span id="ci-eval-badge" class="hidden text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0"></span>
+        </div>
+      </div>
+
+      <!-- Evaluation form (per-group) -->
+      <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-5 mt-3">
+        <h2 class="text-base font-bold text-gray-900 mb-4">Evaluation</h2>
+
+        <!-- Submitted view -->
+        <div id="submitted-view" class="hidden space-y-4">
+          <div class="bg-gray-50 rounded-xl p-5 text-center border border-gray-200">
+            <p class="text-xs text-gray-400 mb-1">Score</p>
+            <p id="view-score" class="text-5xl font-extrabold text-primary-600 leading-none">–</p>
+            <p class="text-xs text-gray-400 mt-1">out of 100</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Remarks</p>
+            <p id="view-remarks" class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap bg-gray-50 rounded-lg p-3 border border-gray-200 min-h-[4rem]"></p>
+          </div>
+          <p id="view-submitted-at" class="text-xs text-gray-400 text-right"></p>
+          <p class="text-xs text-gray-400 italic">Evaluation submitted — cannot be changed.</p>
+        </div>
+
+        <!-- Editable form -->
+        <div id="edit-form" class="space-y-5">
+          <!-- Score slider -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label class="block text-sm font-medium text-gray-700">Score <span class="text-gray-400 font-normal">(0 – 100)</span></label>
+              <span id="score-display" class="text-2xl font-bold text-primary-600">–</span>
+            </div>
+            <input id="score-range" type="range" min="0" max="100" step="0.5" value="75"
+              class="w-full accent-primary-600 cursor-pointer"
+              oninput="updateScore(this.value)">
+            <div class="flex justify-between text-xs text-gray-400 mt-1"><span>0</span><span>50</span><span>100</span></div>
+            <div class="mt-3 flex items-center gap-2">
+              <label class="text-xs text-gray-500">Or type:</label>
+              <input id="score-input" type="number" min="0" max="100" step="0.5" placeholder="e.g. 87.5"
+                class="w-28 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                oninput="syncScore(this.value)">
+            </div>
+            <p id="err-score" class="text-xs text-red-600 mt-1 hidden"></p>
+          </div>
+
+          <!-- Remarks -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Remarks <span class="text-gray-400 font-normal">(optional)</span></label>
+            <textarea id="remarks" rows="4" maxlength="2000" placeholder="Provide feedback, suggestions, or overall comments…"
+              class="form-input resize-none"></textarea>
+            <p class="text-xs text-gray-400 mt-1 text-right"><span id="remarks-count">0</span>/2000</p>
+          </div>
+
+          <p class="text-xs text-gray-400 bg-gray-50 rounded-lg p-3 border border-gray-200">
+            You can save a draft and come back later. Once you submit a group's evaluation, it is final.
+          </p>
+
+          <div class="flex gap-3 pt-1">
+            <button id="btn-draft" onclick="saveEvaluation(false)"
+              class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+              Save Draft
+            </button>
+            <button id="btn-submit" onclick="confirmSubmit()"
+              class="flex-1 px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
+              Submit
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Evaluation Form -->
-    <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
-      <div class="flex items-center justify-between mb-5">
-        <h2 class="text-lg font-bold text-gray-900">Your Evaluation</h2>
-        <span id="eval-status-badge" class="hidden text-xs font-semibold px-3 py-1 rounded-full bg-green-100 text-green-700">Submitted</span>
+    <!-- ─── SINGLE GROUP / LEGACY (no groups) ─── -->
+    <div id="single-section" class="hidden">
+
+      <!-- Group info (shown when there is exactly 1 group) -->
+      <div id="single-group-card" class="hidden bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-3">
+        <p class="text-xs text-indigo-400 uppercase tracking-wide mb-0.5">Research Title</p>
+        <p id="sg-title" class="font-semibold text-indigo-900 text-sm leading-snug"></p>
       </div>
 
-      <!-- Submitted read-only view -->
-      <div id="submitted-view" class="hidden space-y-4">
-        <div class="bg-gray-50 rounded-xl p-5 text-center border border-gray-200">
-          <p class="text-xs text-gray-400 mb-1">Score</p>
-          <p id="view-score" class="score-display text-primary-600">"”</p>
-          <p class="text-xs text-gray-400 mt-1">out of 100</p>
+      <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-base font-bold text-gray-900">Your Evaluation</h2>
+          <span id="single-eval-badge" class="hidden text-xs font-semibold px-3 py-1 rounded-full bg-green-100 text-green-700">Submitted</span>
         </div>
-        <div>
-          <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Remarks</p>
-          <p id="view-remarks" class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap bg-gray-50 rounded-lg p-3 border border-gray-200 min-h-16"></p>
-        </div>
-        <p id="view-submitted-at" class="text-xs text-gray-400 text-right"></p>
-        <p class="text-xs text-gray-400 italic">Your evaluation has been submitted and cannot be changed.</p>
-      </div>
 
-      <!-- Editable form -->
-      <div id="edit-form" class="space-y-5">
-        <!-- Score slider -->
-        <div>
-          <div class="flex items-center justify-between mb-2">
-            <label class="block text-sm font-medium text-gray-700">Score <span class="text-gray-400 font-normal">(0 "“ 100)</span></label>
-            <span id="score-display" class="text-2xl font-bold text-primary-600">"”</span>
+        <!-- Submitted view -->
+        <div id="single-submitted-view" class="hidden space-y-4">
+          <div class="bg-gray-50 rounded-xl p-5 text-center border border-gray-200">
+            <p class="text-xs text-gray-400 mb-1">Score</p>
+            <p id="single-view-score" class="text-5xl font-extrabold text-primary-600 leading-none">–</p>
+            <p class="text-xs text-gray-400 mt-1">out of 100</p>
           </div>
-          <input id="score-range" type="range" min="0" max="100" step="0.5" value="75"
-            class="w-full accent-primary-600 cursor-pointer"
-            oninput="updateScore(this.value)">
-          <div class="flex justify-between text-xs text-gray-400 mt-1"><span>0</span><span>50</span><span>100</span></div>
-          <div class="mt-3 flex items-center gap-2">
-            <label class="text-xs text-gray-500">Or type a score:</label>
-            <input id="score-input" type="number" min="0" max="100" step="0.5" placeholder="e.g. 87.5"
-              class="w-28 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              oninput="syncScore(this.value)">
+          <div>
+            <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Remarks</p>
+            <p id="single-view-remarks" class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap bg-gray-50 rounded-lg p-3 border border-gray-200 min-h-[4rem]"></p>
           </div>
-          <p id="err-score" class="text-xs text-red-600 mt-1 hidden"></p>
+          <p id="single-view-submitted-at" class="text-xs text-gray-400 text-right"></p>
+          <p class="text-xs text-gray-400 italic">Your evaluation has been submitted and cannot be changed.</p>
         </div>
 
-        <!-- Remarks -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Remarks <span class="text-gray-400 font-normal">(optional)</span></label>
-          <textarea id="remarks" rows="5" maxlength="2000" placeholder="Provide feedback, suggestions, or overall comments…"
-            class="form-input resize-none"></textarea>
-          <p class="text-xs text-gray-400 mt-1 text-right"><span id="remarks-count">0</span>/2000</p>
-        </div>
+        <!-- Editable form -->
+        <div id="single-edit-form" class="space-y-5">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label class="block text-sm font-medium text-gray-700">Score <span class="text-gray-400 font-normal">(0 – 100)</span></label>
+              <span id="single-score-display" class="text-2xl font-bold text-primary-600">75.0</span>
+            </div>
+            <input id="single-score-range" type="range" min="0" max="100" step="0.5" value="75"
+              class="w-full accent-primary-600 cursor-pointer"
+              oninput="singleUpdateScore(this.value)">
+            <div class="flex justify-between text-xs text-gray-400 mt-1"><span>0</span><span>50</span><span>100</span></div>
+            <div class="mt-3 flex items-center gap-2">
+              <label class="text-xs text-gray-500">Or type:</label>
+              <input id="single-score-input" type="number" min="0" max="100" step="0.5" placeholder="e.g. 87.5"
+                class="w-28 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                oninput="singleSyncScore(this.value)">
+            </div>
+            <p id="single-err-score" class="text-xs text-red-600 mt-1 hidden"></p>
+          </div>
 
-        <!-- Draft notice -->
-        <p class="text-xs text-gray-400 bg-gray-50 rounded-lg p-3 border border-gray-200">
-          You can save a draft and come back later. Once you submit, the evaluation is final.
-        </p>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Remarks <span class="text-gray-400 font-normal">(optional)</span></label>
+            <textarea id="single-remarks" rows="5" maxlength="2000" placeholder="Provide feedback, suggestions, or overall comments…"
+              class="form-input resize-none"></textarea>
+            <p class="text-xs text-gray-400 mt-1 text-right"><span id="single-remarks-count">0</span>/2000</p>
+          </div>
 
-        <!-- Actions -->
-        <div class="flex gap-3 pt-1">
-          <button id="btn-draft" onclick="saveEvaluation(false)"
-            class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-            Save Draft
-          </button>
-          <button id="btn-submit" onclick="confirmSubmit()"
-            class="flex-1 px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
-            Submit Evaluation
-          </button>
+          <p class="text-xs text-gray-400 bg-gray-50 rounded-lg p-3 border border-gray-200">
+            You can save a draft and come back later. Once you submit, the evaluation is final.
+          </p>
+
+          <div class="flex gap-3 pt-1">
+            <button id="single-btn-draft" onclick="singleSaveEvaluation(false)"
+              class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+              Save Draft
+            </button>
+            <button id="single-btn-submit" onclick="singleConfirmSubmit()"
+              class="flex-1 px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
+              Submit Evaluation
+            </button>
+          </div>
         </div>
       </div>
     </div>
+
   </div>
 
   <!-- Confirm submit modal -->
@@ -162,11 +284,11 @@
       <div class="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
         <svg class="w-6 h-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
       </div>
-      <h3 class="text-lg font-bold text-gray-900 mb-2">Submit Evaluation?</h3>
-      <p class="text-sm text-gray-500 mb-6">Once submitted, your score and remarks cannot be changed.</p>
+      <h3 id="confirm-title" class="text-lg font-bold text-gray-900 mb-2">Submit Evaluation?</h3>
+      <p class="text-sm text-gray-500 mb-6">Once submitted, the score and remarks cannot be changed.</p>
       <div class="flex gap-3">
         <button onclick="closeConfirm()" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
-        <button onclick="saveEvaluation(true)" class="flex-1 px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">Yes, Submit</button>
+        <button id="confirm-ok-btn" class="flex-1 px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">Yes, Submit</button>
       </div>
     </div>
   </div>
@@ -184,6 +306,31 @@
     const get  = path      => http(() => apiGet(path));
     const post = (path, b) => http(() => apiPost(path, b));
 
+    const TIME_SLOTS = {
+      '8:00-9:00':   '8:00 – 9:00 AM',
+      '9:00-10:00':  '9:00 – 10:00 AM',
+      '10:00-11:00': '10:00 – 11:00 AM',
+      '11:00-12:00': '11:00 AM – 12:00 PM',
+      '13:00-14:00': '1:00 – 2:00 PM',
+      '14:00-15:00': '2:00 – 3:00 PM',
+      '15:00-16:00': '3:00 – 4:00 PM',
+      '16:00-17:00': '4:00 – 5:00 PM',
+    };
+    function slotLabel(v) { return TIME_SLOTS[v] || v || '–'; }
+    function slotsLabel(arr) {
+      if (!arr || !arr.length) return '–';
+      if (arr.length === 1) return slotLabel(arr[0]);
+      const first = slotLabel(arr[0]).split('–')[0].trim();
+      const last  = (slotLabel(arr[arr.length-1]).split('–')[1] || '').trim();
+      return `${first} – ${last} (${arr.length}hr)`;
+    }
+    function fmtDate(d) {
+      if (!d) return '–';
+      const s = String(d).split('T')[0];
+      const [y, m, day] = s.split('-');
+      return new Date(+y, +m-1, +day).toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric' });
+    }
+
     const STATUS_CFG = {
       scheduled:   { label: 'Scheduled',   cls: 'bg-blue-100 text-blue-700'    },
       completed:   { label: 'Completed',   cls: 'bg-green-100 text-green-700'  },
@@ -191,27 +338,344 @@
       rescheduled: { label: 'Rescheduled', cls: 'bg-yellow-100 text-yellow-700' },
     };
 
+    /* ─── State ─── */
     let scheduleId   = null;
-    let scoreEnabled = false;
+    let groups       = [];       // [{id, name, group_title}]
+    let evalMap      = {};       // group_id (or 'legacy') → evaluation obj
+    let formState    = {};       // group_id → { score, remarks, scoreEnabled }
+    let currentIdx   = 0;
+    let isMulti      = false;    // true when ≥2 groups in schedule
+
+    /* ─── Carousel (multi-group) ─── */
+
+    function navigate(dir) {
+      saveCurrentFormState();
+      currentIdx = Math.max(0, Math.min(groups.length - 1, currentIdx + dir));
+      renderSlide();
+    }
+
+    function navigateTo(idx) {
+      if (idx === currentIdx) return;
+      saveCurrentFormState();
+      currentIdx = idx;
+      renderSlide();
+    }
+
+    function saveCurrentFormState() {
+      const g = groups[currentIdx];
+      if (!g) return;
+      const key = g.id;
+      if (evalMap[key]?.status === 'submitted') return; // don't overwrite submitted
+      formState[key] = {
+        score:        document.getElementById('score-input').value,
+        remarks:      document.getElementById('remarks').value,
+        scoreEnabled: formState[key]?.scoreEnabled ?? false,
+      };
+    }
+
+    function renderSlide() {
+      const g   = groups[currentIdx];
+      const key = g.id;
+      const ev  = evalMap[key] || null;
+
+      /* group info card */
+      document.getElementById('ci-name').textContent  = g.name;
+      document.getElementById('ci-title').textContent = g.group_title || 'No title set';
+
+      const badge = document.getElementById('ci-eval-badge');
+      if (ev?.status === 'submitted') {
+        badge.textContent = 'Submitted';
+        badge.className = 'text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 bg-green-100 text-green-700';
+        badge.classList.remove('hidden');
+      } else if (ev?.status === 'pending') {
+        badge.textContent = 'Draft saved';
+        badge.className = 'text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 bg-yellow-100 text-yellow-700';
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+
+      /* counter */
+      document.getElementById('group-counter').textContent =
+        `Group ${currentIdx + 1} of ${groups.length}`;
+
+      /* nav buttons */
+      document.getElementById('btn-prev').disabled = currentIdx === 0;
+      document.getElementById('btn-next').disabled = currentIdx === groups.length - 1;
+
+      /* progress dots */
+      renderProgressDots();
+
+      /* animate group info card */
+      const infoCard = document.getElementById('group-info-card');
+      infoCard.classList.remove('slide-enter');
+      void infoCard.offsetWidth; // reflow
+      infoCard.classList.add('slide-enter');
+
+      /* eval form state */
+      if (ev?.status === 'submitted') {
+        showCarouselSubmittedView(ev);
+      } else {
+        showCarouselEditForm(ev, key);
+      }
+
+      clearScoreError();
+    }
+
+    function renderProgressDots() {
+      const container = document.getElementById('progress-dots');
+      container.innerHTML = '';
+      groups.forEach((g, i) => {
+        const ev  = evalMap[g.id];
+        const dot = document.createElement('button');
+        dot.title = g.name;
+        dot.className = 'progress-dot' +
+          (ev?.status === 'submitted' ? ' submitted' : ev ? ' draft' : '') +
+          (i === currentIdx ? ' active' : '');
+        dot.onclick = () => navigateTo(i);
+        container.appendChild(dot);
+      });
+    }
+
+    function showCarouselSubmittedView(ev) {
+      document.getElementById('submitted-view').classList.remove('hidden');
+      document.getElementById('edit-form').classList.add('hidden');
+      document.getElementById('view-score').textContent   = ev.score != null ? parseFloat(ev.score).toFixed(1) : '–';
+      document.getElementById('view-remarks').textContent = ev.remarks || 'No remarks provided.';
+      document.getElementById('view-submitted-at').textContent =
+        ev.submitted_at ? 'Submitted on ' + fmtDate(ev.submitted_at) : '';
+    }
+
+    function showCarouselEditForm(ev, key) {
+      document.getElementById('submitted-view').classList.add('hidden');
+      document.getElementById('edit-form').classList.remove('hidden');
+
+      const saved = formState[key];
+      const src   = saved || ev;
+
+      if (src?.score != null) {
+        const v = parseFloat(src.score);
+        document.getElementById('score-range').value         = v;
+        document.getElementById('score-input').value         = v.toFixed(1);
+        document.getElementById('score-display').textContent = v.toFixed(1);
+        if (!formState[key]) formState[key] = {};
+        formState[key].scoreEnabled = true;
+      } else {
+        document.getElementById('score-range').value         = 75;
+        document.getElementById('score-input').value         = '';
+        document.getElementById('score-display').textContent = '–';
+        if (!formState[key]) formState[key] = {};
+        formState[key].scoreEnabled = false;
+      }
+
+      const remarks = src?.remarks || '';
+      document.getElementById('remarks').value               = remarks;
+      document.getElementById('remarks-count').textContent   = remarks.length;
+    }
 
     function updateScore(val) {
       document.getElementById('score-display').textContent = parseFloat(val).toFixed(1);
-      document.getElementById('score-input').value = parseFloat(val).toFixed(1);
-      scoreEnabled = true;
+      document.getElementById('score-input').value         = parseFloat(val).toFixed(1);
+      const key = groups[currentIdx]?.id;
+      if (key != null) {
+        if (!formState[key]) formState[key] = {};
+        formState[key].scoreEnabled = true;
+      }
     }
 
     function syncScore(val) {
       const n = parseFloat(val);
       if (!isNaN(n) && n >= 0 && n <= 100) {
-        document.getElementById('score-range').value = n;
+        document.getElementById('score-range').value         = n;
         document.getElementById('score-display').textContent = n.toFixed(1);
-        scoreEnabled = true;
+        const key = groups[currentIdx]?.id;
+        if (key != null) {
+          if (!formState[key]) formState[key] = {};
+          formState[key].scoreEnabled = true;
+        }
       }
     }
 
     document.getElementById('remarks').addEventListener('input', function() {
       document.getElementById('remarks-count').textContent = this.value.length;
     });
+
+    function clearScoreError() {
+      document.getElementById('err-score').classList.add('hidden');
+    }
+
+    async function saveEvaluation(submit) {
+      closeConfirm();
+      const g   = groups[currentIdx];
+      const key = g.id;
+      const scoreEnabled = formState[key]?.scoreEnabled ?? false;
+
+      const rawScore = document.getElementById('score-input').value || document.getElementById('score-range').value;
+      const score    = scoreEnabled ? parseFloat(rawScore) : null;
+      const remarks  = document.getElementById('remarks').value.trim() || null;
+
+      if (score != null && (isNaN(score) || score < 0 || score > 100)) {
+        document.getElementById('err-score').textContent = 'Score must be between 0 and 100.';
+        document.getElementById('err-score').classList.remove('hidden');
+        return;
+      }
+      clearScoreError();
+
+      if (submit && score == null) {
+        document.getElementById('err-score').textContent = 'Please provide a score before submitting.';
+        document.getElementById('err-score').classList.remove('hidden');
+        return;
+      }
+
+      const btnDraft  = document.getElementById('btn-draft');
+      const btnSubmit = document.getElementById('btn-submit');
+      btnDraft.disabled = btnSubmit.disabled = true;
+      btnDraft.textContent  = submit ? 'Save Draft' : 'Saving…';
+      btnSubmit.textContent = submit ? 'Submitting…' : 'Submit';
+
+      try {
+        const res = await post('/api/v1/evaluations', {
+          schedule_id: parseInt(scheduleId),
+          group_id:    key,
+          score, remarks, submit,
+        });
+        const ev = res.data;
+        evalMap[key] = ev;
+        if (!formState[key]) formState[key] = {};
+        formState[key].scoreEnabled = ev.score != null;
+
+        if (submit) {
+          showCarouselSubmittedView(ev);
+          renderProgressDots();
+          showAlert(`Evaluation for "${g.name}" submitted.`, 'success');
+          /* auto-advance to next unsubmitted group */
+          const next = groups.findIndex((gr, i) => i > currentIdx && evalMap[gr.id]?.status !== 'submitted');
+          if (next !== -1) setTimeout(() => navigateTo(next), 800);
+        } else {
+          showCarouselEditForm(ev, key);
+          renderProgressDots();
+          showAlert('Draft saved.', 'success');
+        }
+      } catch (err) {
+        showAlert(err?.message || 'Failed to save.', 'error');
+      } finally {
+        btnDraft.disabled = btnSubmit.disabled = false;
+        btnDraft.textContent  = 'Save Draft';
+        btnSubmit.textContent = 'Submit';
+      }
+    }
+
+    function confirmSubmit() {
+      const g = groups[currentIdx];
+      document.getElementById('confirm-title').textContent = `Submit for "${g.name}"?`;
+      document.getElementById('confirm-ok-btn').onclick = () => saveEvaluation(true);
+      document.getElementById('confirm-modal').classList.remove('hidden');
+    }
+
+    /* ─── Single / Legacy ─── */
+
+    let singleScoreEnabled = false;
+    const LEGACY_KEY = 'legacy';
+
+    function singleUpdateScore(val) {
+      document.getElementById('single-score-display').textContent = parseFloat(val).toFixed(1);
+      document.getElementById('single-score-input').value         = parseFloat(val).toFixed(1);
+      singleScoreEnabled = true;
+    }
+
+    function singleSyncScore(val) {
+      const n = parseFloat(val);
+      if (!isNaN(n) && n >= 0 && n <= 100) {
+        document.getElementById('single-score-range').value         = n;
+        document.getElementById('single-score-display').textContent = n.toFixed(1);
+        singleScoreEnabled = true;
+      }
+    }
+
+    document.getElementById('single-remarks').addEventListener('input', function() {
+      document.getElementById('single-remarks-count').textContent = this.value.length;
+    });
+
+    function singlePrefillForm(ev) {
+      if (ev?.score != null) {
+        document.getElementById('single-score-range').value         = ev.score;
+        document.getElementById('single-score-input').value         = ev.score;
+        document.getElementById('single-score-display').textContent = parseFloat(ev.score).toFixed(1);
+        singleScoreEnabled = true;
+      }
+      if (ev?.remarks) {
+        document.getElementById('single-remarks').value              = ev.remarks;
+        document.getElementById('single-remarks-count').textContent  = ev.remarks.length;
+      }
+    }
+
+    function singleShowSubmittedView(ev) {
+      document.getElementById('single-edit-form').classList.add('hidden');
+      document.getElementById('single-submitted-view').classList.remove('hidden');
+      document.getElementById('single-eval-badge').classList.remove('hidden');
+      document.getElementById('single-view-score').textContent   = ev.score != null ? parseFloat(ev.score).toFixed(1) : '–';
+      document.getElementById('single-view-remarks').textContent = ev.remarks || 'No remarks provided.';
+      if (ev.submitted_at)
+        document.getElementById('single-view-submitted-at').textContent = 'Submitted on ' + fmtDate(ev.submitted_at);
+    }
+
+    async function singleSaveEvaluation(submit) {
+      singleCloseConfirm();
+      const score   = singleScoreEnabled ? parseFloat(document.getElementById('single-score-input').value || document.getElementById('single-score-range').value) : null;
+      const remarks = document.getElementById('single-remarks').value.trim() || null;
+
+      if (score != null && (isNaN(score) || score < 0 || score > 100)) {
+        document.getElementById('single-err-score').textContent = 'Score must be between 0 and 100.';
+        document.getElementById('single-err-score').classList.remove('hidden');
+        return;
+      }
+      document.getElementById('single-err-score').classList.add('hidden');
+
+      if (submit && score == null) {
+        document.getElementById('single-err-score').textContent = 'Please provide a score before submitting.';
+        document.getElementById('single-err-score').classList.remove('hidden');
+        return;
+      }
+
+      const btnDraft  = document.getElementById('single-btn-draft');
+      const btnSubmit = document.getElementById('single-btn-submit');
+      btnDraft.disabled = btnSubmit.disabled = true;
+      btnDraft.textContent  = submit ? 'Save Draft' : 'Saving…';
+      btnSubmit.textContent = submit ? 'Submitting…' : 'Submit Evaluation';
+
+      try {
+        const body = { schedule_id: parseInt(scheduleId), score, remarks, submit };
+        /* For single-group schedules, send the group_id */
+        if (groups.length === 1) body.group_id = groups[0].id;
+        const res = await post('/api/v1/evaluations', body);
+        const ev  = res.data;
+
+        if (submit) {
+          singleShowSubmittedView(ev);
+          showAlert('Evaluation submitted successfully.', 'success');
+        } else {
+          singlePrefillForm(ev);
+          showAlert('Draft saved.', 'success');
+        }
+      } catch (err) {
+        showAlert(err?.message || 'Failed to save.', 'error');
+      } finally {
+        btnDraft.disabled = btnSubmit.disabled = false;
+        btnDraft.textContent  = 'Save Draft';
+        btnSubmit.textContent = 'Submit Evaluation';
+      }
+    }
+
+    function singleConfirmSubmit() {
+      document.getElementById('confirm-title').textContent = 'Submit Evaluation?';
+      document.getElementById('confirm-ok-btn').onclick = () => singleSaveEvaluation(true);
+      document.getElementById('confirm-modal').classList.remove('hidden');
+    }
+
+    function singleCloseConfirm() { document.getElementById('confirm-modal').classList.add('hidden'); }
+    function closeConfirm()       { document.getElementById('confirm-modal').classList.add('hidden'); }
+
+    /* ─── Bootstrap ─── */
 
     requireAuthAsync('panelist').then(async user => {
       if (!user) return;
@@ -227,24 +691,33 @@
       }
 
       try {
-        /* load schedule + existing evaluation in parallel */
-        const [schedRes, evalRes] = await Promise.all([
+        const [schedRes, evalsRes] = await Promise.all([
           get(`/api/v1/schedules/${scheduleId}`),
-          get(`/api/v1/evaluations/schedule/${scheduleId}`).catch(() => ({ data: null })),
+          get(`/api/v1/evaluations/schedule/${scheduleId}`).catch(() => ({ data: [] })),
         ]);
 
-        const s  = schedRes.data;
-        const ev = evalRes.data;
+        const s    = schedRes.data;
+        groups     = s.groups || [];
 
-        /* fill schedule info */
-        document.getElementById('sub-title').textContent    = s.submission_title || '"”';
-        document.getElementById('student-name').textContent = s.student_name     || '"”';
-        document.getElementById('student-number').textContent = s.student_number || '';
-        document.getElementById('sched-date').textContent   = formatDate(s.scheduled_at, true);
-        document.getElementById('sched-venue').textContent  = s.venue_name || 'TBD';
-        document.getElementById('sched-type').textContent   = (s.defense_type || s.submission_type || '').replace(/_/g,' ');
-        document.getElementById('sched-year').textContent   = s.school_year || '"”';
-        document.getElementById('sched-duration').textContent = (s.duration_min || 60) + ' min';
+        /* build evalMap from array returned by backend */
+        const evArr = Array.isArray(evalsRes.data) ? evalsRes.data : (evalsRes.data ? [evalsRes.data] : []);
+        evArr.forEach(ev => {
+          const k = ev.group_id != null ? ev.group_id : LEGACY_KEY;
+          evalMap[k] = ev;
+        });
+
+        /* schedule meta */
+        document.getElementById('sched-heading').textContent =
+          groups.length ? groups.map(g => g.name).join(' · ') : (s.submission_title || `Schedule #${s.id}`);
+        document.getElementById('sched-date').textContent  = fmtDate(s.scheduled_date);
+        document.getElementById('sched-time').textContent  = slotsLabel(s.time_slots);
+        document.getElementById('sched-venue').textContent = s.venue_name || 'TBD';
+
+        const yr = s.school_year || (groups[0]?.school_year);
+        if (yr) {
+          document.getElementById('sched-year').textContent = yr;
+          document.getElementById('school-year-cell').classList.remove('hidden');
+        }
 
         const sc = STATUS_CFG[s.status] || { label: s.status, cls: 'bg-gray-100 text-gray-700' };
         document.getElementById('sched-status-badge').innerHTML =
@@ -253,98 +726,38 @@
         document.getElementById('loading-state').classList.add('hidden');
         document.getElementById('main-content').classList.remove('hidden');
 
-        /* fill evaluation if exists */
-        if (ev?.status === 'submitted') {
-          showSubmittedView(ev);
-        } else if (ev) {
-          /* draft "” prefill form */
-          prefillForm(ev);
+        if (groups.length >= 2) {
+          /* ── Multi-group carousel ── */
+          isMulti = true;
+          document.getElementById('carousel-section').classList.remove('hidden');
+          renderSlide();
+
         } else {
-          /* no eval yet "” set slider default active */
-          document.getElementById('score-display').textContent = '75.0';
-          document.getElementById('score-range').value = 75;
-          scoreEnabled = false;
+          /* ── Single group or legacy submission ── */
+          document.getElementById('single-section').classList.remove('hidden');
+
+          if (groups.length === 1) {
+            const g = groups[0];
+            if (g.group_title) {
+              document.getElementById('sg-title').textContent = g.group_title;
+              document.getElementById('single-group-card').classList.remove('hidden');
+            }
+            /* look up eval by group_id */
+            const ev = evalMap[g.id] || null;
+            if (ev?.status === 'submitted') singleShowSubmittedView(ev);
+            else if (ev) singlePrefillForm(ev);
+          } else {
+            /* legacy: no groups, submission-based */
+            const ev = evalMap[LEGACY_KEY] || null;
+            if (ev?.status === 'submitted') singleShowSubmittedView(ev);
+            else if (ev) singlePrefillForm(ev);
+          }
         }
+
       } catch (err) {
         document.getElementById('loading-state').textContent = err?.message || 'Failed to load schedule.';
       }
     });
-
-    function prefillForm(ev) {
-      if (ev.score != null) {
-        document.getElementById('score-range').value          = ev.score;
-        document.getElementById('score-input').value          = ev.score;
-        document.getElementById('score-display').textContent  = parseFloat(ev.score).toFixed(1);
-        scoreEnabled = true;
-      }
-      if (ev.remarks) {
-        document.getElementById('remarks').value = ev.remarks;
-        document.getElementById('remarks-count').textContent = ev.remarks.length;
-      }
-    }
-
-    function showSubmittedView(ev) {
-      document.getElementById('edit-form').classList.add('hidden');
-      document.getElementById('submitted-view').classList.remove('hidden');
-      document.getElementById('eval-status-badge').classList.remove('hidden');
-      document.getElementById('view-score').textContent   = ev.score != null ? parseFloat(ev.score).toFixed(1) : '"”';
-      document.getElementById('view-remarks').textContent = ev.remarks || 'No remarks provided.';
-      document.getElementById('view-submitted-at').textContent =
-        ev.submitted_at ? 'Submitted on ' + formatDate(ev.submitted_at, true) : '';
-    }
-
-    async function saveEvaluation(submit) {
-      closeConfirm();
-
-      const score   = scoreEnabled ? parseFloat(document.getElementById('score-input').value || document.getElementById('score-range').value) : null;
-      const remarks = document.getElementById('remarks').value.trim() || null;
-
-      if (score != null && (isNaN(score) || score < 0 || score > 100)) {
-        document.getElementById('err-score').textContent = 'Score must be between 0 and 100.';
-        document.getElementById('err-score').classList.remove('hidden');
-        return;
-      }
-      document.getElementById('err-score').classList.add('hidden');
-
-      if (submit && score == null) {
-        document.getElementById('err-score').textContent = 'Please provide a score before submitting.';
-        document.getElementById('err-score').classList.remove('hidden');
-        return;
-      }
-
-      const btnDraft  = document.getElementById('btn-draft');
-      const btnSubmit = document.getElementById('btn-submit');
-      btnDraft.disabled = btnSubmit.disabled = true;
-      btnDraft.textContent  = submit ? 'Save Draft' : 'Saving…';
-      btnSubmit.textContent = submit ? 'Submitting…' : 'Submit Evaluation';
-
-      try {
-        const res = await post('/api/v1/evaluations', { schedule_id: parseInt(scheduleId), score, remarks, submit });
-        const ev  = res.data;
-
-        if (submit) {
-          showSubmittedView(ev);
-          showAlert('Evaluation submitted successfully.', 'success');
-        } else {
-          prefillForm(ev);
-          showAlert('Draft saved.', 'success');
-        }
-      } catch (err) {
-        showAlert(err?.message || 'Failed to save.', 'error');
-      } finally {
-        btnDraft.disabled = btnSubmit.disabled = false;
-        btnDraft.textContent  = 'Save Draft';
-        btnSubmit.textContent = 'Submit Evaluation';
-      }
-    }
-
-    function confirmSubmit() {
-      document.getElementById('confirm-modal').classList.remove('hidden');
-    }
-
-    function closeConfirm() {
-      document.getElementById('confirm-modal').classList.add('hidden');
-    }
 
     function showAlert(msg, type = 'error') {
       const el = document.getElementById('alert');
@@ -358,4 +771,3 @@
   </script>
 </body>
 </html>
-

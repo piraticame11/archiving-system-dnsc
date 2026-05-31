@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Users "” DNSC Research System</title>
+  <title>Users "” ACES Research System</title>
   <link rel="icon" type="image/webp" href="/assets/img/aw.webp">
   <link rel="stylesheet" href="/assets/css/app.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -22,7 +22,7 @@
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
       </a>
       <img src="/assets/img/aw.webp" alt="School Logo" class="w-9 h-9 object-contain rounded-lg">
-      <span class="font-bold text-lg">DNSC Research System</span>
+      <span class="font-bold text-lg">ACES Research System</span>
     </div>
     <div class="flex items-center gap-4">
       <span id="user-name" class="text-sm text-primary-100"></span>
@@ -38,11 +38,18 @@
         <h1 class="text-2xl font-bold text-gray-900">Users</h1>
         <p class="text-sm text-gray-500 mt-0.5">Manage system accounts, roles, and access</p>
       </div>
-      <button onclick="openImportModal()"
-        class="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors shadow-sm whitespace-nowrap">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-        Import Students
-      </button>
+      <div class="flex items-center gap-2">
+        <button onclick="openCreateModal()"
+          class="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors shadow-sm whitespace-nowrap">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Create Account
+        </button>
+        <button onclick="openImportModal()"
+          class="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors shadow-sm whitespace-nowrap">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          Import Students
+        </button>
+      </div>
     </div>
 
     <!-- Stats row -->
@@ -140,6 +147,87 @@
       <div class="flex gap-3">
         <button onclick="closeResetModal()" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
         <button id="btn-save-reset" onclick="submitResetPassword()" class="flex-1 px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">Reset Password</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Account Modal -->
+  <div id="create-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-5">
+        <h2 class="text-lg font-bold text-gray-900">Create Account</h2>
+        <button onclick="closeCreateModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">First Name <span class="text-red-500">*</span></label>
+          <input id="create-first-name" type="text" placeholder="e.g. Juan" class="form-input">
+          <p id="err-create-first-name" class="text-xs text-red-600 mt-1 hidden"></p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Last Name <span class="text-red-500">*</span></label>
+          <input id="create-last-name" type="text" placeholder="e.g. Dela Cruz" class="form-input">
+          <p id="err-create-last-name" class="text-xs text-red-600 mt-1 hidden"></p>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Email <span class="text-red-500">*</span></label>
+        <input id="create-email" type="email" placeholder="e.g. jdelacruz@aces.edu.ph" class="form-input">
+        <p id="err-create-email" class="text-xs text-red-600 mt-1 hidden"></p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
+          <input id="create-password" type="password" placeholder="Min. 8 chars" class="form-input">
+          <p id="err-create-password" class="text-xs text-red-600 mt-1 hidden"></p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Confirm Password <span class="text-red-500">*</span></label>
+          <input id="create-confirm" type="password" placeholder="Re-enter password" class="form-input">
+          <p id="err-create-confirm" class="text-xs text-red-600 mt-1 hidden"></p>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Role <span class="text-red-500">*</span></label>
+        <select id="create-role" class="form-input text-sm py-2" onchange="handleCreateRoleChange()">
+          <option value="">— Select Role —</option>
+          <option value="student">Student</option>
+          <option value="instructor">Instructor</option>
+          <option value="panelist">Panelist</option>
+          <option value="admin">Admin</option>
+          <option value="superadmin">Superadmin</option>
+        </select>
+        <p id="err-create-role" class="text-xs text-red-600 mt-1 hidden"></p>
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
+        <select id="create-department" class="form-input text-sm py-2">
+          <option value="">— None —</option>
+        </select>
+      </div>
+
+      <div id="create-student-number-row" class="mb-4 hidden">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Student Number</label>
+        <input id="create-student-number" type="text" placeholder="e.g. 2021-00163" class="form-input">
+      </div>
+
+      <div class="mb-5 flex items-center gap-2">
+        <input id="create-is-active" type="checkbox" checked class="h-4 w-4 rounded border-gray-300 text-primary-600">
+        <label for="create-is-active" class="text-sm font-medium text-gray-700">Active (user can log in immediately)</label>
+      </div>
+
+      <div id="create-alert" class="hidden mb-4 px-3 py-2 rounded-lg text-sm text-red-700 bg-red-50 border border-red-200"></div>
+
+      <div class="flex gap-3">
+        <button onclick="closeCreateModal()" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+        <button id="btn-create-submit" onclick="submitCreateUser()" class="flex-1 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors">Create Account</button>
       </div>
     </div>
   </div>
@@ -448,6 +536,89 @@
     }
     function formatDate(d) {
       return d ? new Date(d).toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric' }) : '””';
+    }
+
+    // ── Create Account ───────────────────────────────────────────────────────
+    const CREATE_ERROR_IDS = [
+      'err-create-first-name', 'err-create-last-name', 'err-create-email',
+      'err-create-password', 'err-create-confirm', 'err-create-role', 'create-alert',
+    ];
+
+    async function openCreateModal() {
+      ['create-first-name','create-last-name','create-email','create-password','create-confirm','create-student-number']
+        .forEach(id => { document.getElementById(id).value = ''; });
+      document.getElementById('create-role').value = '';
+      document.getElementById('create-is-active').checked = true;
+      document.getElementById('create-student-number-row').classList.add('hidden');
+      CREATE_ERROR_IDS.forEach(id => document.getElementById(id).classList.add('hidden'));
+      document.getElementById('create-modal').classList.remove('hidden');
+      await loadCreateDepartments();
+    }
+
+    async function loadCreateDepartments() {
+      const sel = document.getElementById('create-department');
+      sel.innerHTML = '<option value="">Loading…</option>';
+      try {
+        const res  = await get('/api/v1/departments');
+        const list = res.data || [];
+        sel.innerHTML = '<option value="">— None —</option>' +
+          list.map(d => `<option value="${d.id}">${escHtml(d.name)} (${escHtml(d.code)})</option>`).join('');
+      } catch (_) {
+        sel.innerHTML = '<option value="">Failed to load departments</option>';
+      }
+    }
+
+    function closeCreateModal() {
+      document.getElementById('create-modal').classList.add('hidden');
+    }
+
+    function handleCreateRoleChange() {
+      const role = document.getElementById('create-role').value;
+      document.getElementById('create-student-number-row').classList.toggle('hidden', role !== 'student');
+    }
+
+    async function submitCreateUser() {
+      const firstName    = document.getElementById('create-first-name').value.trim();
+      const lastName     = document.getElementById('create-last-name').value.trim();
+      const email        = document.getElementById('create-email').value.trim();
+      const password     = document.getElementById('create-password').value;
+      const confirm      = document.getElementById('create-confirm').value;
+      const role         = document.getElementById('create-role').value;
+      const departmentId = document.getElementById('create-department').value;
+      const studentNum   = document.getElementById('create-student-number').value.trim();
+      const isActive     = document.getElementById('create-is-active').checked;
+
+      CREATE_ERROR_IDS.forEach(id => document.getElementById(id).classList.add('hidden'));
+
+      let valid = true;
+      function fieldErr(id, msg) { document.getElementById(id).textContent = msg; document.getElementById(id).classList.remove('hidden'); valid = false; }
+
+      if (!firstName) fieldErr('err-create-first-name', 'First name is required.');
+      if (!lastName)  fieldErr('err-create-last-name', 'Last name is required.');
+      if (!email || !/\S+@\S+\.\S+/.test(email)) fieldErr('err-create-email', 'A valid email is required.');
+      if (!password || password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password))
+        fieldErr('err-create-password', 'Password must be at least 8 characters with an uppercase letter and a number.');
+      if (password !== confirm) fieldErr('err-create-confirm', 'Passwords do not match.');
+      if (!role) fieldErr('err-create-role', 'Please select a role.');
+      if (!valid) return;
+
+      const btn = document.getElementById('btn-create-submit');
+      btn.disabled = true; btn.textContent = 'Creating…';
+      try {
+        const body = { first_name: firstName, last_name: lastName, email, password, role, is_active: isActive };
+        if (departmentId) body.department_id = Number(departmentId);
+        if (studentNum)   body.student_number = studentNum;
+        await post('/api/v1/users', body);
+        closeCreateModal();
+        showAlert(`Account for ${firstName} ${lastName} created successfully.`, 'success');
+        loadUsers();
+      } catch (err) {
+        const alertEl = document.getElementById('create-alert');
+        alertEl.textContent = err?.message || 'Failed to create account.';
+        alertEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Create Account';
+      }
     }
 
     // ── Import Students ──────────────────────────────────────────────────────

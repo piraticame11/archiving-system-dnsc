@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Archive &mdash; DNSC Research System</title>
+  <title>Archive &mdash; ACES Research System</title>
   <link rel="icon" type="image/webp" href="/assets/img/aw.webp">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -68,7 +68,7 @@
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
       </a>
       <img src="/assets/img/aw.webp" onerror="this.src='https://placehold.co/100x100?text=Logo'" alt="School Logo" class="w-9 h-9 object-contain rounded-lg">
-      <span class="font-bold text-lg">DNSC Research System</span>
+      <span class="font-bold text-lg">ACES Research System</span>
     </div>
     <div class="flex items-center gap-4">
       <span id="user-name" class="text-sm text-primary-100"></span>
@@ -153,7 +153,7 @@
     <div id="pane-promote" class="hidden">
       <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5 flex items-start gap-3">
         <svg class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        <p class="text-sm text-amber-700">These are <strong>approved</strong> submissions not yet in the archive. Select a submission and choose which uploaded document to publish.</p>
+        <p class="text-sm text-amber-700">These are <strong>approved</strong> submissions not yet in the archive. Only submissions with an uploaded <strong>Full Document</strong> can be promoted. Submissions showing "No docs" are missing a full document upload.</p>
       </div>
 
       <!-- Eligible table -->
@@ -289,7 +289,7 @@
           <select id="pm-document" class="form-input" required>
             <option value="">Select document…</option>
           </select>
-          <p class="text-xs text-gray-400 mt-1">Only PDF/DOCX files uploaded for this submission are shown.</p>
+          <p class="text-xs text-gray-400 mt-1">Only <strong>Full Document</strong> uploads for this submission are shown.</p>
         </div>
 
         <!-- Authors -->

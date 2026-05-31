@@ -3,15 +3,36 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Advisees "” DNSC Research System</title>
+  <title>My Advisees – ACES Research System</title>
   <link rel="icon" type="image/webp" href="/assets/img/aw.webp">
   <link rel="stylesheet" href="/assets/css/app.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     .form-input { width:100%;padding:.5rem .75rem;font-size:.875rem;border:1px solid #d1d5db;border-radius:.5rem;outline:none;transition:border-color .15s,box-shadow .15s;background:#fff; }
     .form-input:focus { border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.25); }
-    .status-badge { display:inline-flex;align-items:center;padding:.2rem .6rem;border-radius:9999px;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em; }
-    tr:hover td { background:#f8fafc; }
+
+    .group-row { cursor:pointer; transition: background .12s; }
+    .group-row:hover td { background:#f0fdf4; }
+    .group-row.open td { background:#f0fdf4; }
+
+    .members-row { display:none; }
+    .members-row.open { display:table-row; }
+
+    .chevron { transition: transform .2s; display:inline-block; }
+    .chevron.open { transform: rotate(90deg); }
+
+    .member-badge {
+      display:inline-flex;align-items:center;gap:.4rem;
+      padding:.25rem .65rem;border-radius:9999px;
+      font-size:.72rem;font-weight:600;
+      background:#e0f2fe;color:#0369a1;
+    }
+    .leader-badge {
+      display:inline-flex;align-items:center;gap:.25rem;
+      padding:.15rem .5rem;border-radius:9999px;
+      font-size:.68rem;font-weight:700;
+      background:#fef9c3;color:#92400e;letter-spacing:.03em;
+    }
   </style>
 </head>
 <body class="bg-gray-50 font-sans min-h-screen">
@@ -22,7 +43,7 @@
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
       </a>
       <img src="/assets/img/aw.webp" alt="School Logo" class="w-9 h-9 object-contain rounded-lg">
-      <span class="font-bold text-lg">DNSC Research System</span>
+      <span class="font-bold text-lg">ACES Research System</span>
     </div>
     <div class="flex items-center gap-4">
       <span id="user-name" class="text-sm text-primary-100"></span>
@@ -34,37 +55,23 @@
 
     <div class="mb-6">
       <h1 class="text-2xl font-bold text-gray-900">My Advisees</h1>
-      <p class="text-sm text-gray-500 mt-0.5">Submissions assigned to you as adviser</p>
+      <p class="text-sm text-gray-500 mt-0.5">Groups that have assigned you as their adviser</p>
     </div>
 
     <!-- Stats -->
-    <div id="stats-row" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6"></div>
+    <div id="stats-row" class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6"></div>
 
     <!-- Alert -->
     <div id="alert" class="hidden mb-4 px-4 py-3 rounded-lg text-sm font-medium"></div>
 
-    <!-- Filters -->
+    <!-- Search -->
     <div class="bg-white border border-gray-200 rounded-xl px-4 py-3 flex flex-wrap items-center gap-3 mb-5 shadow-sm">
       <div class="relative flex-1 min-w-52">
         <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/></svg>
-        <input id="f-search" type="text" placeholder="Search student name, number, or title…"
+        <input id="f-search" type="text" placeholder="Search group name, title, or member…"
           class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
       </div>
-      <select id="f-status" class="form-input w-auto text-sm py-2">
-        <option value="">All Statuses</option>
-        <option value="draft">Draft</option>
-        <option value="submitted">Submitted</option>
-        <option value="under_review">Under Review</option>
-        <option value="revision_required">Revision Required</option>
-        <option value="approved">Approved</option>
-        <option value="rejected">Rejected</option>
-      </select>
-      <select id="f-type" class="form-input w-auto text-sm py-2">
-        <option value="">All Types</option>
-        <option value="thesis">Thesis</option>
-        <option value="capstone">Capstone</option>
-      </select>
-      <button onclick="resetFilters()" class="px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Reset</button>
+      <button onclick="resetSearch()" class="px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Reset</button>
     </div>
 
     <!-- Table -->
@@ -73,41 +80,22 @@
         <table class="w-full text-sm">
           <thead>
             <tr class="bg-gray-50 border-b border-gray-200">
-              <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Student</th>
-              <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Title</th>
-              <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Type</th>
-              <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Period</th>
-              <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Status</th>
-              <th class="text-center px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Docs</th>
+              <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide w-8"></th>
+              <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Group</th>
+              <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Research Title</th>
+              <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Department</th>
+              <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">School Year</th>
+              <th class="text-center px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Members</th>
               <th class="text-right px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Actions</th>
             </tr>
           </thead>
           <tbody id="table-body">
-            <tr><td colspan="7" class="px-4 py-8 text-center text-sm text-gray-400">Loading advisees…</td></tr>
+            <tr><td colspan="7" class="px-4 py-8 text-center text-sm text-gray-400">Loading groups…</td></tr>
           </tbody>
         </table>
       </div>
-      <div id="pagination" class="hidden border-t border-gray-200 px-4 py-3 flex items-center justify-between">
-        <p id="page-info" class="text-sm text-gray-500"></p>
-        <div class="flex gap-2">
-          <button id="btn-prev" onclick="changePage(-1)" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Previous</button>
-          <button id="btn-next" onclick="changePage(1)"  class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Next</button>
-        </div>
-      </div>
     </div>
-  </div>
 
-  <!-- Detail Modal -->
-  <div id="detail-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
-      <div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100 flex-shrink-0">
-        <h2 id="modal-title" class="text-lg font-bold text-gray-900">Submission Details</h2>
-        <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-        </button>
-      </div>
-      <div id="modal-body" class="overflow-y-auto px-6 py-5 space-y-4 flex-1"></div>
-    </div>
   </div>
 
   <script src="/assets/js/auth.js"></script>
@@ -115,117 +103,41 @@
   <script src="/assets/js/utils.js"></script>
   <script>
     function escHtml(s) { const d = document.createElement('div'); d.appendChild(document.createTextNode(s||'')); return d.innerHTML; }
-    function escAttr(s) { return (s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-    function formatBytes(b) {
-      if (!b) return '"”';
-      if (b < 1024) return b + ' B';
-      if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
-      return (b/1048576).toFixed(1) + ' MB';
-    }
 
-    async function http(fn) {
-      const res = await fn(); const json = await res.json();
-      if (!res.ok) throw json; return json;
-    }
-    const get = path => http(() => apiGet(path));
-
-    let currentPage = 1;
-    let totalPages  = 1;
+    let allGroups = [];
     let searchTimer = null;
-
-    const STATUS_CONFIG = {
-      draft:             { label:'Draft',             bg:'bg-gray-100',   text:'text-gray-700'   },
-      submitted:         { label:'Submitted',         bg:'bg-blue-100',   text:'text-blue-700'   },
-      under_review:      { label:'Under Review',      bg:'bg-yellow-100', text:'text-yellow-700' },
-      revision_required: { label:'Revision Required', bg:'bg-orange-100', text:'text-orange-700' },
-      approved:          { label:'Approved',          bg:'bg-green-100',  text:'text-green-700'  },
-      rejected:          { label:'Rejected',          bg:'bg-red-100',    text:'text-red-700'    },
-    };
-
-    function badge(status) {
-      const c = STATUS_CONFIG[status] || { label: status, bg:'bg-gray-100', text:'text-gray-700' };
-      return `<span class="status-badge ${c.bg} ${c.text}">${c.label}</span>`;
-    }
 
     requireAuthAsync('instructor').then(user => {
       if (!user) return;
       document.getElementById('user-name').textContent = user.full_name || user.email;
-      loadAdvisees();
+      loadGroups();
 
-      ['f-status', 'f-type'].forEach(id =>
-        document.getElementById(id).addEventListener('change', () => { currentPage = 1; loadAdvisees(); }));
       document.getElementById('f-search').addEventListener('input', () => {
         clearTimeout(searchTimer);
-        searchTimer = setTimeout(() => { currentPage = 1; loadAdvisees(); }, 350);
+        searchTimer = setTimeout(renderTable, 300);
       });
     });
 
-    async function loadAdvisees() {
-      const params = new URLSearchParams({ page: currentPage, limit: 15 });
-      const search = document.getElementById('f-search').value.trim();
-      const status = document.getElementById('f-status').value;
-      const type   = document.getElementById('f-type').value;
-      if (search) params.set('search', search);
-      if (status) params.set('status', status);
-      if (type)   params.set('type', type);
-
+    async function loadGroups() {
       const tbody = document.getElementById('table-body');
-      tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-sm text-gray-400">Loading…</td></tr>`;
-
+      tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-gray-400">Loading…</td></tr>`;
       try {
-        const res   = await get(`/api/v1/adviser/my-advisees?${params}`);
-        const items = res.data?.data || [];
-        totalPages  = res.data?.pagination?.totalPages || 1;
-        const total = res.data?.pagination?.total || items.length;
-
-        renderStats(items, total);
-        document.getElementById('pagination').classList.toggle('hidden', totalPages <= 1);
-
-        if (!items.length) {
-          tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-10 text-center text-sm text-gray-400">No advisees found. Upload an adviser list to get started.</td></tr>`;
-          return;
-        }
-
-        tbody.innerHTML = items.map(s => `
-          <tr class="border-b border-gray-100 cursor-pointer" onclick="openModal(${s.id})">
-            <td class="px-4 py-3">
-              <p class="font-medium text-gray-900">${escHtml(s.first_name + ' ' + s.last_name)}</p>
-              <p class="text-xs text-gray-400 mt-0.5">${escHtml(s.student_number || s.student_email || '"”')}</p>
-            </td>
-            <td class="px-4 py-3 max-w-xs">
-              <p class="text-sm text-gray-800 line-clamp-2">${escHtml(s.title)}</p>
-              ${s.latest_remarks ? `<p class="text-xs text-gray-400 mt-0.5 truncate italic">"${escHtml(s.latest_remarks)}"</p>` : ''}
-            </td>
-            <td class="px-4 py-3">
-              <span class="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-indigo-50 text-indigo-700">${s.type}</span>
-            </td>
-            <td class="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">${escHtml(s.school_year)} Â· ${escHtml(s.semester)}</td>
-            <td class="px-4 py-3">${badge(s.status)}</td>
-            <td class="px-4 py-3 text-center text-sm text-gray-600">${s.documents_count || 0}</td>
-            <td class="px-4 py-3 text-right">
-              <button onclick="event.stopPropagation(); openModal(${s.id})"
-                class="px-3 py-1.5 text-xs font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors">
-                View
-              </button>
-            </td>
-          </tr>`).join('');
-
-        updatePagination();
+        const res = await apiGet('/api/v1/adviser/my-groups');
+        const json = await res.json();
+        allGroups = json.data || [];
+        renderStats();
+        renderTable();
       } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-sm text-red-500">${escHtml(err?.message || 'Failed to load.')}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-6 text-center text-sm text-red-500">Failed to load groups.</td></tr>`;
       }
     }
 
-    function renderStats(items, total) {
-      const counts = {};
-      items.forEach(s => { counts[s.status] = (counts[s.status] || 0) + 1; });
+    function renderStats() {
+      const totalMembers = allGroups.reduce((s, g) => s + (g.member_count || 0), 0);
       const cards = [
-        { label: 'Total',            value: total,                       color: 'text-primary-700' },
-        { label: 'Draft',            value: counts.draft            || 0, color: 'text-gray-600'    },
-        { label: 'Submitted',        value: counts.submitted        || 0, color: 'text-blue-700'    },
-        { label: 'Under Review',     value: counts.under_review     || 0, color: 'text-yellow-700'  },
-        { label: 'Approved',         value: counts.approved         || 0, color: 'text-green-700'   },
-        { label: 'Rev. Required',    value: counts.revision_required|| 0, color: 'text-orange-700'  },
+        { label: 'Total Groups',   value: allGroups.length, color: 'text-primary-700' },
+        { label: 'Total Members',  value: totalMembers,     color: 'text-blue-700'    },
+        { label: 'With Title',     value: allGroups.filter(g => g.title).length, color: 'text-green-700' },
       ];
       document.getElementById('stats-row').innerHTML = cards.map(c => `
         <div class="bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
@@ -234,102 +146,131 @@
         </div>`).join('');
     }
 
-    async function openModal(submissionId) {
-      document.getElementById('modal-title').textContent = 'Loading…';
-      document.getElementById('modal-body').innerHTML    = '<p class="text-sm text-gray-400">Loading…</p>';
-      document.getElementById('detail-modal').classList.remove('hidden');
+    function renderTable() {
+      const q = document.getElementById('f-search').value.trim().toLowerCase();
+      const tbody = document.getElementById('table-body');
 
-      try {
-        const res = await get(`/api/v1/submissions/${submissionId}`);
-        const sub = res.data;
+      const filtered = q
+        ? allGroups.filter(g =>
+            (g.name||'').toLowerCase().includes(q) ||
+            (g.title||'').toLowerCase().includes(q) ||
+            (g.department_name||'').toLowerCase().includes(q) ||
+            (g.members||[]).some(m =>
+              (m.name||'').toLowerCase().includes(q) ||
+              (m.student_number||'').toLowerCase().includes(q)
+            )
+          )
+        : allGroups;
 
-        document.getElementById('modal-title').textContent = sub.title;
-        document.getElementById('modal-body').innerHTML = `
-          <div class="grid grid-cols-2 gap-4 text-sm">
-            <div><p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Student</p>
-              <p class="font-medium text-gray-800">${escHtml(sub.student_name)}</p>
-              <p class="text-xs text-gray-500">${escHtml(sub.student_number || '"”')}</p></div>
-            <div><p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Status</p>${badge(sub.status)}</div>
-            <div><p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Type</p><p class="text-gray-800">${escHtml(sub.type)}</p></div>
-            <div><p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Period</p><p class="text-gray-800">${escHtml(sub.school_year)} Â· ${escHtml(sub.semester)}</p></div>
-            <div><p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Department</p><p class="text-gray-800">${escHtml(sub.department_name || '"”')}</p></div>
-            <div><p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Submitted</p><p class="text-gray-800">${formatDate(sub.submitted_at) || '"”'}</p></div>
+      if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-12 text-center">
+          <div class="flex flex-col items-center gap-2">
+            <svg class="w-10 h-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <p class="text-sm font-medium text-gray-500">${q ? 'No groups match your search.' : 'No groups assigned to you yet.'}</p>
+            ${!q ? '<p class="text-xs text-gray-400">Students can assign you as their adviser when creating a group.</p>' : ''}
           </div>
-          ${sub.abstract ? `<div><p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Abstract</p><p class="text-sm text-gray-700 leading-relaxed">${escHtml(sub.abstract)}</p></div>` : ''}
-          ${sub.keywords ? `<div><p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Keywords</p><p class="text-sm text-gray-700">${escHtml(sub.keywords)}</p></div>` : ''}
-          ${sub.documents?.length ? `
-            <div>
-              <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Documents (${sub.documents.length})</p>
-              <div class="space-y-2">
-                ${sub.documents.map(d => `
-                  <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <svg class="w-5 h-5 text-primary-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                    <div class="flex-1 min-w-0">
-                      <p class="text-sm font-medium text-gray-800 truncate">${escHtml(d.file_name)}</p>
-                      <p class="text-xs text-gray-500">${d.doc_type.replace(/_/g,' ')} Â· v${d.version} Â· ${formatBytes(d.file_size)}</p>
-                    </div>
-                    ${d.is_current ? '<span class="text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full">Current</span>' : ''}
-                    <button onclick="viewDoc(${sub.id},${d.id},'${escAttr(d.file_name)}')"
-                      class="flex-shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-800 bg-primary-50 hover:bg-primary-100 px-2.5 py-1 rounded-md transition-colors">
-                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                      View
-                    </button>
-                  </div>`).join('')}
-              </div>
-            </div>` : ''}
-          ${sub.history?.length ? `
-            <div>
-              <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Status History</p>
-              <div class="space-y-2">
-                ${sub.history.map(h => `
-                  <div class="flex items-start gap-3 text-sm">
-                    <div class="w-2 h-2 rounded-full bg-primary-400 mt-1.5 flex-shrink-0"></div>
-                    <div>
-                      <span class="font-medium">${(h.new_status||'').replace(/_/g,' ')}</span>
-                      ${h.remarks ? `<span class="text-gray-500"> "” ${escHtml(h.remarks)}</span>` : ''}
-                      <p class="text-xs text-gray-400">${formatDate(h.changed_at)} ${h.changed_by_name ? 'Â· by '+escHtml(h.changed_by_name) : ''}</p>
-                    </div>
-                  </div>`).join('')}
-              </div>
-            </div>` : ''}`;
-      } catch (err) {
-        document.getElementById('modal-body').innerHTML = `<p class="text-sm text-red-500">${escHtml(err?.message || 'Failed to load.')}</p>`;
+        </td></tr>`;
+        return;
       }
+
+      tbody.innerHTML = filtered.map((g, i) => `
+        <tr class="group-row border-b border-gray-100" id="group-row-${i}" onclick="toggleGroup(${i})">
+          <td class="px-4 py-3 text-gray-400">
+            <svg class="w-4 h-4 chevron" id="chevron-${i}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </td>
+          <td class="px-4 py-3">
+            <p class="font-semibold text-gray-900">${escHtml(g.name)}</p>
+            <p class="text-xs text-gray-400 mt-0.5">Leader: ${escHtml(g.leader_name)}</p>
+          </td>
+          <td class="px-4 py-3 max-w-xs">
+            ${g.title
+              ? `<p class="text-sm text-gray-800 line-clamp-2">${escHtml(g.title)}</p>`
+              : `<span class="text-xs italic text-gray-400">No title yet</span>`}
+          </td>
+          <td class="px-4 py-3 text-sm text-gray-600">${escHtml(g.department_name || '—')}</td>
+          <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">${escHtml(g.school_year || '—')}</td>
+          <td class="px-4 py-3 text-center">
+            <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary-100 text-primary-700 font-bold text-xs">
+              ${g.member_count || 0}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-right">
+            <button onclick="event.stopPropagation(); confirmRemove(${g.id}, '${escHtml(g.name)}')"
+              class="px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
+              Remove
+            </button>
+          </td>
+        </tr>
+        <tr class="members-row" id="members-row-${i}">
+          <td colspan="7" class="px-0 py-0 border-b border-gray-100">
+            <div class="bg-gray-50 border-t border-gray-100 px-6 py-4">
+              ${buildMembersPanel(g)}
+            </div>
+          </td>
+        </tr>`).join('');
     }
 
-    function closeModal() { document.getElementById('detail-modal').classList.add('hidden'); }
+    function buildMembersPanel(g) {
+      if (!g.members || !g.members.length) {
+        return `<p class="text-sm text-gray-400 italic">No members yet.</p>`;
+      }
+      const rows = g.members.map(m => `
+        <tr class="border-b border-gray-200 last:border-0">
+          <td class="py-2 pr-6">
+            <div class="flex items-center gap-2">
+              <span class="font-medium text-gray-800 text-sm">${escHtml(m.name)}</span>
+              ${m.student_id === g.leader_id
+                ? `<span class="leader-badge">Leader</span>`
+                : ''}
+            </div>
+          </td>
+          <td class="py-2 pr-6 text-xs text-gray-500">${escHtml(m.student_number || '—')}</td>
+          <td class="py-2 text-xs text-gray-500">${escHtml(m.email || '—')}</td>
+        </tr>`).join('');
 
-    /* doc viewer */
-    let _docViewerUrl = null;
-    async function viewDoc(subId, docId, fileName) {
-      try {
-        const res = await fetch(`/api/v1/submissions/${subId}/documents/${docId}/view`, {
-          headers: { Authorization: `Bearer ${getAccessToken()}` },
-        });
-        if (!res.ok) { showAlert('Could not load document.', 'error'); return; }
-        if (_docViewerUrl) URL.revokeObjectURL(_docViewerUrl);
-        _docViewerUrl = URL.createObjectURL(await res.blob());
-        window.open(_docViewerUrl, '_blank');
-      } catch (e) { showAlert('Failed to open document.', 'error'); }
+      return `
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Members (${g.members.length} / ${g.max_members})</p>
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-gray-200">
+              <th class="text-left pb-2 text-xs font-semibold text-gray-500">Name</th>
+              <th class="text-left pb-2 text-xs font-semibold text-gray-500">Student No.</th>
+              <th class="text-left pb-2 text-xs font-semibold text-gray-500">Email</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>`;
     }
 
-    function changePage(dir) {
-      currentPage = Math.max(1, Math.min(totalPages, currentPage + dir));
-      loadAdvisees();
+    function toggleGroup(i) {
+      const row     = document.getElementById(`group-row-${i}`);
+      const members = document.getElementById(`members-row-${i}`);
+      const chevron = document.getElementById(`chevron-${i}`);
+      const isOpen  = members.classList.contains('open');
+
+      members.classList.toggle('open', !isOpen);
+      chevron.classList.toggle('open', !isOpen);
+      row.classList.toggle('open', !isOpen);
     }
 
-    function updatePagination() {
-      document.getElementById('btn-prev').disabled = currentPage <= 1;
-      document.getElementById('btn-next').disabled = currentPage >= totalPages;
-      document.getElementById('page-info').textContent = `Page ${currentPage} of ${totalPages}`;
-    }
-
-    function resetFilters() {
+    function resetSearch() {
       document.getElementById('f-search').value = '';
-      document.getElementById('f-status').value = '';
-      document.getElementById('f-type').value   = '';
-      currentPage = 1;
-      loadAdvisees();
+      renderTable();
+    }
+
+    async function confirmRemove(groupId, groupName) {
+      if (!confirm(`Remove yourself as adviser from "${groupName}"?\n\nThe group will remain but will have no adviser assigned.`)) return;
+      try {
+        const res = await apiDelete(`/api/v1/adviser/my-groups/${groupId}`);
+        const json = await res.json();
+        if (!res.ok) throw json;
+        showAlert(json.message || 'Removed successfully.', 'success');
+        await loadGroups();
+      } catch (err) {
+        showAlert(err?.message || 'Failed to remove group.', 'error');
+      }
     }
 
     function showAlert(msg, type = 'error') {
@@ -344,4 +285,3 @@
   </script>
 </body>
 </html>
-

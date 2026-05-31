@@ -35,10 +35,11 @@ async function getBySchedule(req, res, next) {
 
 async function upsert(req, res, next) {
   try {
-    const { schedule_id, score, remarks, submit } = req.body;
+    const { schedule_id, group_id, score, remarks, submit } = req.body;
     const ev = await service.upsertEvaluation({
       schedule_id,
       panelist_id: req.user.id,
+      group_id:    group_id ?? null,
       score,
       remarks,
       submit: Boolean(submit),
@@ -53,4 +54,11 @@ async function upsert(req, res, next) {
   }
 }
 
-module.exports = { list, getOne, getBySchedule, upsert };
+async function getMyScores(req, res, next) {
+  try {
+    const result = await service.getStudentScores(req.user.id);
+    sendSuccess(res, result);
+  } catch (err) { next(err); }
+}
+
+module.exports = { list, getOne, getBySchedule, upsert, getMyScores };

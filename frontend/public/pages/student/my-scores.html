@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Scores – ACES Research System</title>
+  <link rel="icon" type="image/webp" href="/assets/img/aw.webp">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 font-sans min-h-screen">
+
+  <nav class="bg-primary-700 text-white px-6 py-4 flex items-center justify-between shadow sticky top-0 z-40">
+    <div class="flex items-center gap-3">
+      <a href="/pages/student/dashboard.html" class="text-primary-200 hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </a>
+      <img src="/assets/img/aw.webp" alt="School Logo" class="w-9 h-9 object-contain rounded-lg">
+      <span class="font-bold text-lg">ACES Research System</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <span id="user-name" class="text-sm text-primary-100"></span>
+      <button onclick="logout()" class="text-sm bg-primary-800 hover:bg-primary-900 px-3 py-1.5 rounded-lg transition-colors">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="max-w-4xl mx-auto px-6 py-8">
+
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-gray-900">My Scores</h1>
+      <p class="text-sm text-gray-500 mt-0.5">Evaluation results and feedback from your defense panels</p>
+    </div>
+
+    <!-- Stats row -->
+    <div id="stats-row" class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6"></div>
+
+    <!-- Group info banner -->
+    <div id="group-banner" class="hidden bg-white border border-gray-200 rounded-xl px-5 py-4 mb-5 shadow-sm flex items-center gap-4">
+      <div class="w-9 h-9 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      </div>
+      <div class="min-w-0">
+        <p id="group-name" class="text-sm font-semibold text-gray-800 truncate"></p>
+        <p id="group-meta" class="text-xs text-gray-500 truncate"></p>
+      </div>
+    </div>
+
+    <!-- No-group notice -->
+    <div id="no-group-notice" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-5 mb-6 text-sm text-amber-800">
+      <strong>No group found.</strong> You are not currently a member of any thesis or capstone group.
+      <a href="/pages/student/my-group.html" class="underline ml-1">Join or create a group →</a>
+    </div>
+
+    <!-- Main content -->
+    <div id="content">
+      <div class="text-center text-sm text-gray-400 py-16">Loading scores…</div>
+    </div>
+
+  </div>
+
+  <!-- Detail Modal -->
+  <div id="detail-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]">
+      <div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100 flex-shrink-0">
+        <div>
+          <h2 class="text-lg font-bold text-gray-900">Evaluation Details</h2>
+          <p id="modal-subtitle" class="text-xs text-gray-500 mt-0.5"></p>
+        </div>
+        <button onclick="closeDetail()" class="text-gray-400 hover:text-gray-600">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="modal-body" class="overflow-y-auto px-6 py-5 space-y-4 flex-1"></div>
+      <div class="px-6 pb-5 pt-3 border-t border-gray-100 flex-shrink-0">
+        <button onclick="closeDetail()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/utils.js"></script>
+  <script>
+    function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    const TIME_SLOTS = {
+      '8:00-9:00':  '8:00 – 9:00 AM',
+      '9:00-10:00': '9:00 – 10:00 AM',
+      '10:00-11:00':'10:00 – 11:00 AM',
+      '11:00-12:00':'11:00 AM – 12:00 PM',
+      '13:00-14:00':'1:00 – 2:00 PM',
+      '14:00-15:00':'2:00 – 3:00 PM',
+      '15:00-16:00':'3:00 – 4:00 PM',
+      '16:00-17:00':'4:00 – 5:00 PM',
+    };
+    function slotLabel(v){ return TIME_SLOTS[v]||v||'–'; }
+    function slotsLabel(arr){
+      if(!arr||!arr.length) return '–';
+      if(arr.length===1) return slotLabel(arr[0]);
+      const first=slotLabel(arr[0]).split('–')[0].trim();
+      const last=(slotLabel(arr[arr.length-1]).split('–')[1]||'').trim();
+      return `${first} – ${last} (${arr.length}hr)`;
+    }
+
+    function fmtDate(d){
+      if(!d) return '–';
+      const s=String(d).split('T')[0]; const[y,m,day]=s.split('-');
+      return new Date(+y,+m-1,+day).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'});
+    }
+
+    function fmtDatetime(d){
+      if(!d) return '–';
+      return new Date(d).toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+    }
+
+    function scoreColor(score){
+      if(score == null) return 'bg-gray-100 text-gray-500';
+      if(score >= 90)   return 'bg-green-100 text-green-700';
+      if(score >= 80)   return 'bg-blue-100 text-blue-700';
+      if(score >= 75)   return 'bg-yellow-100 text-yellow-700';
+      if(score >= 70)   return 'bg-orange-100 text-orange-700';
+      return 'bg-red-100 text-red-700';
+    }
+
+    function typeBadge(type){
+      const cfg={ thesis:{label:'Thesis',cls:'bg-purple-100 text-purple-700'}, capstone:{label:'Capstone',cls:'bg-indigo-100 text-indigo-700'} };
+      const c=cfg[type]||{label:type||'Defense',cls:'bg-gray-100 text-gray-600'};
+      return `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${c.cls}">${esc(c.label)}</span>`;
+    }
+
+    let allSchedules = [];
+
+    requireAuthAsync('student').then(user => {
+      if(!user) return;
+      document.getElementById('user-name').textContent = user.full_name || user.email;
+      loadScores();
+    });
+
+    async function loadScores(){
+      try {
+        const res = await apiGet('/api/v1/evaluations/my-scores');
+        const body = await res.json();
+        if(!res.ok) throw body;
+
+        const { group, schedules } = body.data;
+        allSchedules = schedules || [];
+
+        if(!group){
+          document.getElementById('no-group-notice').classList.remove('hidden');
+          renderStats([]);
+          renderContent([]);
+          return;
+        }
+
+        // Group banner
+        const banner = document.getElementById('group-banner');
+        banner.classList.remove('hidden');
+        document.getElementById('group-name').textContent = group.name || 'My Group';
+        const metaParts = [];
+        if(group.title) metaParts.push(group.title);
+        if(group.school_year) metaParts.push('S.Y. ' + group.school_year);
+        if(group.adviser_name) metaParts.push('Adviser: ' + group.adviser_name);
+        document.getElementById('group-meta').textContent = metaParts.join(' · ') || '–';
+
+        renderStats(allSchedules);
+        renderContent(allSchedules);
+      } catch(err){
+        document.getElementById('content').innerHTML =
+          `<div class="text-center text-sm text-red-500 py-16">${esc(err?.message || 'Failed to load scores.')}</div>`;
+      }
+    }
+
+    function renderStats(schedules){
+      const totalSchedules = schedules.length;
+      const totalEvals = schedules.reduce((sum, s) => sum + (s.panelists_count || 0), 0);
+      const allAvgs = schedules.map(s => s.average_score).filter(x => x != null);
+      const overallAvg = allAvgs.length
+        ? (allAvgs.reduce((a,b)=>a+b,0)/allAvgs.length).toFixed(2)
+        : '–';
+
+      document.getElementById('stats-row').innerHTML = [
+        { label: 'Defense Sessions',   value: totalSchedules, color: 'text-primary-700' },
+        { label: 'Evaluations Received', value: totalEvals,   color: 'text-blue-700'   },
+        { label: 'Overall Average',    value: overallAvg,     color: 'text-green-700'  },
+      ].map(x => `
+        <div class="bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
+          <p class="text-xs text-gray-500 mb-0.5">${x.label}</p>
+          <p class="text-2xl font-bold ${x.color}">${x.value}</p>
+        </div>`).join('');
+    }
+
+    function renderContent(schedules){
+      const container = document.getElementById('content');
+
+      if(!schedules.length){
+        container.innerHTML = `
+          <div class="bg-white border border-gray-200 rounded-xl p-10 text-center shadow-sm">
+            <div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg class="w-7 h-7 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+              </svg>
+            </div>
+            <p class="text-gray-700 font-semibold mb-1">No scores yet</p>
+            <p class="text-sm text-gray-500">Evaluation results will appear here after your defense panels submit their scores.</p>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = schedules.map((s, idx) => {
+        const avgScore = s.average_score != null ? s.average_score : null;
+        const avgCls   = scoreColor(avgScore);
+        const evals    = s.evaluations || [];
+
+        const panelRows = evals.map(ev => `
+          <div class="flex items-start justify-between gap-3 py-2.5 border-b border-gray-50 last:border-0">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-gray-800">${esc(ev.panelist_name)}</p>
+              ${ev.remarks
+                ? `<p class="text-xs text-gray-500 mt-0.5 line-clamp-2">${esc(ev.remarks)}</p>`
+                : `<p class="text-xs text-gray-400 mt-0.5 italic">No remarks</p>`}
+            </div>
+            <span class="inline-flex items-center justify-center min-w-[3rem] px-2.5 py-1 rounded-lg text-sm font-bold ${scoreColor(ev.score)} flex-shrink-0">
+              ${ev.score != null ? ev.score : '–'}
+            </span>
+          </div>`).join('');
+
+        return `
+          <div class="bg-white border border-gray-200 rounded-xl shadow-sm mb-4 overflow-hidden">
+            <!-- Card header -->
+            <div class="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap mb-1">
+                  ${typeBadge(s.submission_type)}
+                  <span class="text-xs text-gray-400">${fmtDate(s.scheduled_date)}</span>
+                </div>
+                <p class="text-sm font-semibold text-gray-900 truncate">${esc(s.submission_title || 'Defense Session')}</p>
+                <p class="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                  <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                  ${esc(s.venue_name || 'TBD')}
+                  <span class="mx-1">·</span>
+                  <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  ${esc(slotsLabel(s.time_slots))}
+                </p>
+              </div>
+              <!-- Average score badge -->
+              <div class="flex-shrink-0 text-center">
+                <div class="w-16 h-16 rounded-xl flex flex-col items-center justify-center ${avgCls}">
+                  <span class="text-xl font-bold leading-none">${avgScore != null ? avgScore : '–'}</span>
+                  <span class="text-xs mt-0.5 opacity-75">avg</span>
+                </div>
+                <p class="text-xs text-gray-400 mt-1">${s.panelists_count} panelist${s.panelists_count !== 1 ? 's' : ''}</p>
+              </div>
+            </div>
+
+            <!-- Evaluations list -->
+            <div class="px-5 py-1">
+              ${panelRows}
+            </div>
+
+            <!-- View full details button -->
+            ${evals.some(e => e.remarks && e.remarks.length > 80) ? `
+            <div class="px-5 pb-4">
+              <button onclick="openDetail(${idx})"
+                class="w-full mt-2 px-3 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                View Full Remarks
+              </button>
+            </div>` : ''}
+          </div>`;
+      }).join('');
+    }
+
+    function openDetail(idx){
+      const s = allSchedules[idx];
+      if(!s) return;
+
+      document.getElementById('modal-subtitle').textContent =
+        fmtDate(s.scheduled_date) + (s.venue_name ? ' · ' + s.venue_name : '');
+
+      const evals = s.evaluations || [];
+      document.getElementById('modal-body').innerHTML = `
+        <div class="flex items-center justify-between mb-1">
+          <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Submission</p>
+        </div>
+        <p class="text-sm font-medium text-gray-800 mb-4">${esc(s.submission_title || '–')}</p>
+
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Panelist Scores &amp; Feedback</p>
+        <div class="space-y-4">
+          ${evals.map(ev => `
+            <div class="bg-gray-50 rounded-xl p-4">
+              <div class="flex items-center justify-between gap-3 mb-2">
+                <p class="text-sm font-semibold text-gray-800">${esc(ev.panelist_name)}</p>
+                <span class="inline-flex items-center px-3 py-1 rounded-lg text-sm font-bold ${scoreColor(ev.score)}">
+                  ${ev.score != null ? ev.score : '–'}
+                </span>
+              </div>
+              ${ev.remarks
+                ? `<p class="text-sm text-gray-600 leading-relaxed">${esc(ev.remarks)}</p>`
+                : `<p class="text-sm text-gray-400 italic">No remarks provided.</p>`}
+              <p class="text-xs text-gray-400 mt-2">Submitted: ${fmtDatetime(ev.submitted_at)}</p>
+            </div>`).join('')}
+        </div>`;
+
+      document.getElementById('detail-modal').classList.remove('hidden');
+    }
+
+    function closeDetail(){ document.getElementById('detail-modal').classList.add('hidden'); }
+  </script>
+</body>
+</html>

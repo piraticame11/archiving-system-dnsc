@@ -2,6 +2,22 @@ const service = require('./groups.service');
 const db = require('../../config/database');
 const { sendSuccess, sendCreated, send400, send403, send404 } = require('../../utils/responseHelper');
 
+async function listAll(req, res, next) {
+  try {
+    const [rows] = await db.query(
+      `SELECT tg.id, tg.name, tg.title, tg.school_year,
+              d.name AS department_name,
+              CONCAT(l.first_name, ' ', l.last_name) AS leader_name
+       FROM thesis_groups tg
+       JOIN users l        ON tg.leader_id     = l.id
+       JOIN departments d  ON tg.department_id = d.id
+       WHERE tg.deleted_at IS NULL
+       ORDER BY tg.school_year DESC, tg.name ASC`
+    );
+    sendSuccess(res, rows);
+  } catch (err) { next(err); }
+}
+
 async function listInstructors(req, res, next) {
   try {
     const [rows] = await db.query(
@@ -147,4 +163,4 @@ async function disbandGroup(req, res, next) {
   }
 }
 
-module.exports = { listInstructors, getMyGroup, create, update, requestJoin, getPendingRequests, acceptRequest, rejectRequest, removeMember, leaveGroup, disbandGroup };
+module.exports = { listAll, listInstructors, getMyGroup, create, update, requestJoin, getPendingRequests, acceptRequest, rejectRequest, removeMember, leaveGroup, disbandGroup };

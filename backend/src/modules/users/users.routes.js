@@ -13,7 +13,7 @@ router.get(   '/import-template',     adminGuard,                               
 router.post(  '/import-students',     adminGuard,      uploadExcel.single('file'),                         ctrl.importStudents);
 router.post(  '/export-credentials',  adminGuard,                                                          ctrl.exportCredentials);
 router.get(   '/',                    adminGuard,      v.listRules,          handleValidation, ctrl.list);
-router.post(  '/',                    superAdminGuard, v.createRules,        handleValidation, ctrl.create);
+router.post(  '/',                    adminGuard,      v.createRules,        handleValidation, ctrl.create);
 router.get(   '/:id',                 adminGuard,      v.idRules,            handleValidation, ctrl.getOne);
 router.patch( '/:id',                 superAdminGuard, v.updateRules,        handleValidation, ctrl.update);
 router.delete('/:id',                 superAdminGuard, v.idRules,            handleValidation, ctrl.remove);

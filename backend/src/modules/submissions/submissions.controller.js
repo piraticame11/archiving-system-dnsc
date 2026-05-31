@@ -14,11 +14,16 @@ async function list(req, res, next) {
       department_id: req.query.department_id,
       type:          req.query.type,
       school_year:   req.query.school_year,
+      semester:      req.query.semester,
       page, limit,
     };
     /* students only see their own; instructors only see their advisees */
     if (req.user.role === ROLES.STUDENT)     filters.student_id  = req.user.id;
     if (req.user.role === ROLES.INSTRUCTOR)  filters.adviser_id  = req.user.id;
+
+    /* admin table only shows submissions that have a full document uploaded */
+    if (req.user.role === ROLES.ADMIN || req.user.role === ROLES.SUPERADMIN)
+      filters.require_full_document = true;
 
     const result = await service.listSubmissions(filters);
     sendSuccess(res, result);
@@ -54,6 +59,7 @@ async function create(req, res, next) {
     sendCreated(res, sub, 'Submission created as draft');
   } catch (err) {
     if (err.statusCode === 409) return res.status(409).json({ success: false, message: err.message });
+    if (err.statusCode === 400) return send400(res, err.message);
     next(err);
   }
 }

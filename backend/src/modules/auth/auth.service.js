@@ -1,4 +1,4 @@
-const bcrypt = require('bcryptjs');
+﻿const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const db = require('../../config/database');
@@ -91,7 +91,7 @@ async function refresh(token) {
   }
 
   const [tokenRows] = await db.query(
-    `SELECT * FROM refresh_tokens WHERE user_id = ? AND revoked = 0 AND expires_at > NOW()`,
+    `SELECT * FROM refresh_tokens WHERE user_id = ? AND revoked = 0 AND expires_at > UTC_TIMESTAMP()`,
     [payload.id]
   );
 
@@ -145,14 +145,14 @@ async function forgotPassword(email) {
   const link = `${process.env.FRONTEND_URL}/pages/reset-password.html?token=${token}`;
   await sendMail({
     to:      user.email,
-    subject: 'Password Reset — DNSC Research System',
+    subject: 'Password Reset — ACES Research System',
     html:    passwordResetHtml(`${user.first_name} ${user.last_name}`, link),
   });
 }
 
 async function resetPassword(token, newPassword) {
   const [rows] = await db.query(
-    `SELECT * FROM password_reset_tokens WHERE token = ? AND used = 0 AND expires_at > NOW() LIMIT 1`,
+    `SELECT * FROM password_reset_tokens WHERE token = ? AND used = 0 AND expires_at > UTC_TIMESTAMP() LIMIT 1`,
     [token]
   );
   if (!rows.length) throw Object.assign(new Error('Invalid or expired reset token.'), { status: 400 });

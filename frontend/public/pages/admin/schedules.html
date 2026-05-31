@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Schedules "” DNSC Research System</title>
+  <title>Schedules – ACES Research System</title>
   <link rel="icon" type="image/webp" href="/assets/img/aw.webp">
   <link rel="stylesheet" href="/assets/css/app.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -11,18 +11,45 @@
     .form-input { width:100%;padding:.5rem .75rem;font-size:.875rem;border:1px solid #d1d5db;border-radius:.5rem;outline:none;transition:border-color .15s,box-shadow .15s;background:#fff; }
     .form-input:focus { border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.25); }
     tr:hover td { background:#f8fafc; }
+
+    /* Calendar */
+    .cal-grid { display:grid; grid-template-columns: 120px repeat(7,1fr); border:1px solid #e5e7eb; border-radius:.75rem; overflow:hidden; }
+    .cal-header { background:#f9fafb; font-size:.68rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:#6b7280; padding:.5rem .4rem; text-align:center; border-right:1px solid #e5e7eb; border-bottom:1px solid #e5e7eb; }
+    .cal-slot-label { background:#f9fafb; display:flex; align-items:center; justify-content:center; text-align:center; font-size:.68rem; font-weight:600; color:#374151; line-height:1.3; border-right:1px solid #e5e7eb; border-bottom:1px solid #e5e7eb; padding:.4rem; }
+    .cal-cell { border-right:1px solid #e5e7eb; border-bottom:1px solid #e5e7eb; padding:.35rem; min-height:72px; }
+    .cal-cell:last-child { border-right:none; }
+    .cal-entry { font-size:.65rem; border-radius:.3rem; padding:.2rem .35rem; margin-bottom:.2rem; cursor:pointer; line-height:1.3; }
+    .cal-entry.scheduled   { background:#fef9c3; color:#854d0e; border:1px solid #fde047; }
+    .cal-entry.completed   { background:#dbeafe; color:#1e40af; border:1px solid #93c5fd; }
+    .cal-entry.cancelled   { background:#f3f4f6; color:#6b7280; border:1px solid #d1d5db; }
+    .cal-entry.rescheduled { background:#ffedd5; color:#9a3412; border:1px solid #fdba74; }
+    .cal-add { font-size:.65rem; color:#9ca3af; border:1px dashed #d1d5db; border-radius:.3rem; padding:.2rem; text-align:center; cursor:pointer; }
+    .cal-add:hover { background:#f0fdf4; border-color:#86efac; color:#16a34a; }
+    .cal-today { background:#f0fdf4; }
+    .tab-btn { padding:.45rem 1.1rem; font-size:.875rem; font-weight:500; border-radius:.5rem; transition:all .15s; cursor:pointer; }
+    .tab-btn.active { background:#16a34a; color:#fff; }
+    .tab-btn:not(.active) { color:#6b7280; }
+    .tab-btn:not(.active):hover { background:#f3f4f6; }
+
+    /* Slot checkboxes */
+    .slot-group-label { font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:#9ca3af; margin-bottom:.3rem; }
+    .slot-cb-grid { display:grid; grid-template-columns:1fr 1fr; gap:.35rem; }
+    .slot-cb { display:flex; align-items:center; gap:.5rem; padding:.35rem .5rem; border:1px solid #e5e7eb; border-radius:.4rem; cursor:pointer; transition:.12s; }
+    .slot-cb:hover { border-color:#86efac; background:#f0fdf4; }
+    .slot-cb.booked { background:#fef9c3; border-color:#fde047; cursor:not-allowed; opacity:.7; }
+    .slot-cb input[type=checkbox] { accent-color:#16a34a; width:14px; height:14px; flex-shrink:0; }
+    .slot-cb span { font-size:.78rem; font-weight:500; color:#374151; }
   </style>
 </head>
 <body class="bg-gray-50 font-sans min-h-screen">
 
-  <!-- Navbar -->
   <nav class="bg-primary-700 text-white px-6 py-4 flex items-center justify-between shadow sticky top-0 z-40">
     <div class="flex items-center gap-3">
       <a href="/pages/admin/dashboard.html" class="text-primary-200 hover:text-white transition-colors">
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
       </a>
       <img src="/assets/img/aw.webp" alt="School Logo" class="w-9 h-9 object-contain rounded-lg">
-      <span class="font-bold text-lg">DNSC Research System</span>
+      <span class="font-bold text-lg">ACES Research System</span>
     </div>
     <div class="flex items-center gap-4">
       <span id="user-name" class="text-sm text-primary-100"></span>
@@ -32,11 +59,10 @@
 
   <div class="max-w-7xl mx-auto px-6 py-8">
 
-    <!-- Page header -->
     <div class="mb-6 flex items-start justify-between">
       <div>
         <h1 class="text-2xl font-bold text-gray-900">Schedules</h1>
-        <p class="text-sm text-gray-500 mt-0.5">Schedule and manage thesis and capstone defense sessions</p>
+        <p class="text-sm text-gray-500 mt-0.5">Manage defense slots and venue availability</p>
       </div>
       <button onclick="openCreateModal()"
         class="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors shadow-sm">
@@ -45,154 +71,220 @@
       </button>
     </div>
 
-    <!-- Stats row -->
     <div id="stats-row" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6"></div>
-
-    <!-- Alert -->
     <div id="alert" class="hidden mb-4 px-4 py-3 rounded-lg text-sm font-medium"></div>
 
-    <!-- Filters -->
-    <div class="bg-white border border-gray-200 rounded-xl px-4 py-3 flex flex-wrap items-center gap-3 mb-5 shadow-sm">
-      <div class="relative flex-1 min-w-52">
-        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/></svg>
-        <input id="f-search" type="text" placeholder="Search submission title…"
-          class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
-      </div>
-      <select id="f-status" class="form-input w-auto text-sm py-2">
-        <option value="">All Statuses</option>
-        <option value="scheduled">Scheduled</option>
-        <option value="completed">Completed</option>
-        <option value="cancelled">Cancelled</option>
-        <option value="rescheduled">Rescheduled</option>
-      </select>
-      <input id="f-date-from" type="date" class="form-input w-auto text-sm py-2">
-      <input id="f-date-to"   type="date" class="form-input w-auto text-sm py-2">
-      <button onclick="resetFilters()" class="px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Reset</button>
+    <!-- Tabs -->
+    <div class="flex items-center gap-2 mb-5">
+      <button id="tab-calendar" class="tab-btn active" onclick="switchTab('calendar')">
+        <svg class="w-4 h-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        Calendar
+      </button>
+      <button id="tab-list" class="tab-btn" onclick="switchTab('list')">
+        <svg class="w-4 h-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+        List
+      </button>
     </div>
 
-    <!-- Table -->
-    <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="bg-gray-50 border-b border-gray-200">
-              <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Submission</th>
-              <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Venue</th>
-              <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Date &amp; Time</th>
-              <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Duration</th>
-              <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Panelists</th>
-              <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Status</th>
-              <th class="text-right px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="table-body">
-            <tr><td colspan="7" class="px-4 py-8 text-center text-sm text-gray-400">Loading schedules…</td></tr>
-          </tbody>
-        </table>
+    <!-- ═══ CALENDAR ══════════════════════════════════════════════════ -->
+    <div id="view-calendar">
+      <div class="bg-white border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between mb-4 shadow-sm">
+        <button onclick="shiftWeek(-1)" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>Prev
+        </button>
+        <div class="text-center">
+          <p id="cal-week-label" class="font-semibold text-gray-800 text-sm"></p>
+          <button onclick="goToToday()" class="text-xs text-primary-600 hover:underline mt-0.5">Today</button>
+        </div>
+        <button onclick="shiftWeek(1)" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1">
+          Next<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        </button>
       </div>
+      <div class="flex flex-wrap gap-3 mb-3 text-xs items-center">
+        <span class="font-medium text-gray-500">Legend:</span>
+        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-yellow-200 border border-yellow-400"></span>Scheduled</span>
+        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-blue-200 border border-blue-400"></span>Completed</span>
+        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-orange-200 border border-orange-400"></span>Rescheduled</span>
+        <span class="text-gray-400 ml-2">Click a card to view · Click "+" to add</span>
+      </div>
+      <div class="overflow-x-auto rounded-xl shadow-sm">
+        <div id="cal-grid" class="cal-grid min-w-[720px]">
+          <div class="cal-header" style="min-height:42px;display:flex;align-items:center;justify-content:center">Time</div>
+        </div>
+      </div>
+    </div>
 
-      <!-- Pagination -->
-      <div id="pagination" class="hidden border-t border-gray-200 px-4 py-3 flex items-center justify-between">
-        <p id="page-info" class="text-sm text-gray-500"></p>
-        <div class="flex gap-2">
-          <button id="btn-prev" onclick="changePage(-1)" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Previous</button>
-          <button id="btn-next" onclick="changePage(1)"  class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Next</button>
+    <!-- ═══ LIST ══════════════════════════════════════════════════════ -->
+    <div id="view-list" class="hidden">
+      <div class="bg-white border border-gray-200 rounded-xl px-4 py-3 flex flex-wrap items-center gap-3 mb-5 shadow-sm">
+        <div class="relative flex-1 min-w-52">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/></svg>
+          <input id="f-search" type="text" placeholder="Search notes…"
+            class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
+        </div>
+        <select id="f-status" class="form-input w-auto text-sm py-2">
+          <option value="">All Statuses</option>
+          <option value="scheduled">Scheduled</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="rescheduled">Rescheduled</option>
+        </select>
+        <input id="f-date-from" type="date" class="form-input w-auto text-sm py-2">
+        <input id="f-date-to"   type="date" class="form-input w-auto text-sm py-2">
+        <button onclick="resetFilters()" class="px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">Reset</button>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-gray-50 border-b border-gray-200">
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wide">Date</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wide">Timeslots</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wide">Venue</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wide">Groups</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wide">Panelists</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wide">Status</th>
+                <th class="text-right px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wide">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="table-body">
+              <tr><td colspan="7" class="px-4 py-8 text-center text-sm text-gray-400">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="pagination" class="hidden border-t border-gray-200 px-4 py-3 flex items-center justify-between">
+          <p id="page-info" class="text-sm text-gray-500"></p>
+          <div class="flex gap-2">
+            <button id="btn-prev" onclick="changePage(-1)" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40">Previous</button>
+            <button id="btn-next" onclick="changePage(1)"  class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40">Next</button>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Create / Edit Schedule Modal -->
+  <!-- ═══ Create/Edit Modal ════════════════════════════════════════════ -->
   <div id="schedule-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col">
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
         <h2 id="sched-modal-title" class="text-lg font-bold text-gray-900">Add Schedule</h2>
-        <button onclick="closeScheduleModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+        <button onclick="closeScheduleModal()" class="text-gray-400 hover:text-gray-600">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
       <div class="overflow-y-auto px-6 py-5 space-y-4 flex-1">
         <input type="hidden" id="sched-id">
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Submission <span class="text-red-500">*</span></label>
-          <select id="sched-submission" class="form-input">
-            <option value="">Loading submissions…</option>
-          </select>
-          <p id="err-submission" class="text-xs text-red-600 mt-1 hidden"></p>
-        </div>
-
+        <!-- Venue -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Venue</label>
-          <select id="sched-venue" class="form-input">
+          <select id="sched-venue" class="form-input" onchange="checkFormReadiness()">
             <option value="">No venue assigned</option>
           </select>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Date &amp; Time <span class="text-red-500">*</span></label>
-            <input id="sched-datetime" type="datetime-local" class="form-input">
-            <p id="err-datetime" class="text-xs text-red-600 mt-1 hidden"></p>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Duration (minutes) <span class="text-red-500">*</span></label>
-            <input id="sched-duration" type="number" value="60" min="15" max="480" class="form-input">
-            <p id="err-duration" class="text-xs text-red-600 mt-1 hidden"></p>
-          </div>
+        <!-- Date -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Date <span class="text-red-500">*</span></label>
+          <input id="sched-date" type="date" class="form-input" oninput="checkFormReadiness()">
+          <p id="err-date" class="text-xs text-red-600 mt-1 hidden"></p>
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Panelists</label>
-          <div id="panelist-list" class="border border-gray-300 rounded-lg p-3 max-h-40 overflow-y-auto space-y-2">
-            <p class="text-xs text-gray-400">Loading panelists…</p>
-          </div>
+        <!-- Hint shown when date not yet picked -->
+        <div id="date-required-hint" class="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-gray-50 border border-dashed border-gray-300 text-xs text-gray-400">
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          Select a venue and date first to choose timeslots, groups, and panelists.
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-          <textarea id="sched-notes" rows="3" placeholder="Optional notes or instructions…" class="form-input resize-none"></textarea>
-        </div>
+        <!-- Dependent fields (locked until date is chosen) -->
+        <div id="dependent-fields" class="space-y-4 opacity-40 pointer-events-none select-none">
+
+          <!-- Timeslot checkboxes (1-hour blocks) -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Timeslots <span class="text-red-500">*</span>
+              <span class="text-xs font-normal text-gray-400 ml-1">(select one or more)</span>
+            </label>
+            <div class="border border-gray-200 rounded-lg p-3 space-y-3">
+              <div>
+                <p class="slot-group-label">Morning</p>
+                <div class="slot-cb-grid" id="slots-morning"></div>
+              </div>
+              <div>
+                <p class="slot-group-label">Afternoon</p>
+                <div class="slot-cb-grid" id="slots-afternoon"></div>
+              </div>
+            </div>
+            <p id="err-slots" class="text-xs text-red-600 mt-1 hidden"></p>
+          </div>
+
+          <!-- Conflict warning -->
+          <div id="conflict-warning" class="hidden px-3 py-2 rounded-lg text-sm text-amber-700 bg-amber-50 border border-amber-200 flex items-start gap-2">
+            <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+            <span id="conflict-msg" class="text-xs"></span>
+          </div>
+
+          <!-- Groups -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Presenting Groups
+              <span class="text-xs font-normal text-gray-400 ml-1">(select all that will present)</span>
+            </label>
+            <div id="group-list" class="border border-gray-300 rounded-lg p-3 max-h-44 overflow-y-auto space-y-2">
+              <p class="text-xs text-gray-400">Loading groups…</p>
+            </div>
+          </div>
+
+          <!-- Panelists -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Panelists</label>
+            <div id="panelist-list" class="border border-gray-300 rounded-lg p-3 max-h-36 overflow-y-auto space-y-2">
+              <p class="text-xs text-gray-400">Loading panelists…</p>
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+            <textarea id="sched-notes" rows="3" placeholder="Optional notes or instructions…" class="form-input resize-none"></textarea>
+          </div>
+
+        </div><!-- /dependent-fields -->
 
         <div id="sched-alert" class="hidden px-3 py-2 rounded-lg text-sm text-red-700 bg-red-50 border border-red-200"></div>
       </div>
       <div class="px-6 py-4 border-t border-gray-100 flex gap-3">
-        <button onclick="closeScheduleModal()" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
-        <button id="btn-save-sched" onclick="saveSchedule()" class="flex-1 px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">Save Schedule</button>
+        <button onclick="closeScheduleModal()" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+        <button id="btn-save-sched" onclick="saveSchedule()" class="flex-1 px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg">Save Schedule</button>
       </div>
     </div>
   </div>
 
-  <!-- Detail Modal -->
+  <!-- ═══ Detail Modal ════════════════════════════════════════════════ -->
   <div id="detail-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
         <h2 class="text-lg font-bold text-gray-900">Schedule Details</h2>
-        <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+        <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
       <div id="detail-body" class="overflow-y-auto px-6 py-5 space-y-4 flex-1">
         <p class="text-sm text-gray-400 text-center py-8">Loading…</p>
       </div>
-      <div class="px-6 py-4 border-t border-gray-100">
-        <button onclick="closeDetailModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Close</button>
+      <div class="px-6 py-4 border-t border-gray-100 flex gap-3">
+        <button onclick="closeDetailModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Close</button>
+        <button id="detail-edit-btn" class="px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg">Edit</button>
       </div>
     </div>
   </div>
 
-  <!-- Update Status Modal -->
+  <!-- ═══ Status Modal ════════════════════════════════════════════════ -->
   <div id="status-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
       <div class="flex items-center justify-between mb-5">
         <h2 class="text-lg font-bold text-gray-900">Update Status</h2>
-        <button onclick="closeStatusModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+        <button onclick="closeStatusModal()" class="text-gray-400 hover:text-gray-600">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
-      </div>
-      <div class="mb-4">
-        <p class="text-sm text-gray-500 mb-0.5">Schedule</p>
-        <p id="status-sched-title" class="font-medium text-gray-900 text-sm"></p>
       </div>
       <div class="mb-5">
         <label class="block text-sm font-medium text-gray-700 mb-1">New Status <span class="text-red-500">*</span></label>
@@ -205,8 +297,8 @@
       </div>
       <div id="status-alert" class="hidden mb-4 px-3 py-2 rounded-lg text-sm text-red-700 bg-red-50 border border-red-200"></div>
       <div class="flex gap-3">
-        <button onclick="closeStatusModal()" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
-        <button id="btn-save-status" onclick="submitStatusUpdate()" class="flex-1 px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">Update Status</button>
+        <button onclick="closeStatusModal()" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+        <button id="btn-save-status" onclick="submitStatusUpdate()" class="flex-1 px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg">Update Status</button>
       </div>
     </div>
   </div>
@@ -215,215 +307,348 @@
   <script src="/assets/js/api.js"></script>
   <script src="/assets/js/utils.js"></script>
   <script>
-    async function http(fn) {
-      const res = await fn(); const json = await res.json();
-      if (!res.ok) throw json; return json;
-    }
-    const get    = path      => http(() => apiGet(path));
-    const post   = (path, b) => http(() => apiPost(path, b));
-    const patch  = (path, b) => http(() => apiPatch(path, b));
-    const del    = path      => http(() => apiDelete(path));
+    /* ─── helpers ─────────────────────────────────────────────────────── */
+    async function http(fn) { const r=await fn(); const j=await r.json(); if(!r.ok) throw j; return j; }
+    const get   = p      => http(() => apiGet(p));
+    const post  = (p, b) => http(() => apiPost(p, b));
+    const patch = (p, b) => http(() => apiPatch(p, b));
+    const del   = p      => http(() => apiDelete(p));
+    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function escA(s){ return String(s||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-    let currentPage   = 1;
-    let totalPages    = 1;
-    let searchTimer   = null;
+    /* ─── timeslot config ─────────────────────────────────────────────── */
+    const TIME_SLOTS = [
+      { value:'8:00-9:00',   label:'8:00 – 9:00 AM',   group:'morning'   },
+      { value:'9:00-10:00',  label:'9:00 – 10:00 AM',  group:'morning'   },
+      { value:'10:00-11:00', label:'10:00 – 11:00 AM', group:'morning'   },
+      { value:'11:00-12:00', label:'11:00 AM – 12:00', group:'morning'   },
+      { value:'13:00-14:00', label:'1:00 – 2:00 PM',   group:'afternoon' },
+      { value:'14:00-15:00', label:'2:00 – 3:00 PM',   group:'afternoon' },
+      { value:'15:00-16:00', label:'3:00 – 4:00 PM',   group:'afternoon' },
+      { value:'16:00-17:00', label:'4:00 – 5:00 PM',   group:'afternoon' },
+    ];
+    function slotLabel(v) { return TIME_SLOTS.find(s=>s.value===v)?.label || v || '–'; }
+    function slotsLabel(arr) {
+      if (!arr || !arr.length) return '–';
+      if (arr.length === 1) return slotLabel(arr[0]);
+      const first = slotLabel(arr[0]).split('–')[0].trim();
+      const last  = slotLabel(arr[arr.length-1]).split('–')[1]?.trim() || '';
+      return `${first} – ${last} (${arr.length}hr)`;
+    }
+
+    /* ─── status config ───────────────────────────────────────────────── */
+    const SC = {
+      scheduled:  {label:'Scheduled',  bg:'bg-yellow-100',text:'text-yellow-700'},
+      completed:  {label:'Completed',  bg:'bg-blue-100',  text:'text-blue-700'  },
+      cancelled:  {label:'Cancelled',  bg:'bg-gray-100',  text:'text-gray-600'  },
+      rescheduled:{label:'Rescheduled',bg:'bg-orange-100',text:'text-orange-700'},
+    };
+    function statusBadge(s){ const c=SC[s]||{label:s,bg:'bg-gray-100',text:'text-gray-600'}; return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${c.bg} ${c.text}">${c.label}</span>`; }
+    function fmtDate(d) {
+      if (!d) return '–';
+      const s=String(d).split('T')[0]; const [y,m,day]=s.split('-');
+      return new Date(+y,+m-1,+day).toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'numeric'});
+    }
+
+    /* ─── state ───────────────────────────────────────────────────────── */
+    let activeTab      = 'calendar';
+    let calWeekStart   = null;
+    let currentPage    = 1;
+    let totalPages     = 1;
+    let searchTimer    = null;
     let statusTargetId = null;
-    let allSubmissions = [];
     let allVenues      = [];
     let allPanelists   = [];
+    let allGroups      = [];
+    let bookedSlots    = [];   // slots booked for current venue+date (for the form)
 
-    const STATUS_CONFIG = {
-      scheduled:   { label: 'Scheduled',   bg: 'bg-yellow-100', text: 'text-yellow-700' },
-      completed:   { label: 'Completed',   bg: 'bg-blue-100',   text: 'text-blue-700'   },
-      cancelled:   { label: 'Cancelled',   bg: 'bg-gray-100',   text: 'text-gray-600'   },
-      rescheduled: { label: 'Rescheduled', bg: 'bg-orange-100', text: 'text-orange-700' },
-    };
-
-    function statusBadge(s) {
-      const c = STATUS_CONFIG[s] || { label: s, bg: 'bg-gray-100', text: 'text-gray-600' };
-      return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${c.bg} ${c.text}">${c.label}</span>`;
+    /* ─── tab ─────────────────────────────────────────────────────────── */
+    function switchTab(tab) {
+      activeTab = tab;
+      document.getElementById('view-calendar').classList.toggle('hidden', tab!=='calendar');
+      document.getElementById('view-list').classList.toggle('hidden', tab!=='list');
+      document.getElementById('tab-calendar').classList.toggle('active', tab==='calendar');
+      document.getElementById('tab-list').classList.toggle('active', tab==='list');
+      if (tab==='list') loadSchedules();
+      if (tab==='calendar') renderCalendar();
     }
 
-    function typeBadge(t) {
-      return t === 'thesis'
-        ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">Thesis</span>`
-        : `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-cyan-100 text-cyan-700">Capstone</span>`;
-    }
-
-    function toDatetimeLocal(iso) {
-      if (!iso) return '';
-      return new Date(iso).toISOString().slice(0, 16);
-    }
-
-    function formatDateTime(iso) {
-      if (!iso) return '"”';
-      return new Date(iso).toLocaleString('en-PH', {
-        year: 'numeric', month: 'short', day: 'numeric',
-        hour: '2-digit', minute: '2-digit'
+    /* ════════════════════════════════════════════════════════════════════
+       SLOT CHECKBOX RENDERING
+    ════════════════════════════════════════════════════════════════════ */
+    function buildSlotCheckboxes(selectedSlots = [], disabledSlots = []) {
+      ['morning','afternoon'].forEach(group => {
+        const slots = TIME_SLOTS.filter(s=>s.group===group);
+        document.getElementById(`slots-${group}`).innerHTML = slots.map(s => {
+          const isDisabled = disabledSlots.includes(s.value);
+          const isChecked  = selectedSlots.includes(s.value);
+          return `
+            <label class="slot-cb${isDisabled?' booked':''}">
+              <input type="checkbox" name="slot" value="${s.value}"
+                ${isChecked?'checked':''} ${isDisabled?'disabled':''}
+                onchange="onSlotChange()">
+              <span>${esc(s.label)}${isDisabled?' <span class=\'text-yellow-600\'>●</span>':''}</span>
+            </label>`;
+        }).join('');
       });
     }
 
-    requireAuthAsync('admin', 'superadmin').then(user => {
-      if (!user) return;
-      document.getElementById('user-name').textContent = user.full_name || user.email;
-      loadSchedules();
-      prefetchDropdowns();
-
-      ['f-status', 'f-date-from', 'f-date-to'].forEach(id =>
-        document.getElementById(id).addEventListener('change', () => { currentPage = 1; loadSchedules(); }));
-      document.getElementById('f-search').addEventListener('input', () => {
-        clearTimeout(searchTimer);
-        searchTimer = setTimeout(() => { currentPage = 1; loadSchedules(); }, 350);
-      });
-    });
-
-    async function prefetchDropdowns() {
-      try {
-        const [subRes, venueRes, panelistRes] = await Promise.all([
-          get('/api/v1/submissions?status=approved&limit=100'),
-          get('/api/v1/venues?limit=100'),
-          get('/api/v1/users?role=panelist&limit=100'),
-        ]);
-        allSubmissions = subRes.data?.data   || subRes.data   || [];
-        allVenues      = venueRes.data?.data || venueRes.data || [];
-        allPanelists   = panelistRes.data?.data || panelistRes.data || [];
-      } catch (_) {}
+    function getSelectedSlots() {
+      return [...document.querySelectorAll('input[name=slot]:checked')].map(c=>c.value);
     }
 
+    /* ════════════════════════════════════════════════════════════════════
+       FORM LOCK: dependent fields disabled until date is chosen
+    ════════════════════════════════════════════════════════════════════ */
+    function setFormLocked(locked) {
+      const fields = document.getElementById('dependent-fields');
+      const hint   = document.getElementById('date-required-hint');
+      if (locked) {
+        fields.classList.add('opacity-40', 'pointer-events-none', 'select-none');
+        hint.classList.remove('hidden');
+      } else {
+        fields.classList.remove('opacity-40', 'pointer-events-none', 'select-none');
+        hint.classList.add('hidden');
+      }
+    }
+
+    function checkFormReadiness() {
+      const hasVenue = !!document.getElementById('sched-venue').value;
+      const hasDate  = !!document.getElementById('sched-date').value;
+      const ready    = hasVenue && hasDate;
+      setFormLocked(!ready);
+      if (ready) refreshSlotAvailability();
+      else document.getElementById('conflict-warning').classList.add('hidden');
+    }
+
+    /* ════════════════════════════════════════════════════════════════════
+       LIVE AVAILABILITY: when venue or date changes, check booked slots
+    ════════════════════════════════════════════════════════════════════ */
+    let availTimer = null;
+    async function refreshSlotAvailability() {
+      clearTimeout(availTimer);
+      availTimer = setTimeout(async () => {
+        const venue = document.getElementById('sched-venue').value;
+        const date  = document.getElementById('sched-date').value;
+        const editId= document.getElementById('sched-id').value;
+        const currently = getSelectedSlots();
+
+        if (!date) { buildSlotCheckboxes(currently, []); return; }
+
+        try {
+          const res = await get(`/api/v1/schedules/calendar?from_date=${date}&to_date=${date}`);
+          const taken = (res.data||[])
+            .filter(e => venue && String(e.venue_id)===venue && String(e.id)!==editId)
+            .map(e => e.time_slot);
+
+          bookedSlots = [...new Set(taken)];
+          buildSlotCheckboxes(currently.filter(s=>!bookedSlots.includes(s)), bookedSlots);
+          updateConflictWarning(currently);
+        } catch { buildSlotCheckboxes(currently, []); }
+      }, 280);
+    }
+
+    function onSlotChange() { updateConflictWarning(getSelectedSlots()); }
+
+    function updateConflictWarning(selected) {
+      const conflicts = selected.filter(s => bookedSlots.includes(s));
+      const warn = document.getElementById('conflict-warning');
+      if (conflicts.length) {
+        document.getElementById('conflict-msg').textContent =
+          `Booked slot(s) selected: ${conflicts.map(slotLabel).join(', ')}. Please deselect them.`;
+        warn.classList.remove('hidden');
+      } else {
+        warn.classList.add('hidden');
+      }
+    }
+
+    /* ════════════════════════════════════════════════════════════════════
+       CALENDAR VIEW
+    ════════════════════════════════════════════════════════════════════ */
+    function getMondayOf(d) { const dt=new Date(d); const day=dt.getDay(); dt.setDate(dt.getDate()+(day===0?-6:1-day)); dt.setHours(0,0,0,0); return dt; }
+    function toYMD(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+    function shiftWeek(dir) { calWeekStart=new Date(calWeekStart); calWeekStart.setDate(calWeekStart.getDate()+dir*7); renderCalendar(); }
+    function goToToday() { calWeekStart=getMondayOf(new Date()); renderCalendar(); }
+
+    async function renderCalendar() {
+      if (!calWeekStart) calWeekStart=getMondayOf(new Date());
+      const days=[], todayStr=toYMD(new Date());
+      for(let i=0;i<7;i++){ const d=new Date(calWeekStart); d.setDate(d.getDate()+i); days.push(d); }
+      const from=toYMD(days[0]), to=toYMD(days[6]);
+      const f={month:'short',day:'numeric'};
+      document.getElementById('cal-week-label').textContent=
+        `${days[0].toLocaleDateString('en-PH',f)} – ${days[6].toLocaleDateString('en-PH',{...f,year:'numeric'})}`;
+
+      const grid=document.getElementById('cal-grid');
+      const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+      grid.innerHTML=`<div class="cal-header" style="min-height:44px;display:flex;align-items:center;justify-content:center">Time</div>`;
+      days.forEach((d,i)=>{
+        const ymd=toYMD(d), isT=ymd===todayStr;
+        grid.innerHTML+=`<div class="cal-header${isT?' cal-today':''}" style="min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center"><span>${DAYS[i]}</span><span class="text-xs font-normal text-gray-500">${d.getDate()}</span></div>`;
+      });
+
+      let calData=[];
+      try{ const res=await get(`/api/v1/schedules/calendar?from_date=${from}&to_date=${to}`); calData=res.data||[]; }catch{}
+
+      const byCell={};
+      calData.forEach(s=>{
+        const ymd=String(s.scheduled_date).split('T')[0];
+        const key=`${ymd}|${s.time_slot}`;
+        if(!byCell[key]) byCell[key]=[];
+        // avoid duplicate cards (same schedule can appear once per slot)
+        if(!byCell[key].some(x=>x.id===s.id)) byCell[key].push(s);
+      });
+
+      TIME_SLOTS.forEach(slot=>{
+        grid.innerHTML+=`<div class="cal-slot-label">${esc(slot.label)}</div>`;
+        days.forEach(d=>{
+          const ymd=toYMD(d), isT=ymd===todayStr;
+          const key=`${ymd}|${slot.value}`;
+          const entries=byCell[key]||[];
+          let html=entries.map(s=>`
+            <div class="cal-entry ${s.status||'scheduled'}" onclick="openDetailModal(${s.id})">
+              <div class="font-semibold truncate" style="max-width:100px">${esc(s.venue_name||'No venue')}</div>
+              ${(s.groups||[]).length ? `<div class="opacity-80 truncate">${esc(s.groups.map(g=>g.name).join(', '))}</div>` : ''}
+            </div>`).join('');
+          html+=`<div class="cal-add" onclick="openCreateModal('${ymd}','${slot.value}')">+</div>`;
+          grid.innerHTML+=`<div class="cal-cell${isT?' cal-today':''}">${html}</div>`;
+        });
+      });
+    }
+
+    /* ════════════════════════════════════════════════════════════════════
+       LIST VIEW
+    ════════════════════════════════════════════════════════════════════ */
     async function loadSchedules() {
-      const params = new URLSearchParams({ page: currentPage, limit: 15 });
-      const search   = document.getElementById('f-search').value.trim();
-      const status   = document.getElementById('f-status').value;
-      const dateFrom = document.getElementById('f-date-from').value;
-      const dateTo   = document.getElementById('f-date-to').value;
-      if (search)   params.set('search', search);
-      if (status)   params.set('status', status);
-      if (dateFrom) params.set('from_date', dateFrom);
-      if (dateTo)   params.set('to_date', dateTo);
+      const p=new URLSearchParams({page:currentPage,limit:15});
+      const search=document.getElementById('f-search').value.trim();
+      const status=document.getElementById('f-status').value;
+      const df=document.getElementById('f-date-from').value;
+      const dt=document.getElementById('f-date-to').value;
+      if(search) p.set('search',search);
+      if(status) p.set('status',status);
+      if(df) p.set('from_date',df);
+      if(dt) p.set('to_date',dt);
 
-      const tbody = document.getElementById('table-body');
-      tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-sm text-gray-400">Loading…</td></tr>`;
-
+      const tbody=document.getElementById('table-body');
+      tbody.innerHTML=`<tr><td colspan="7" class="px-4 py-8 text-center text-sm text-gray-400">Loading…</td></tr>`;
       try {
-        const res   = await get(`/api/v1/schedules?${params}`);
-        const items = res.data?.data || [];
-        totalPages  = res.data?.pagination?.totalPages || res.data?.totalPages || 1;
-
-        renderStats(items, res.data?.pagination?.total || items.length);
-        document.getElementById('pagination').classList.toggle('hidden', totalPages <= 1);
-
-        if (!items.length) {
-          tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-10 text-center text-sm text-gray-400">No schedules found</td></tr>`;
-          return;
-        }
-
-        tbody.innerHTML = items.map(s => `
+        const res=await get(`/api/v1/schedules?${p}`);
+        const items=res.data?.data||[];
+        totalPages=res.data?.pagination?.totalPages||1;
+        renderStats(items);
+        document.getElementById('pagination').classList.toggle('hidden',totalPages<=1);
+        if(!items.length){ tbody.innerHTML=`<tr><td colspan="7" class="px-4 py-10 text-center text-sm text-gray-400">No schedules found</td></tr>`; return; }
+        tbody.innerHTML=items.map(s=>`
           <tr class="border-b border-gray-100">
-            <td class="px-4 py-3">
-              <p class="font-medium text-gray-900 max-w-xs truncate">${escHtml(s.submission_title || '"”')}</p>
-              <div class="mt-0.5">${s.submission_type ? typeBadge(s.submission_type) : ''}</div>
-            </td>
-            <td class="px-4 py-3 text-sm text-gray-600">${escHtml(s.venue_name || 'TBD')}</td>
-            <td class="px-4 py-3 text-sm text-gray-700">${formatDateTime(s.scheduled_at)}</td>
-            <td class="px-4 py-3 text-sm text-gray-600">${s.duration_min ? s.duration_min + ' min' : '"”'}</td>
-            <td class="px-4 py-3 text-sm text-gray-600">${s.panelists_count ?? 0}</td>
+            <td class="px-4 py-3 text-sm text-gray-700">${fmtDate(s.scheduled_date)}</td>
+            <td class="px-4 py-3 text-sm text-gray-700">${esc(slotsLabel(s.time_slots))}</td>
+            <td class="px-4 py-3 text-sm text-gray-600">${esc(s.venue_name||'TBD')}</td>
+            <td class="px-4 py-3 text-sm text-gray-600">${s.groups_count||0}</td>
+            <td class="px-4 py-3 text-sm text-gray-600">${s.panelists_count||0}</td>
             <td class="px-4 py-3">${statusBadge(s.status)}</td>
             <td class="px-4 py-3">
               <div class="flex items-center justify-end gap-1.5">
-                <button onclick="openDetailModal(${s.id})"
-                  class="px-2.5 py-1.5 text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
-                  View
-                </button>
-                <button onclick="openEditModal(${s.id})"
-                  class="px-2.5 py-1.5 text-xs font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors">
-                  Edit
-                </button>
-                <button onclick="openStatusModal(${s.id}, '${escAttr(s.submission_title || '')}', '${s.status}')"
-                  class="px-2.5 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors">
-                  Status
-                </button>
-                <button onclick="deleteSchedule(${s.id}, '${escAttr(s.submission_title || '')}')"
-                  class="px-2.5 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
-                  Delete
-                </button>
+                <button onclick="openDetailModal(${s.id})" class="px-2.5 py-1.5 text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg">View</button>
+                <button onclick="openEditModal(${s.id})"   class="px-2.5 py-1.5 text-xs font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-lg">Edit</button>
+                <button onclick="openStatusModal(${s.id},'${escA(s.notes||'')}','${s.status}')" class="px-2.5 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg">Status</button>
+                <button onclick="deleteSchedule(${s.id})"  class="px-2.5 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg">Delete</button>
               </div>
             </td>
           </tr>`).join('');
-
         updatePagination();
-      } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-sm text-red-500">${escHtml(err?.message || 'Failed to load.')}</td></tr>`;
+      } catch(err){
+        tbody.innerHTML=`<tr><td colspan="7" class="px-4 py-6 text-center text-sm text-red-500">${esc(err?.message||'Failed to load.')}</td></tr>`;
       }
     }
 
-    function renderStats(items, total) {
-      const counts = { pending: 0, confirmed: 0, completed: 0, cancelled: 0 };
-      items.forEach(s => { if (counts[s.status] !== undefined) counts[s.status]++; });
-      const cards = [
-        { label: 'Total',     value: items.length,      color: 'text-primary-700' },
-        { label: 'Pending',   value: counts.pending,    color: 'text-yellow-700'  },
-        { label: 'Confirmed', value: counts.confirmed,  color: 'text-green-700'   },
-        { label: 'Completed', value: counts.completed,  color: 'text-blue-700'    },
-        { label: 'Cancelled', value: counts.cancelled,  color: 'text-gray-600'    },
-      ];
-      document.getElementById('stats-row').innerHTML = cards.map(c => `
-        <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-          <p class="text-xs font-medium text-gray-500 mb-1">${c.label}</p>
-          <p class="text-2xl font-bold ${c.color}">${c.value}</p>
-        </div>`).join('');
+    function renderStats(items) {
+      const c={scheduled:0,completed:0,cancelled:0,rescheduled:0};
+      items.forEach(s=>{ if(c[s.status]!==undefined) c[s.status]++; });
+      document.getElementById('stats-row').innerHTML=[
+        {label:'Total',      value:items.length,   color:'text-primary-700'},
+        {label:'Scheduled',  value:c.scheduled,    color:'text-yellow-700' },
+        {label:'Completed',  value:c.completed,    color:'text-blue-700'   },
+        {label:'Rescheduled',value:c.rescheduled,  color:'text-orange-700' },
+        {label:'Cancelled',  value:c.cancelled,    color:'text-gray-600'   },
+      ].map(x=>`<div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm"><p class="text-xs font-medium text-gray-500 mb-1">${x.label}</p><p class="text-2xl font-bold ${x.color}">${x.value}</p></div>`).join('');
     }
 
-    function populateScheduleForm(schedule) {
-      // Submissions dropdown
-      const subSel = document.getElementById('sched-submission');
-      subSel.innerHTML = '<option value="">Select approved submission…</option>';
-      allSubmissions.forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = s.id;
-        opt.textContent = `${s.title} (${s.type || ''} Â· ${s.school_year || ''})`;
-        if (schedule && s.id === schedule.submission_id) opt.selected = true;
-        subSel.appendChild(opt);
-      });
-
-      // Venues dropdown
-      const venSel = document.getElementById('sched-venue');
-      venSel.innerHTML = '<option value="">No venue assigned</option>';
-      allVenues.forEach(v => {
-        const opt = document.createElement('option');
-        opt.value = v.id;
-        opt.textContent = v.name + (v.location ? ` "” ${v.location}` : '');
-        if (schedule && v.id === schedule.venue_id) opt.selected = true;
-        venSel.appendChild(opt);
-      });
-
-      // Panelists checkboxes
-      const pList = document.getElementById('panelist-list');
-      if (!allPanelists.length) {
-        pList.innerHTML = '<p class="text-xs text-gray-400">No panelists available.</p>';
-      } else {
-        const selected = new Set((schedule?.panelists || []).map(p => p.id));
-        pList.innerHTML = allPanelists.map(p => `
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" name="panelist" value="${p.id}" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-              ${selected.has(p.id) ? 'checked' : ''}>
-            <span class="text-sm text-gray-700">${escHtml(p.first_name + ' ' + p.last_name)}</span>
-            <span class="text-xs text-gray-400">${escHtml(p.email || '')}</span>
-          </label>`).join('');
-      }
+    /* ════════════════════════════════════════════════════════════════════
+       PREFETCH DROPDOWNS
+    ════════════════════════════════════════════════════════════════════ */
+    async function prefetchDropdowns() {
+      try {
+        const [vRes, pRes, gRes] = await Promise.all([
+          get('/api/v1/venues?limit=100'),
+          get('/api/v1/users?role=panelist&limit=100'),
+          get('/api/v1/groups'),
+        ]);
+        allVenues    = vRes.data?.data || vRes.data || [];
+        allPanelists = pRes.data?.data || pRes.data || [];
+        allGroups    = gRes.data || [];
+      } catch(_){}
     }
 
-    function openCreateModal() {
-      document.getElementById('sched-id').value          = '';
-      document.getElementById('sched-datetime').value    = '';
-      document.getElementById('sched-duration').value    = '60';
-      document.getElementById('sched-notes').value       = '';
-      document.getElementById('err-submission').classList.add('hidden');
-      document.getElementById('err-datetime').classList.add('hidden');
-      document.getElementById('err-duration').classList.add('hidden');
+    function populateVenueDropdown(selectedId) {
+      const sel=document.getElementById('sched-venue');
+      sel.innerHTML='<option value="">No venue assigned</option>';
+      allVenues.forEach(v=>{
+        const o=document.createElement('option');
+        o.value=v.id; o.textContent=v.name+(v.location?` – ${v.location}`:'');
+        if(String(v.id)===String(selectedId)) o.selected=true;
+        sel.appendChild(o);
+      });
+    }
+
+    function populateGroupList(selectedIds = []) {
+      const sel=new Set(selectedIds.map(String));
+      const el=document.getElementById('group-list');
+      if(!allGroups.length){ el.innerHTML='<p class="text-xs text-gray-400">No groups found.</p>'; return; }
+      el.innerHTML=allGroups.map(g=>`
+        <label class="flex items-start gap-2 cursor-pointer">
+          <input type="checkbox" name="group" value="${g.id}" class="mt-0.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+            ${sel.has(String(g.id))?'checked':''}>
+          <span class="text-sm text-gray-700 leading-snug">
+            ${esc(g.name)}
+            ${g.school_year?`<span class="text-xs text-gray-400 ml-1">${esc(g.school_year)}</span>`:''}
+            ${g.group_title||g.title?`<br><span class="text-xs text-gray-500">${esc(g.group_title||g.title)}</span>`:''}
+          </span>
+        </label>`).join('');
+    }
+
+    function populatePanelistList(selectedIds = []) {
+      const sel=new Set(selectedIds.map(String));
+      const el=document.getElementById('panelist-list');
+      if(!allPanelists.length){ el.innerHTML='<p class="text-xs text-gray-400">No panelists available.</p>'; return; }
+      el.innerHTML=allPanelists.map(p=>`
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" name="panelist" value="${p.id}" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+            ${sel.has(String(p.id))?'checked':''}>
+          <span class="text-sm text-gray-700">${esc(p.first_name+' '+p.last_name)}</span>
+          <span class="text-xs text-gray-400">${esc(p.email||'')}</span>
+        </label>`).join('');
+    }
+
+    /* ════════════════════════════════════════════════════════════════════
+       CREATE / EDIT MODAL
+    ════════════════════════════════════════════════════════════════════ */
+    function openCreateModal(prefillDate='', prefillSlot='') {
+      document.getElementById('sched-id').value    = '';
+      document.getElementById('sched-date').value  = prefillDate;
+      document.getElementById('sched-notes').value = '';
+      document.getElementById('err-date').classList.add('hidden');
+      document.getElementById('err-slots').classList.add('hidden');
       document.getElementById('sched-alert').classList.add('hidden');
+      document.getElementById('conflict-warning').classList.add('hidden');
       document.getElementById('sched-modal-title').textContent = 'Add Schedule';
       document.getElementById('btn-save-sched').textContent    = 'Save Schedule';
-      populateScheduleForm(null);
+      bookedSlots = [];
+      populateVenueDropdown(null);
+      buildSlotCheckboxes(prefillSlot ? [prefillSlot] : []);
+      populateGroupList([]);
+      populatePanelistList([]);
+      checkFormReadiness();
       document.getElementById('schedule-modal').classList.remove('hidden');
     }
 
@@ -432,219 +657,178 @@
       document.getElementById('sched-modal-title').textContent = 'Edit Schedule';
       document.getElementById('btn-save-sched').textContent    = 'Save Changes';
       document.getElementById('sched-alert').classList.add('hidden');
+      document.getElementById('conflict-warning').classList.add('hidden');
       document.getElementById('schedule-modal').classList.remove('hidden');
       try {
-        const res = await get(`/api/v1/schedules/${id}`);
-        const s   = res.data;
-        populateScheduleForm(s);
-        document.getElementById('sched-datetime').value = toDatetimeLocal(s.scheduled_at);
-        document.getElementById('sched-duration').value = s.duration_min || 60;
-        document.getElementById('sched-notes').value    = s.notes || '';
-      } catch (err) {
-        document.getElementById('sched-alert').textContent = err?.message || 'Failed to load.';
+        const res=await get(`/api/v1/schedules/${id}`);
+        const s=res.data;
+        populateVenueDropdown(s.venue_id);
+        document.getElementById('sched-date').value  = String(s.scheduled_date||'').split('T')[0];
+        document.getElementById('sched-notes').value = s.notes||'';
+        bookedSlots=[];
+        buildSlotCheckboxes(s.time_slots||[]);
+        populateGroupList((s.groups||[]).map(g=>g.id));
+        populatePanelistList((s.panelists||[]).map(p=>p.id));
+        checkFormReadiness();
+      } catch(err){
+        document.getElementById('sched-alert').textContent=err?.message||'Failed to load.';
         document.getElementById('sched-alert').classList.remove('hidden');
       }
     }
 
-    function closeScheduleModal() {
-      document.getElementById('schedule-modal').classList.add('hidden');
-    }
+    function closeScheduleModal() { document.getElementById('schedule-modal').classList.add('hidden'); }
 
     async function saveSchedule() {
-      const id             = document.getElementById('sched-id').value;
-      const submissionId   = document.getElementById('sched-submission').value;
-      const venueId        = document.getElementById('sched-venue').value;
-      const scheduledAt    = document.getElementById('sched-datetime').value;
-      const duration       = document.getElementById('sched-duration').value;  // maps to duration_min
-      const notes          = document.getElementById('sched-notes').value.trim();
-      const panelistChecks = document.querySelectorAll('#panelist-list input[type=checkbox]:checked');
-      const panelistIds    = [...panelistChecks].map(c => parseInt(c.value));
+      const id      = document.getElementById('sched-id').value;
+      const venueId = document.getElementById('sched-venue').value;
+      const date    = document.getElementById('sched-date').value;
+      const slots   = getSelectedSlots();
+      const notes   = document.getElementById('sched-notes').value.trim();
+      const groups  = [...document.querySelectorAll('input[name=group]:checked')].map(c=>parseInt(c.value));
+      const panels  = [...document.querySelectorAll('input[name=panelist]:checked')].map(c=>parseInt(c.value));
 
-      let valid = true;
-      [['err-submission', submissionId, 'Please select a submission.'],
-       ['err-datetime',   scheduledAt,  'Please select a date and time.'],
-       ['err-duration',   duration,     'Please enter a duration.']
-      ].forEach(([errId, val, msg]) => {
-        const el = document.getElementById(errId);
-        if (!val) { el.textContent = msg; el.classList.remove('hidden'); valid = false; }
-        else el.classList.add('hidden');
-      });
-      if (!valid) return;
+      let valid=true;
+      if(!date){ const e=document.getElementById('err-date'); e.textContent='Please select a date.'; e.classList.remove('hidden'); valid=false; }
+      else document.getElementById('err-date').classList.add('hidden');
+      if(!slots.length){ const e=document.getElementById('err-slots'); e.textContent='Please select at least one timeslot.'; e.classList.remove('hidden'); valid=false; }
+      else document.getElementById('err-slots').classList.add('hidden');
+      if(!valid) return;
 
-      const body = {
-        submission_id: parseInt(submissionId),
-        venue_id:      venueId ? parseInt(venueId) : null,
-        scheduled_at:  new Date(scheduledAt).toISOString(),
-        duration_min:  parseInt(duration),
-        notes:         notes || null,
-        panelist_ids:  panelistIds,
+      if(slots.some(s=>bookedSlots.includes(s))){ document.getElementById('conflict-warning').classList.remove('hidden'); return; }
+
+      const body={
+        venue_id:       venueId ? parseInt(venueId) : null,
+        scheduled_date: date,
+        time_slots:     slots,
+        notes:          notes||null,
+        panelist_ids:   panels,
+        group_ids:      groups,
       };
 
-      const alertEl = document.getElementById('sched-alert');
+      const alertEl=document.getElementById('sched-alert');
       alertEl.classList.add('hidden');
-      const btn = document.getElementById('btn-save-sched');
-      btn.disabled = true; btn.textContent = 'Saving…';
+      const btn=document.getElementById('btn-save-sched');
+      btn.disabled=true; btn.textContent='Saving…';
       try {
-        if (id) {
-          await patch(`/api/v1/schedules/${id}`, body);
-          showAlert('Schedule updated successfully.', 'success');
-        } else {
-          await post('/api/v1/schedules', body);
-          showAlert('Schedule created successfully.', 'success');
-        }
+        if(id){ await patch(`/api/v1/schedules/${id}`,body); showAlert('Schedule updated.','success'); }
+        else   { await post('/api/v1/schedules',body);       showAlert('Schedule created.','success'); }
         closeScheduleModal();
-        loadSchedules();
-      } catch (err) {
-        alertEl.textContent = err?.message || 'Failed to save schedule.';
+        if(activeTab==='list') loadSchedules(); else renderCalendar();
+      } catch(err){
+        alertEl.textContent=err?.message||'Failed to save schedule.';
         alertEl.classList.remove('hidden');
       } finally {
-        btn.disabled = false; btn.textContent = id ? 'Save Changes' : 'Save Schedule';
+        btn.disabled=false; btn.textContent=id?'Save Changes':'Save Schedule';
       }
     }
 
+    /* ════════════════════════════════════════════════════════════════════
+       DETAIL MODAL
+    ════════════════════════════════════════════════════════════════════ */
     async function openDetailModal(id) {
-      document.getElementById('detail-body').innerHTML = '<p class="text-sm text-gray-400 text-center py-8">Loading…</p>';
+      document.getElementById('detail-body').innerHTML='<p class="text-sm text-gray-400 text-center py-8">Loading…</p>';
+      document.getElementById('detail-edit-btn').onclick=()=>{ closeDetailModal(); openEditModal(id); };
       document.getElementById('detail-modal').classList.remove('hidden');
       try {
-        const res = await get(`/api/v1/schedules/${id}`);
-        const s   = res.data;
-        document.getElementById('detail-body').innerHTML = `
-          <div>
-            <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Submission</p>
-            <p class="font-semibold text-gray-900">${escHtml(s.submission_title || '"”')}</p>
-            ${s.submission_type ? `<div class="mt-1">${typeBadge(s.submission_type)}</div>` : ''}
-          </div>
+        const res=await get(`/api/v1/schedules/${id}`);
+        const s=res.data;
+        const groupHtml=(s.groups||[]).length
+          ? s.groups.map(g=>`<div class="text-sm text-gray-700 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-purple-400 flex-shrink-0"></span>${esc(g.name)}${g.school_year?` <span class="text-xs text-gray-400">${esc(g.school_year)}</span>`:''}</div>`).join('')
+          : '<span class="text-xs text-gray-400">None assigned</span>';
+        const panelHtml=(s.panelists||[]).length
+          ? s.panelists.map(p=>`<div class="text-sm text-gray-700 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-primary-400 flex-shrink-0"></span>${esc(p.full_name||'')} <span class="text-xs text-gray-400">${esc(p.email||'')}</span></div>`).join('')
+          : '<span class="text-xs text-gray-400">None assigned</span>';
+
+        document.getElementById('detail-body').innerHTML=`
           <div class="grid grid-cols-2 gap-4">
-            <div>
-              <p class="text-xs text-gray-400 uppercase mb-0.5">School Year</p>
-              <p class="text-sm font-medium">${escHtml(s.school_year || '"”')}</p>
-            </div>
-            <div>
-              <p class="text-xs text-gray-400 uppercase mb-0.5">Status</p>
-              ${statusBadge(s.status)}
-            </div>
-            <div>
-              <p class="text-xs text-gray-400 uppercase mb-0.5">Venue</p>
-              <p class="text-sm font-medium">${escHtml(s.venue_name || 'TBD')}</p>
-            </div>
-            <div>
-              <p class="text-xs text-gray-400 uppercase mb-0.5">Duration</p>
-              <p class="text-sm font-medium">${s.duration_min ? s.duration_min + ' minutes' : '"”'}</p>
-            </div>
-            <div class="col-span-2">
-              <p class="text-xs text-gray-400 uppercase mb-0.5">Date &amp; Time</p>
-              <p class="text-sm font-medium">${formatDateTime(s.scheduled_at)}</p>
-            </div>
+            <div><p class="text-xs text-gray-400 uppercase mb-0.5">Status</p>${statusBadge(s.status)}</div>
+            <div><p class="text-xs text-gray-400 uppercase mb-0.5">Venue</p><p class="text-sm font-medium">${esc(s.venue_name||'TBD')}</p></div>
+            <div><p class="text-xs text-gray-400 uppercase mb-0.5">Date</p><p class="text-sm font-medium">${fmtDate(s.scheduled_date)}</p></div>
+            <div><p class="text-xs text-gray-400 uppercase mb-0.5">Timeslots</p><p class="text-sm font-medium">${esc(slotsLabel(s.time_slots))}</p></div>
           </div>
-          ${s.panelists?.length ? `
-            <div>
-              <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Panelists (${s.panelists.length})</p>
-              <div class="space-y-1.5">
-                ${s.panelists.map(p => `
-                  <div class="flex items-center gap-2 text-sm">
-                    <div class="w-2 h-2 rounded-full bg-primary-400 flex-shrink-0"></div>
-                    <span class="font-medium text-gray-800">${escHtml(p.full_name || '')}</span>
-                    <span class="text-gray-400 text-xs">${escHtml(p.email || '')}</span>
-                  </div>`).join('')}
-              </div>
-            </div>` : ''}
-          ${s.notes ? `
-            <div>
-              <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Notes</p>
-              <p class="text-sm text-gray-700">${escHtml(s.notes)}</p>
-            </div>` : ''}`;
-      } catch (err) {
-        document.getElementById('detail-body').innerHTML = `<p class="text-sm text-red-600">${escHtml(err?.message || 'Failed to load.')}</p>`;
+          <div><p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Presenting Groups</p><div class="space-y-1">${groupHtml}</div></div>
+          <div><p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Panelists</p><div class="space-y-1">${panelHtml}</div></div>
+          ${s.notes?`<div><p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Notes</p><p class="text-sm text-gray-700">${esc(s.notes)}</p></div>`:''}
+          <div class="flex gap-2 flex-wrap">
+            <button onclick="closeDetailModal();openStatusModal(${s.id},'${escA(s.notes||'Schedule')}','${s.status}')"
+              class="px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg">Change Status</button>
+            <button onclick="deleteSchedule(${s.id},true)"
+              class="px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg">Delete</button>
+          </div>`;
+      } catch(err){
+        document.getElementById('detail-body').innerHTML=`<p class="text-sm text-red-600">${esc(err?.message||'Failed.')}</p>`;
       }
     }
 
-    function closeDetailModal() {
-      document.getElementById('detail-modal').classList.add('hidden');
-    }
+    function closeDetailModal() { document.getElementById('detail-modal').classList.add('hidden'); }
 
-    function openStatusModal(id, title, currentStatus) {
-      statusTargetId = id;
-      document.getElementById('status-sched-title').textContent = title;
-      document.getElementById('status-new').value = currentStatus;
+    /* ════════════════════════════════════════════════════════════════════
+       STATUS MODAL
+    ════════════════════════════════════════════════════════════════════ */
+    function openStatusModal(id, title, cur) {
+      statusTargetId=id;
+      document.getElementById('status-new').value=cur;
       document.getElementById('status-alert').classList.add('hidden');
       document.getElementById('status-modal').classList.remove('hidden');
     }
-
-    function closeStatusModal() {
-      document.getElementById('status-modal').classList.add('hidden');
-      statusTargetId = null;
-    }
-
+    function closeStatusModal() { document.getElementById('status-modal').classList.add('hidden'); statusTargetId=null; }
     async function submitStatusUpdate() {
-      const status  = document.getElementById('status-new').value;
-      const alertEl = document.getElementById('status-alert');
-      alertEl.classList.add('hidden');
-      const btn = document.getElementById('btn-save-status');
-      btn.disabled = true; btn.textContent = 'Saving…';
+      const status=document.getElementById('status-new').value;
+      const alertEl=document.getElementById('status-alert');
+      const btn=document.getElementById('btn-save-status');
+      alertEl.classList.add('hidden'); btn.disabled=true; btn.textContent='Saving…';
       try {
-        await patch(`/api/v1/schedules/${statusTargetId}/status`, { status });
-        closeStatusModal();
-        showAlert('Status updated successfully.', 'success');
-        loadSchedules();
-      } catch (err) {
-        alertEl.textContent = err?.message || 'Failed to update status.';
-        alertEl.classList.remove('hidden');
-      } finally {
-        btn.disabled = false; btn.textContent = 'Update Status';
-      }
+        await patch(`/api/v1/schedules/${statusTargetId}/status`,{status});
+        closeStatusModal(); showAlert('Status updated.','success');
+        if(activeTab==='list') loadSchedules(); else renderCalendar();
+      } catch(err){ alertEl.textContent=err?.message||'Failed.'; alertEl.classList.remove('hidden'); }
+      finally { btn.disabled=false; btn.textContent='Update Status'; }
     }
 
-    async function deleteSchedule(id, title) {
-      if (!window.confirm(`Delete schedule for "${title}"? This cannot be undone.`)) return;
+    async function deleteSchedule(id, fromDetail=false) {
+      if(!confirm('Delete this schedule? This cannot be undone.')) return;
+      if(fromDetail) closeDetailModal();
       try {
         await del(`/api/v1/schedules/${id}`);
-        showAlert('Schedule deleted.', 'success');
-        loadSchedules();
-      } catch (err) {
-        showAlert(err?.message || 'Failed to delete schedule.', 'error');
-      }
+        showAlert('Schedule deleted.','success');
+        if(activeTab==='list') loadSchedules(); else renderCalendar();
+      } catch(err){ showAlert(err?.message||'Failed to delete.','error'); }
     }
 
+    /* ─── pagination ──────────────────────────────────────────────────── */
     function updatePagination() {
-      document.getElementById('btn-prev').disabled = currentPage <= 1;
-      document.getElementById('btn-next').disabled = currentPage >= totalPages;
-      document.getElementById('page-info').textContent = `Page ${currentPage} of ${totalPages}`;
+      document.getElementById('btn-prev').disabled=currentPage<=1;
+      document.getElementById('btn-next').disabled=currentPage>=totalPages;
+      document.getElementById('page-info').textContent=`Page ${currentPage} of ${totalPages}`;
+    }
+    function changePage(dir){ currentPage=Math.max(1,Math.min(totalPages,currentPage+dir)); loadSchedules(); }
+    function resetFilters(){
+      ['f-search','f-date-from','f-date-to'].forEach(id=>document.getElementById(id).value='');
+      document.getElementById('f-status').value='';
+      currentPage=1; loadSchedules();
     }
 
-    function changePage(dir) {
-      currentPage = Math.max(1, Math.min(totalPages, currentPage + dir));
-      loadSchedules();
-    }
-
-    function resetFilters() {
-      document.getElementById('f-search').value    = '';
-      document.getElementById('f-status').value    = '';
-      document.getElementById('f-date-from').value = '';
-      document.getElementById('f-date-to').value   = '';
-      currentPage = 1;
-      loadSchedules();
-    }
-
-    function showAlert(msg, type = 'error') {
-      const el = document.getElementById('alert');
-      el.textContent = msg;
-      el.className = `mb-4 px-4 py-3 rounded-lg text-sm font-medium ${
-        type === 'success' ? 'bg-green-50 border border-green-200 text-green-800'
-                           : 'bg-red-50 border border-red-200 text-red-800'}`;
+    /* ─── alert ───────────────────────────────────────────────────────── */
+    function showAlert(msg,type='error'){
+      const el=document.getElementById('alert');
+      el.textContent=msg;
+      el.className=`mb-4 px-4 py-3 rounded-lg text-sm font-medium ${type==='success'?'bg-green-50 border border-green-200 text-green-800':'bg-red-50 border border-red-200 text-red-800'}`;
       el.classList.remove('hidden');
-      setTimeout(() => el.classList.add('hidden'), 4000);
+      setTimeout(()=>el.classList.add('hidden'),4000);
     }
 
-    function escHtml(s) {
-      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    }
-    function escAttr(s) {
-      return String(s || '').replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    }
-    function formatDate(d) {
-      return d ? new Date(d).toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric' }) : '"”';
-    }
+    /* ─── init ────────────────────────────────────────────────────────── */
+    requireAuthAsync('admin','superadmin').then(user=>{
+      if(!user) return;
+      document.getElementById('user-name').textContent=user.full_name||user.email;
+      prefetchDropdowns();
+      renderCalendar();
+      ['f-status','f-date-from','f-date-to'].forEach(id=>
+        document.getElementById(id).addEventListener('change',()=>{ currentPage=1; loadSchedules(); }));
+      document.getElementById('f-search').addEventListener('input',()=>{
+        clearTimeout(searchTimer); searchTimer=setTimeout(()=>{ currentPage=1; loadSchedules(); },350);
+      });
+    });
   </script>
 </body>
 </html>
-

@@ -1,0 +1,256 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Schedule – ACES Research System</title>
+  <link rel="icon" type="image/webp" href="/assets/img/aw.webp">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .form-input { width:100%;padding:.5rem .75rem;font-size:.875rem;border:1px solid #d1d5db;border-radius:.5rem;outline:none;transition:border-color .15s,box-shadow .15s;background:#fff; }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans min-h-screen">
+
+  <nav class="bg-primary-700 text-white px-6 py-4 flex items-center justify-between shadow sticky top-0 z-40">
+    <div class="flex items-center gap-3">
+      <a href="/pages/student/dashboard.html" class="text-primary-200 hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </a>
+      <img src="/assets/img/aw.webp" alt="School Logo" class="w-9 h-9 object-contain rounded-lg">
+      <span class="font-bold text-lg">ACES Research System</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <span id="user-name" class="text-sm text-primary-100"></span>
+      <button onclick="logout()" class="text-sm bg-primary-800 hover:bg-primary-900 px-3 py-1.5 rounded-lg transition-colors">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="max-w-4xl mx-auto px-6 py-8">
+
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-gray-900">My Defense Schedule</h1>
+      <p class="text-sm text-gray-500 mt-0.5">Defense schedules assigned to your group</p>
+    </div>
+
+    <!-- Stats -->
+    <div id="stats-row" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6"></div>
+
+    <!-- No-group notice -->
+    <div id="no-group-notice" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-5 mb-6 text-sm text-amber-800">
+      <strong>No group found.</strong> You are not currently a member of any thesis or capstone group.
+      <a href="/pages/student/my-group.html" class="underline ml-1">Join or create a group →</a>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white border border-gray-200 rounded-xl px-4 py-3 flex flex-wrap items-center gap-3 mb-5 shadow-sm">
+      <select id="f-status" class="form-input w-auto text-sm py-2">
+        <option value="">All Statuses</option>
+        <option value="scheduled">Scheduled</option>
+        <option value="completed">Completed</option>
+        <option value="cancelled">Cancelled</option>
+        <option value="rescheduled">Rescheduled</option>
+      </select>
+      <button onclick="resetFilters()" class="px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">Reset</button>
+    </div>
+
+    <!-- Cards -->
+    <div id="cards-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="col-span-full text-center text-sm text-gray-400 py-10">Loading schedule…</div>
+    </div>
+
+    <!-- Pagination -->
+    <div id="pagination" class="hidden mt-6 flex items-center justify-between">
+      <p id="page-info" class="text-sm text-gray-500"></p>
+      <div class="flex gap-2">
+        <button id="btn-prev" onclick="changePage(-1)" class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40">Previous</button>
+        <button id="btn-next" onclick="changePage(1)"  class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail Modal -->
+  <div id="detail-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-xl flex flex-col max-h-[90vh]">
+      <div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100 flex-shrink-0">
+        <h2 class="text-lg font-bold text-gray-900">Schedule Details</h2>
+        <button onclick="closeDetail()" class="text-gray-400 hover:text-gray-600">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="detail-body" class="overflow-y-auto px-6 py-5 space-y-4 flex-1"></div>
+      <div class="px-6 pb-5 pt-3 border-t border-gray-100 flex-shrink-0">
+        <button onclick="closeDetail()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/utils.js"></script>
+  <script>
+    function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    async function http(fn){ const r=await fn(); const j=await r.json(); if(!r.ok) throw j; return j; }
+    const get = p => http(()=>apiGet(p));
+
+    const TIME_SLOTS = {
+      '8:00-9:00':  '8:00 – 9:00 AM',
+      '9:00-10:00': '9:00 – 10:00 AM',
+      '10:00-11:00':'10:00 – 11:00 AM',
+      '11:00-12:00':'11:00 AM – 12:00 PM',
+      '13:00-14:00':'1:00 – 2:00 PM',
+      '14:00-15:00':'2:00 – 3:00 PM',
+      '15:00-16:00':'3:00 – 4:00 PM',
+      '16:00-17:00':'4:00 – 5:00 PM',
+    };
+    function slotLabel(v){ return TIME_SLOTS[v]||v||'–'; }
+    function slotsLabel(arr){
+      if(!arr||!arr.length) return '–';
+      if(arr.length===1) return slotLabel(arr[0]);
+      const first=slotLabel(arr[0]).split('–')[0].trim();
+      const last=(slotLabel(arr[arr.length-1]).split('–')[1]||'').trim();
+      return `${first} – ${last} (${arr.length}hr)`;
+    }
+
+    const STATUS_CFG = {
+      scheduled:  {label:'Scheduled',  cls:'bg-blue-100 text-blue-700'    },
+      completed:  {label:'Completed',  cls:'bg-green-100 text-green-700'  },
+      cancelled:  {label:'Cancelled',  cls:'bg-red-100 text-red-700'      },
+      rescheduled:{label:'Rescheduled',cls:'bg-yellow-100 text-yellow-700'},
+    };
+    function badge(s){ const c=STATUS_CFG[s]||{label:s,cls:'bg-gray-100 text-gray-700'}; return `<span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${c.cls}">${c.label}</span>`; }
+
+    function fmtDate(d){
+      if(!d) return '–';
+      const s=String(d).split('T')[0]; const[y,m,day]=s.split('-');
+      return new Date(+y,+m-1,+day).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'});
+    }
+
+    let currentPage=1, totalPages=1;
+
+    requireAuthAsync('student').then(user=>{
+      if(!user) return;
+      document.getElementById('user-name').textContent=user.full_name||user.email;
+      loadSchedules();
+      document.getElementById('f-status').addEventListener('change',()=>{ currentPage=1; loadSchedules(); });
+    });
+
+    async function loadSchedules(){
+      const p=new URLSearchParams({page:currentPage,limit:10});
+      const status=document.getElementById('f-status').value;
+      if(status) p.set('status',status);
+
+      const grid=document.getElementById('cards-grid');
+      grid.innerHTML='<div class="col-span-full text-center text-sm text-gray-400 py-10">Loading…</div>';
+
+      try {
+        const res=await get(`/api/v1/schedules/my-group-schedule?${p}`);
+        const items=res.data?.data||[];
+        totalPages=res.data?.pagination?.totalPages||1;
+        const total=res.data?.pagination?.total||items.length;
+
+        if(res.data?.has_group === false && currentPage===1){
+          document.getElementById('no-group-notice').classList.remove('hidden');
+        }
+
+        renderStats(items,total);
+        document.getElementById('pagination').classList.toggle('hidden',totalPages<=1);
+
+        if(!items.length){
+          grid.innerHTML='<div class="col-span-full text-center text-sm text-gray-400 py-10">No defense schedules found for your group.</div>';
+          return;
+        }
+
+        const todayStr=new Date().toISOString().slice(0,10);
+        grid.innerHTML=items.map(s=>{
+          const dateStr=String(s.scheduled_date||'').split('T')[0];
+          const upcoming=dateStr>=todayStr && s.status==='scheduled';
+          return `
+          <div class="bg-white border ${upcoming?'border-primary-300 shadow-md':'border-gray-200'} rounded-xl shadow-sm p-5 hover:shadow-md transition-shadow">
+            ${upcoming?'<div class="text-xs font-semibold text-primary-600 bg-primary-50 rounded-md px-2 py-0.5 inline-block mb-3">Upcoming Defense</div>':''}
+            <div class="flex items-start justify-between gap-2 mb-3">
+              <div>
+                <p class="text-xs text-gray-400 mb-0.5">Defense Schedule</p>
+                <p class="font-semibold text-gray-900">${fmtDate(dateStr)}</p>
+              </div>
+              ${badge(s.status)}
+            </div>
+            <div class="space-y-2 text-xs text-gray-500 mb-4">
+              <p class="flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                ${esc(slotsLabel(s.time_slots))}
+              </p>
+              ${s.venue_name?`<p class="flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                ${esc(s.venue_name)}
+              </p>`:''}
+              <p class="flex items-center gap-1.5 text-gray-400">
+                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                ${s.panelists_count||0} panelist(s)
+              </p>
+            </div>
+            <button onclick="openDetail(${s.id})"
+              class="w-full px-3 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+              View Details
+            </button>
+          </div>`;
+        }).join('');
+        updatePagination();
+      } catch(err){
+        grid.innerHTML=`<div class="col-span-full text-center text-sm text-red-500 py-10">${esc(err?.message||'Failed to load.')}</div>`;
+      }
+    }
+
+    function renderStats(items,total){
+      const upcoming=items.filter(s=>s.status==='scheduled'&&String(s.scheduled_date||'').split('T')[0]>=new Date().toISOString().slice(0,10)).length;
+      const completed=items.filter(s=>s.status==='completed').length;
+      const cancelled=items.filter(s=>s.status==='cancelled').length;
+      document.getElementById('stats-row').innerHTML=[
+        {label:'Total',    value:total,     color:'text-primary-700'},
+        {label:'Upcoming', value:upcoming,  color:'text-blue-700'   },
+        {label:'Completed',value:completed, color:'text-green-700'  },
+        {label:'Cancelled',value:cancelled, color:'text-gray-600'   },
+      ].map(x=>`<div class="bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm"><p class="text-xs text-gray-500 mb-0.5">${x.label}</p><p class="text-2xl font-bold ${x.color}">${x.value}</p></div>`).join('');
+    }
+
+    async function openDetail(id){
+      document.getElementById('detail-body').innerHTML='<p class="text-sm text-gray-400">Loading…</p>';
+      document.getElementById('detail-modal').classList.remove('hidden');
+      try {
+        const res=await get(`/api/v1/schedules/${id}`);
+        const s=res.data;
+        const panelHtml=(s.panelists||[]).length
+          ? s.panelists.map(p=>`<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-50 text-primary-700">${esc(p.full_name)}</span>`).join('')
+          : '<span class="text-xs text-gray-400">None assigned</span>';
+        const groupHtml=(s.groups||[]).length
+          ? s.groups.map(g=>`<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700">${esc(g.name)}</span>`).join('')
+          : '<span class="text-xs text-gray-400">None listed</span>';
+
+        document.getElementById('detail-body').innerHTML=`
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div><p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Status</p>${badge(s.status)}</div>
+            <div><p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Venue</p><p class="text-gray-800 font-medium">${esc(s.venue_name||'TBD')}</p></div>
+            <div><p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Date</p><p class="text-gray-800 font-medium">${fmtDate(s.scheduled_date)}</p></div>
+            <div><p class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Timeslots</p><p class="text-gray-800 font-medium">${esc(slotsLabel(s.time_slots))}</p></div>
+          </div>
+          <div><p class="text-xs text-gray-400 uppercase tracking-wide mb-2">Presenting Groups</p><div class="flex flex-wrap gap-2">${groupHtml}</div></div>
+          <div><p class="text-xs text-gray-400 uppercase tracking-wide mb-2">Panelists</p><div class="flex flex-wrap gap-2">${panelHtml}</div></div>
+          ${s.notes?`<div><p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Notes</p><p class="text-sm text-gray-700">${esc(s.notes)}</p></div>`:''}`;
+      } catch(err){
+        document.getElementById('detail-body').innerHTML=`<p class="text-sm text-red-500">${esc(err?.message||'Failed.')}</p>`;
+      }
+    }
+
+    function closeDetail(){ document.getElementById('detail-modal').classList.add('hidden'); }
+
+    function changePage(dir){ currentPage=Math.max(1,Math.min(totalPages,currentPage+dir)); loadSchedules(); }
+    function updatePagination(){
+      document.getElementById('btn-prev').disabled=currentPage<=1;
+      document.getElementById('btn-next').disabled=currentPage>=totalPages;
+      document.getElementById('page-info').textContent=`Page ${currentPage} of ${totalPages}`;
+    }
+    function resetFilters(){ document.getElementById('f-status').value=''; currentPage=1; loadSchedules(); }
+  </script>
+</body>
+</html>

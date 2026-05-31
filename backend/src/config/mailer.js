@@ -1,4 +1,4 @@
-const nodemailer = require('nodemailer');
+﻿const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
   host:   process.env.MAIL_HOST,
@@ -10,7 +10,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const FROM = process.env.MAIL_FROM || '"DNSC Research Office" <no-reply@aces.edu.ph>';
+const FROM = process.env.MAIL_FROM || '"ACES Research Office" <no-reply@aces.edu.ph>';
 
 async function sendMail({ to, subject, html }) {
   return transporter.sendMail({ from: FROM, to, subject, html });

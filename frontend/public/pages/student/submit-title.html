@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Submit Title — DNSC Research System</title>
+  <title>Submit — ACES Research System</title>
   <link rel="icon" type="image/webp" href="/assets/img/aw.webp">
   <link rel="stylesheet" href="/assets/css/app.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -32,7 +32,7 @@
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
       </a>
       <img src="/assets/img/aw.webp" alt="School Logo" class="w-9 h-9 object-contain rounded-lg">
-      <span class="font-bold text-lg">DNSC Research System</span>
+      <span class="font-bold text-lg">ACES Research System</span>
     </div>
     <div class="flex items-center gap-4">
       <span id="user-name" class="text-sm text-primary-100"></span>
@@ -44,9 +44,13 @@
 
     <!-- Page header -->
     <div class="mb-8">
-      <h1 class="text-2xl font-bold text-gray-900">Submit Research Title</h1>
+      <h1 class="text-2xl font-bold text-gray-900">Submit</h1>
       <p class="text-sm text-gray-500 mt-1">Fill in your research details and attach your document. It will be saved as a draft until you submit for review.</p>
+      <p class="text-xs text-gray-400 mt-1">You may submit up to <strong>3 titles</strong> per semester. If rejected, you may try again within that limit.</p>
     </div>
+
+    <!-- Attempt counter — shown once school year + semester are both selected -->
+    <div id="attempt-banner" class="hidden mb-5 px-4 py-3 rounded-lg text-sm font-medium border"></div>
 
     <!-- Alert -->
     <div id="alert" class="hidden mb-5 px-4 py-3 rounded-lg text-sm font-medium"></div>
@@ -96,20 +100,15 @@
           <p class="text-xs text-gray-400 mt-1">Format: YYYY-YYYY</p>
         </div>
 
-        <!-- Abstract / Introduction -->
+        <!-- Adviser -->
         <div class="mb-5">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Abstract / Introduction <span class="text-red-500">*</span></label>
-          <textarea id="f-abstract" rows="6" placeholder="Write the abstract or introduction of your research…"
-            class="form-input resize-y" style="min-height:120px;max-height:400px;"></textarea>
-          <p id="err-abstract" class="field-error hidden"></p>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Adviser <span class="text-red-500">*</span></label>
+          <select id="f-adviser" class="form-input">
+            <option value="">Loading advisers…</option>
+          </select>
+          <p id="err-adviser" class="field-error hidden"></p>
         </div>
 
-        <!-- Keywords -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Keywords <span class="text-gray-400 font-normal">(optional)</span></label>
-          <input id="f-keywords" type="text" placeholder="e.g. machine learning, IoT, data science" class="form-input">
-          <p class="text-xs text-gray-400 mt-1">Separate keywords with commas</p>
-        </div>
       </div>
 
       <!-- ── Section 2: Document Upload ── -->
@@ -125,10 +124,8 @@
           <select id="f-doc-type" class="form-input">
             <option value="">Select document type…</option>
             <option value="title_proposal">Title Proposal</option>
+            <option value="partial_document">Partial Document</option>
             <option value="full_document">Full Document</option>
-            <option value="imrad">IMRaD</option>
-            <option value="presentation">Presentation</option>
-            <option value="other">Other</option>
           </select>
           <p id="err-doc-type" class="field-error hidden"></p>
         </div>
@@ -221,8 +218,63 @@
       const y1 = now.getMonth() >= 5 ? now.getFullYear() : now.getFullYear() - 1;
       document.getElementById('f-school-year').value = `${y1}-${y1 + 1}`;
 
+      await loadAdvisers();
       await checkGroupAccess(user.id);
     });
+
+    async function loadAdvisers() {
+      const sel = document.getElementById('f-adviser');
+      try {
+        const res = await apiGet('/api/v1/adviser/list').then(r => r.json());
+        const advisers = res.data || [];
+        sel.innerHTML = '<option value="">Select an adviser…</option>' +
+          advisers.map(a => {
+            const dept = a.department_code ? ` (${a.department_code})` : '';
+            return `<option value="${a.id}">${a.last_name}, ${a.first_name}${dept}</option>`;
+          }).join('');
+        if (!advisers.length) sel.innerHTML = '<option value="">No advisers available</option>';
+      } catch (_) {
+        sel.innerHTML = '<option value="">Failed to load advisers</option>';
+      }
+    }
+
+    /* ── Attempt counter ── */
+    async function refreshAttemptCounter() {
+      const sy  = document.getElementById('f-school-year').value.trim();
+      const sem = document.getElementById('f-semester').value;
+      const banner = document.getElementById('attempt-banner');
+      if (!sy || !sem) { banner.classList.add('hidden'); return; }
+
+      try {
+        const res = await apiGet(`/api/v1/submissions?school_year=${encodeURIComponent(sy)}&semester=${encodeURIComponent(sem)}&limit=10`).then(r => r.json());
+        const all = res.data || [];
+        const used = all.length;
+        const hasActive = all.some(s => s.status !== 'rejected' && !s.deleted_at);
+        const remaining = 3 - used;
+
+        banner.classList.remove('hidden');
+
+        if (used >= 3) {
+          banner.className = 'mb-5 px-4 py-3 rounded-lg text-sm font-medium border bg-red-50 border-red-200 text-red-700';
+          banner.textContent = `You have used all 3 title submission attempts for ${sem} semester ${sy}. No more submissions are allowed for this period.`;
+          lockPage();
+        } else if (hasActive) {
+          banner.className = 'mb-5 px-4 py-3 rounded-lg text-sm font-medium border bg-yellow-50 border-yellow-200 text-yellow-800';
+          banner.textContent = `Attempt ${used} of 3 used — your current submission is under review. You may submit a new title once it is rejected.`;
+          lockPage();
+        } else {
+          banner.className = 'mb-5 px-4 py-3 rounded-lg text-sm font-medium border bg-blue-50 border-blue-200 text-blue-700';
+          banner.textContent = used === 0
+            ? `You have 3 title submission attempts for ${sem} semester ${sy}.`
+            : `Attempt ${used} of 3 used — you have ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining for ${sem} semester ${sy}.`;
+        }
+      } catch (_) {
+        banner.classList.add('hidden');
+      }
+    }
+
+    document.getElementById('f-school-year').addEventListener('change', refreshAttemptCounter);
+    document.getElementById('f-semester').addEventListener('change', refreshAttemptCounter);
 
     async function checkGroupAccess(userId) {
       try {
@@ -239,7 +291,7 @@
       showAlert('Only group leaders can submit titles. Contact your group leader to submit on behalf of the group.', 'warning');
 
       // Disable all form inputs and buttons
-      ['f-title','f-type','f-semester','f-school-year','f-abstract','f-keywords',
+      ['f-title','f-type','f-semester','f-school-year','f-adviser',
        'f-doc-type','btn-save-draft','btn-submit'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.disabled = true; el.title = 'Only group leaders can submit'; }
@@ -292,24 +344,24 @@
 
     /* ── Validation ── */
     function clearErrors() {
-      ['err-title','err-type','err-semester','err-school-year','err-abstract','err-doc-type','err-file'].forEach(hideErr);
+      ['err-title','err-type','err-semester','err-school-year','err-adviser','err-doc-type','err-file'].forEach(hideErr);
     }
 
     function validate(requireFile) {
       clearErrors(); let ok = true;
-      const title    = document.getElementById('f-title').value.trim();
-      const type     = document.getElementById('f-type').value;
-      const sem      = document.getElementById('f-semester').value;
-      const sy       = document.getElementById('f-school-year').value.trim();
-      const abstract = document.getElementById('f-abstract').value.trim();
-      const docType  = document.getElementById('f-doc-type').value;
+      const title   = document.getElementById('f-title').value.trim();
+      const type    = document.getElementById('f-type').value;
+      const sem     = document.getElementById('f-semester').value;
+      const sy      = document.getElementById('f-school-year').value.trim();
+      const adviser = document.getElementById('f-adviser').value;
+      const docType = document.getElementById('f-doc-type').value;
 
-      if (!title)    { showErr('err-title',    'Title is required'); ok = false; }
-      if (!type)     { showErr('err-type',     'Please select a type'); ok = false; }
-      if (!sem)      { showErr('err-semester', 'Please select a semester'); ok = false; }
-      if (!sy)       { showErr('err-school-year', 'School year is required'); ok = false; }
+      if (!title)   { showErr('err-title',    'Title is required'); ok = false; }
+      if (!type)    { showErr('err-type',     'Please select a type'); ok = false; }
+      if (!sem)     { showErr('err-semester', 'Please select a semester'); ok = false; }
+      if (!sy)      { showErr('err-school-year', 'School year is required'); ok = false; }
       else if (!/^\d{4}-\d{4}$/.test(sy)) { showErr('err-school-year', 'Format must be YYYY-YYYY'); ok = false; }
-      if (!abstract) { showErr('err-abstract', 'Abstract / Introduction is required'); ok = false; }
+      if (!adviser) { showErr('err-adviser', 'Please select an adviser'); ok = false; }
 
       if (selectedFile && !docType) {
         showErr('err-doc-type', 'Please select a document type for your file.'); ok = false;
@@ -333,11 +385,10 @@
     function getPayload() {
       return {
         title:       document.getElementById('f-title').value.trim(),
+        adviser_id:  parseInt(document.getElementById('f-adviser').value),
         type:        document.getElementById('f-type').value,
         semester:    document.getElementById('f-semester').value,
         school_year: document.getElementById('f-school-year').value.trim(),
-        abstract:    document.getElementById('f-abstract').value.trim(),
-        keywords:    document.getElementById('f-keywords').value.trim() || null,
       };
     }
 

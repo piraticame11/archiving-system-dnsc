@@ -6,7 +6,11 @@ const { handleValidation } = require('../../middleware/validate');
 const v = require('./groups.validators');
 
 const auth        = [verifyToken];
+const adminOnly   = [verifyToken, requireRole('admin', 'superadmin')];
 const studentOnly = [verifyToken, requireRole('student')];
+
+/* list all groups (for admin schedule creation) */
+router.get('/', adminOnly, ctrl.listAll);
 
 /* list instructors for adviser selection (any authenticated student) */
 router.get('/instructors', auth, ctrl.listInstructors);
