@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const { paginatedResponse } = require('../../utils/pagination');
 
 /* ─── list ─────────────────────────────────────────────────────────── */
-async function listPanelists({ search, status, page, limit }) {
+async function listPanelists({ search, status, department_id, page, limit }) {
   const offset     = (page - 1) * limit;
   const conditions = ["u.deleted_at IS NULL AND r.name = 'panelist'"];
   const params     = [];
@@ -15,17 +15,23 @@ async function listPanelists({ search, status, page, limit }) {
   }
   if (status === 'active')   conditions.push('u.is_active = 1');
   if (status === 'inactive') conditions.push('u.is_active = 0');
+  if (department_id) { conditions.push('u.department_id = ?'); params.push(department_id); }
 
   const where = conditions.join(' AND ');
-  const base  = `FROM users u JOIN roles r ON u.role_id = r.id WHERE ${where}`;
+  const base  = `FROM users u
+     JOIN roles r ON u.role_id = r.id
+     LEFT JOIN departments d ON u.department_id = d.id
+     WHERE ${where}`;
 
   const [[{ total }]] = await db.query(`SELECT COUNT(*) AS total ${base}`, params);
   const [rows] = await db.query(
     `SELECT u.id, u.first_name, u.last_name, u.email,
             u.is_active, u.created_at,
+            u.department_id,
+            d.name AS department_name, d.code AS department_code,
             (SELECT COUNT(*) FROM schedule_panelists sp WHERE sp.panelist_id = u.id) AS schedules_count
      ${base}
-     ORDER BY u.created_at DESC
+     ORDER BY d.name ASC, u.last_name ASC, u.first_name ASC
      LIMIT ? OFFSET ?`,
     [...params, limit, offset]
   );
@@ -37,8 +43,11 @@ async function listPanelists({ search, status, page, limit }) {
 async function getPanelistById(id) {
   const [[user]] = await db.query(
     `SELECT u.id, u.first_name, u.last_name, u.email, u.is_active, u.created_at, u.updated_at,
+            u.department_id, d.name AS department_name, d.code AS department_code,
             r.name AS role
-     FROM users u JOIN roles r ON u.role_id = r.id
+     FROM users u
+     JOIN roles r ON u.role_id = r.id
+     LEFT JOIN departments d ON u.department_id = d.id
      WHERE u.id = ? AND r.name = 'panelist' AND u.deleted_at IS NULL`,
     [id]
   );
@@ -61,7 +70,7 @@ async function getPanelistById(id) {
 }
 
 /* ─── create ────────────────────────────────────────────────────────── */
-async function createPanelist({ first_name, last_name, email, password }) {
+async function createPanelist({ first_name, last_name, email, password, department_id }) {
   const [[roleRow]] = await db.query("SELECT id FROM roles WHERE name = 'panelist'");
   if (!roleRow) throw Object.assign(new Error('Panelist role not found'), { statusCode: 500 });
 
@@ -72,22 +81,23 @@ async function createPanelist({ first_name, last_name, email, password }) {
 
   const hash = await bcrypt.hash(password, 12);
   const [result] = await db.query(
-    `INSERT INTO users (role_id, first_name, last_name, email, password_hash, is_active, is_email_verified)
-     VALUES (?, ?, ?, ?, ?, 1, 1)`,
-    [roleRow.id, first_name, last_name, email, hash]
+    `INSERT INTO users (role_id, first_name, last_name, email, password_hash, department_id, is_active, is_email_verified)
+     VALUES (?, ?, ?, ?, ?, ?, 1, 1)`,
+    [roleRow.id, first_name, last_name, email, hash, department_id || null]
   );
   return getPanelistById(result.insertId);
 }
 
 /* ─── update ────────────────────────────────────────────────────────── */
-async function updatePanelist(id, { first_name, last_name, email }) {
+async function updatePanelist(id, { first_name, last_name, email, department_id }) {
   const user = await getPanelistById(id);
   if (!user) throw Object.assign(new Error('Panelist not found'), { statusCode: 404 });
 
   const updates = {};
-  if (first_name !== undefined) updates.first_name = first_name;
-  if (last_name  !== undefined) updates.last_name  = last_name;
-  if (email      !== undefined) {
+  if (first_name     !== undefined) updates.first_name     = first_name;
+  if (last_name      !== undefined) updates.last_name      = last_name;
+  if (department_id  !== undefined) updates.department_id  = department_id || null;
+  if (email          !== undefined) {
     const [[dup]] = await db.query(
       'SELECT id FROM users WHERE email = ? AND id != ? AND deleted_at IS NULL', [email, id]
     );

@@ -3,7 +3,7 @@ const { body, query, param } = require('express-validator');
 const SEMESTERS = ['1st', '2nd', 'summer'];
 const TYPES     = ['thesis', 'capstone'];
 const STATUSES  = ['submitted', 'under_review', 'approved', 'rejected', 'revision_required'];
-const DOC_TYPES = ['title_proposal', 'full_document', 'imrad', 'presentation', 'other'];
+const DOC_TYPES = ['title_proposal', 'partial_document', 'full_document', 'imrad', 'presentation', 'other'];
 
 const listRules = [
   query('page').optional().isInt({ min: 1 }),

@@ -32,6 +32,15 @@ const imradStorage = multer.diskStorage({
   filename(req, file, cb) { cb(null, `${Date.now()}_${file.originalname.replace(/\s/g, '_')}`); },
 });
 
+const guidelineStorage = multer.diskStorage({
+  destination(req, file, cb) { cb(null, makeUploadDir('instructor-guidelines')); },
+  filename(req, file, cb) {
+    const ext  = path.extname(file.originalname).toLowerCase();
+    const base = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
+    cb(null, `${Date.now()}_${base}${ext}`);
+  },
+});
+
 function fileFilter(req, file, cb) {
   const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
   if (!ALLOWED_MIME_TYPES.includes(file.mimetype) || !ALLOWED_EXTENSIONS.includes(ext)) {
@@ -66,9 +75,10 @@ function excelFilter(req, file, cb) {
   cb(null, true);
 }
 
-const uploadDocument = multer({ storage: documentStorage, fileFilter, limits: { fileSize: maxFileSizeMB() } });
-const uploadCsv      = multer({ storage: csvStorage, fileFilter: csvFilter, limits: { fileSize: 5 * 1024 * 1024 } });
-const uploadImrad    = multer({ storage: imradStorage, fileFilter, limits: { fileSize: maxFileSizeMB() } });
-const uploadExcel    = multer({ storage: excelStorage, fileFilter: excelFilter, limits: { fileSize: 10 * 1024 * 1024 } });
+const uploadDocument  = multer({ storage: documentStorage, fileFilter, limits: { fileSize: maxFileSizeMB() } });
+const uploadCsv       = multer({ storage: csvStorage, fileFilter: csvFilter, limits: { fileSize: 5 * 1024 * 1024 } });
+const uploadImrad     = multer({ storage: imradStorage, fileFilter, limits: { fileSize: maxFileSizeMB() } });
+const uploadExcel     = multer({ storage: excelStorage, fileFilter: excelFilter, limits: { fileSize: 10 * 1024 * 1024 } });
+const uploadGuideline = multer({ storage: guidelineStorage, fileFilter, limits: { fileSize: maxFileSizeMB() } });
 
-module.exports = { uploadDocument, uploadCsv, uploadImrad, uploadExcel };
+module.exports = { uploadDocument, uploadCsv, uploadImrad, uploadExcel, uploadGuideline };

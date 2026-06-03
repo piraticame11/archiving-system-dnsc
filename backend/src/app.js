@@ -16,8 +16,9 @@ const scheduleRoutes      = require('./modules/schedules/schedules.routes');
 const imradTemplateRoutes = require('./modules/imrad_templates/imrad_templates.routes');
 const panelistRoutes      = require('./modules/panelists/panelists.routes');
 const evaluationRoutes    = require('./modules/evaluations/evaluations.routes');
-const adviserRoutes       = require('./modules/adviser/adviser.routes');
-const groupRoutes         = require('./modules/groups/groups.routes');
+const adviserRoutes            = require('./modules/adviser/adviser.routes');
+const groupRoutes              = require('./modules/groups/groups.routes');
+const instructorGuidelineRoutes = require('./modules/instructor_guidelines/instructor_guidelines.routes');
 const { errorHandler }  = require('./middleware/errorHandler');
 
 const app = express();
@@ -54,8 +55,9 @@ app.use('/api/v1/schedules',       scheduleRoutes);
 app.use('/api/v1/imrad-templates', imradTemplateRoutes);
 app.use('/api/v1/panelists',       panelistRoutes);
 app.use('/api/v1/evaluations',     evaluationRoutes);
-app.use('/api/v1/adviser',         adviserRoutes);
-app.use('/api/v1/groups',          groupRoutes);
+app.use('/api/v1/adviser',              adviserRoutes);
+app.use('/api/v1/groups',              groupRoutes);
+app.use('/api/v1/instructor-guidelines', instructorGuidelineRoutes);
 
 // Serve frontend static files
 app.use(express.static(path.join(__dirname, '../../frontend/public')));

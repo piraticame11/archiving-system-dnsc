@@ -6,8 +6,9 @@ async function list(req, res, next) {
   try {
     const { page, limit } = getPagination(req.query);
     const result = await service.listPanelists({
-      search: req.query.search,
-      status: req.query.status,
+      search:        req.query.search,
+      status:        req.query.status,
+      department_id: req.query.department_id,
       page, limit,
     });
     sendSuccess(res, result);

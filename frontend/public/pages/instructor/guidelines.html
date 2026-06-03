@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -27,23 +27,120 @@
   <div class="max-w-4xl mx-auto px-6 py-8">
 
     <div class="mb-6">
-      <h1 class="text-2xl font-bold text-gray-900">Guidelines & Templates</h1>
-      <p class="text-sm text-gray-500 mt-0.5">Download IMRAD templates and research guidelines shared by the admin</p>
+      <h1 class="text-2xl font-bold text-gray-900">Guidelines & Resources</h1>
+      <p class="text-sm text-gray-500 mt-0.5">Access admin-shared templates and manage your own uploaded materials</p>
     </div>
 
     <!-- Alert -->
     <div id="alert" class="hidden mb-4 px-4 py-3 rounded-lg text-sm font-medium"></div>
 
-    <!-- Template list -->
-    <div id="template-list" class="space-y-3">
-      <p class="text-sm text-gray-400 text-center py-10">Loading templates…</p>
+    <!-- Tabs -->
+    <div class="flex gap-1 bg-gray-100 p-1 rounded-xl mb-6 w-fit">
+      <button id="tab-admin" onclick="switchTab('admin')"
+        class="tab-btn px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-white text-gray-900 shadow-sm">
+        Admin Resources
+      </button>
+      <button id="tab-mine" onclick="switchTab('mine')"
+        class="tab-btn px-4 py-2 text-sm font-medium rounded-lg transition-colors text-gray-500 hover:text-gray-700">
+        My Uploads
+      </button>
     </div>
 
-    <!-- Empty state -->
-    <div id="empty-state" class="hidden bg-white border border-dashed border-gray-300 rounded-xl p-12 text-center">
-      <svg class="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-      <p class="text-gray-500 font-medium mb-1">No templates available</p>
-      <p class="text-sm text-gray-400">The admin hasn't uploaded any guidelines yet.</p>
+    <!-- ── ADMIN RESOURCES TAB ── -->
+    <div id="panel-admin">
+      <div id="admin-list" class="space-y-3">
+        <p class="text-sm text-gray-400 text-center py-10">Loading templates…</p>
+      </div>
+      <div id="admin-empty" class="hidden bg-white border border-dashed border-gray-300 rounded-xl p-12 text-center">
+        <svg class="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <p class="text-gray-500 font-medium mb-1">No templates available</p>
+        <p class="text-sm text-gray-400">The admin hasn't uploaded any guidelines yet.</p>
+      </div>
+    </div>
+
+    <!-- ── MY UPLOADS TAB ── -->
+    <div id="panel-mine" class="hidden">
+
+      <!-- Upload form -->
+      <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6 mb-6">
+        <h2 class="font-semibold text-gray-800 mb-4">Upload a Guideline or Form</h2>
+        <form id="upload-form" onsubmit="handleUpload(event)" class="space-y-4">
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Title <span class="text-red-500">*</span></label>
+              <input id="f-title" type="text" maxlength="200" required
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
+                placeholder="e.g. Research Guidelines AY 2024-2025">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Category</label>
+              <select id="f-category"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400">
+                <option value="General">General</option>
+                <option value="Guidelines">Guidelines</option>
+                <option value="Forms">Forms</option>
+                <option value="Templates">Templates</option>
+                <option value="References">References</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Description</label>
+            <textarea id="f-description" rows="2"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none"
+              placeholder="Brief description of the document (optional)"></textarea>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">File <span class="text-red-500">*</span></label>
+            <div id="drop-zone"
+              class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-primary-400 hover:bg-primary-50 transition-colors"
+              onclick="document.getElementById('f-file').click()"
+              ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+              <svg class="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+              </svg>
+              <p id="drop-label" class="text-sm text-gray-500">Drag & drop or <span class="text-primary-600 font-semibold">browse</span></p>
+              <p class="text-xs text-gray-400 mt-1">PDF or DOCX · max 50 MB</p>
+            </div>
+            <input id="f-file" type="file" accept=".pdf,.docx" class="hidden" onchange="onFileSelected(event)">
+          </div>
+
+          <div class="flex justify-end">
+            <button type="submit" id="submit-btn"
+              class="inline-flex items-center gap-2 px-5 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+              Upload
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- My uploaded files -->
+      <div id="mine-list" class="space-y-3">
+        <p class="text-sm text-gray-400 text-center py-8">Loading your uploads…</p>
+      </div>
+      <div id="mine-empty" class="hidden bg-white border border-dashed border-gray-300 rounded-xl p-10 text-center">
+        <svg class="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <p class="text-gray-500 font-medium mb-1">No uploads yet</p>
+        <p class="text-sm text-gray-400">Files you upload will appear here.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete confirmation modal -->
+  <div id="delete-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 px-4">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
+      <h3 class="font-bold text-gray-900 mb-2">Delete guideline?</h3>
+      <p class="text-sm text-gray-500 mb-5">This action cannot be undone. The file will be removed.</p>
+      <div class="flex gap-3 justify-end">
+        <button onclick="closeDeleteModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">Cancel</button>
+        <button id="confirm-delete-btn" onclick="confirmDelete()"
+          class="px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">Delete</button>
+      </div>
     </div>
   </div>
 
@@ -51,75 +148,21 @@
   <script src="/assets/js/api.js"></script>
   <script src="/assets/js/utils.js"></script>
   <script>
-    function escHtml(s) { const d = document.createElement('div'); d.appendChild(document.createTextNode(s||'')); return d.innerHTML; }
+    let currentUserId = null;
+    let pendingDeleteId = null;
+    let activeTab = 'admin';
+
+    function escHtml(s) {
+      const d = document.createElement('div');
+      d.appendChild(document.createTextNode(s || ''));
+      return d.innerHTML;
+    }
 
     function formatBytes(b) {
       if (!b) return '—';
       if (b < 1024) return b + ' B';
-      if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
-      return (b/1048576).toFixed(1) + ' MB';
-    }
-
-    async function http(fn) {
-      const res = await fn(); const json = await res.json();
-      if (!res.ok) throw json; return json;
-    }
-    const get = path => http(() => apiGet(path));
-
-    requireAuthAsync('instructor').then(async user => {
-      if (!user) return;
-      document.getElementById('user-name').textContent = user.full_name || user.email;
-      loadTemplates();
-    });
-
-    async function loadTemplates() {
-      const list = document.getElementById('template-list');
-      try {
-        const res   = await get('/api/v1/imrad-templates?limit=50');
-        const items = res.data?.data || res.data || [];
-
-        if (!items.length) {
-          list.innerHTML = '';
-          document.getElementById('empty-state').classList.remove('hidden');
-          return;
-        }
-
-        list.innerHTML = items.map(t => `
-          <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-5 flex items-start gap-4">
-            <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-              <svg class="w-5 h-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="font-semibold text-gray-900">${escHtml(t.title)}</p>
-              ${t.description ? `<p class="text-sm text-gray-500 mt-0.5">${escHtml(t.description)}</p>` : ''}
-              <p class="text-xs text-gray-400 mt-1">${escHtml(t.file_name)} · ${formatBytes(t.file_size)} · Uploaded ${formatDate(t.created_at)}</p>
-            </div>
-            <button onclick="downloadTemplate(${t.id}, '${t.file_name.replace(/'/g,"\\'")}')"
-              class="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors">
-              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-              Download
-            </button>
-          </div>`).join('');
-      } catch (err) {
-        list.innerHTML = `<p class="text-sm text-red-500 text-center py-6">${escHtml(err?.message || 'Failed to load templates.')}</p>`;
-      }
-    }
-
-    async function downloadTemplate(id, fileName) {
-      try {
-        const res = await fetch(`/api/v1/imrad-templates/${id}/download`, {
-          headers: { Authorization: `Bearer ${getAccessToken()}` },
-        });
-        if (!res.ok) { showAlert('Could not download template.', 'error'); return; }
-        const blob = await res.blob();
-        const url  = URL.createObjectURL(blob);
-        const a    = document.createElement('a');
-        a.href = url; a.download = fileName;
-        a.click();
-        URL.revokeObjectURL(url);
-      } catch (e) {
-        showAlert('Download failed.', 'error');
-      }
+      if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+      return (b / 1048576).toFixed(1) + ' MB';
     }
 
     function showAlert(msg, type = 'error') {
@@ -129,7 +172,252 @@
         ? 'mb-4 px-4 py-3 rounded-lg text-sm font-medium bg-green-50 text-green-700 border border-green-200'
         : 'mb-4 px-4 py-3 rounded-lg text-sm font-medium bg-red-50 text-red-700 border border-red-200';
       el.classList.remove('hidden');
-      setTimeout(() => el.classList.add('hidden'), 4000);
+      setTimeout(() => el.classList.add('hidden'), 5000);
+    }
+
+    function switchTab(tab) {
+      activeTab = tab;
+      document.getElementById('panel-admin').classList.toggle('hidden', tab !== 'admin');
+      document.getElementById('panel-mine').classList.toggle('hidden', tab !== 'mine');
+      document.getElementById('tab-admin').className = tab === 'admin'
+        ? 'tab-btn px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-white text-gray-900 shadow-sm'
+        : 'tab-btn px-4 py-2 text-sm font-medium rounded-lg transition-colors text-gray-500 hover:text-gray-700';
+      document.getElementById('tab-mine').className = tab === 'mine'
+        ? 'tab-btn px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-white text-gray-900 shadow-sm'
+        : 'tab-btn px-4 py-2 text-sm font-medium rounded-lg transition-colors text-gray-500 hover:text-gray-700';
+    }
+
+    requireAuthAsync('instructor').then(async user => {
+      if (!user) return;
+      currentUserId = user.id;
+      document.getElementById('user-name').textContent = user.full_name || user.email;
+      loadAdminTemplates();
+      loadMyGuidelines();
+    });
+
+    /* ── Admin Resources ── */
+    async function loadAdminTemplates() {
+      const list = document.getElementById('admin-list');
+      try {
+        const res   = await apiGet('/api/v1/imrad-templates?limit=50');
+        const json  = await res.json();
+        const items = json.data?.data || json.data || [];
+
+        if (!items.length) {
+          list.innerHTML = '';
+          document.getElementById('admin-empty').classList.remove('hidden');
+          return;
+        }
+
+        list.innerHTML = items.map(t => adminCard(t)).join('');
+      } catch (err) {
+        list.innerHTML = `<p class="text-sm text-red-500 text-center py-6">${escHtml(err?.message || 'Failed to load templates.')}</p>`;
+      }
+    }
+
+    function adminCard(t) {
+      return `
+        <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-5 flex items-start gap-4">
+          <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+            ${fileIcon('text-yellow-600')}
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="font-semibold text-gray-900">${escHtml(t.title)}</p>
+            ${t.description ? `<p class="text-sm text-gray-500 mt-0.5">${escHtml(t.description)}</p>` : ''}
+            <p class="text-xs text-gray-400 mt-1">${escHtml(t.file_name)} · ${formatBytes(t.file_size)} · Uploaded ${formatDate(t.created_at)}</p>
+          </div>
+          <button onclick="downloadFile('/api/v1/imrad-templates/${t.id}/download', '${escHtml(t.file_name)}')"
+            class="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors">
+            ${downloadIcon()} Download
+          </button>
+        </div>`;
+    }
+
+    /* ── My Uploads ── */
+    async function loadMyGuidelines() {
+      const list = document.getElementById('mine-list');
+      try {
+        const res   = await apiGet('/api/v1/instructor-guidelines');
+        const json  = await res.json();
+        const all   = json.data || [];
+        const items = all.filter(g => g.uploaded_by === currentUserId);
+
+        document.getElementById('mine-empty').classList.toggle('hidden', items.length > 0);
+        list.innerHTML = items.length ? items.map(g => myCard(g)).join('') : '';
+      } catch (err) {
+        list.innerHTML = `<p class="text-sm text-red-500 text-center py-6">${escHtml(err?.message || 'Failed to load your uploads.')}</p>`;
+      }
+    }
+
+    function categoryBadge(cat) {
+      const colors = {
+        Guidelines: 'bg-blue-100 text-blue-700',
+        Forms:      'bg-green-100 text-green-700',
+        Templates:  'bg-purple-100 text-purple-700',
+        References: 'bg-orange-100 text-orange-700',
+        General:    'bg-gray-100 text-gray-600',
+        Other:      'bg-gray-100 text-gray-600',
+      };
+      const cls = colors[cat] || 'bg-gray-100 text-gray-600';
+      return `<span class="text-xs font-medium px-2 py-0.5 rounded-full ${cls}">${escHtml(cat || 'General')}</span>`;
+    }
+
+    function myCard(g) {
+      return `
+        <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-5 flex items-start gap-4">
+          <div class="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+            ${fileIcon('text-primary-600')}
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <p class="font-semibold text-gray-900">${escHtml(g.title)}</p>
+              ${categoryBadge(g.category)}
+            </div>
+            ${g.description ? `<p class="text-sm text-gray-500 mt-0.5">${escHtml(g.description)}</p>` : ''}
+            <p class="text-xs text-gray-400 mt-1">${escHtml(g.file_name)} · ${formatBytes(g.file_size)} · Uploaded ${formatDate(g.created_at)}</p>
+          </div>
+          <div class="flex-shrink-0 flex items-center gap-2">
+            <button onclick="downloadFile('/api/v1/instructor-guidelines/${g.id}/download', '${escHtml(g.file_name)}')"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors">
+              ${downloadIcon()} Download
+            </button>
+            <button onclick="openDeleteModal(${g.id})"
+              class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              Delete
+            </button>
+          </div>
+        </div>`;
+    }
+
+    /* ── Upload ── */
+    function onDragOver(e) {
+      e.preventDefault();
+      document.getElementById('drop-zone').classList.add('border-primary-400', 'bg-primary-50');
+    }
+    function onDragLeave(e) {
+      document.getElementById('drop-zone').classList.remove('border-primary-400', 'bg-primary-50');
+    }
+    function onDrop(e) {
+      e.preventDefault();
+      onDragLeave(e);
+      const file = e.dataTransfer.files[0];
+      if (file) setFile(file);
+    }
+    function onFileSelected(e) {
+      const file = e.target.files[0];
+      if (file) setFile(file);
+    }
+    function setFile(file) {
+      const label = document.getElementById('drop-label');
+      label.innerHTML = `<span class="font-semibold text-primary-700">${escHtml(file.name)}</span> <span class="text-gray-400">(${formatBytes(file.size)})</span>`;
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      document.getElementById('f-file').files = dt.files;
+    }
+
+    async function handleUpload(e) {
+      e.preventDefault();
+      const title    = document.getElementById('f-title').value.trim();
+      const category = document.getElementById('f-category').value;
+      const desc     = document.getElementById('f-description').value.trim();
+      const fileEl   = document.getElementById('f-file');
+
+      if (!title)            { showAlert('Title is required.'); return; }
+      if (!fileEl.files[0])  { showAlert('Please select a file.'); return; }
+
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.textContent = 'Uploading…';
+
+      const fd = new FormData();
+      fd.append('title', title);
+      fd.append('category', category);
+      if (desc) fd.append('description', desc);
+      fd.append('file', fileEl.files[0]);
+
+      try {
+        const res  = await fetch('/api/v1/instructor-guidelines', {
+          method:  'POST',
+          headers: { Authorization: `Bearer ${getAccessToken()}` },
+          body:    fd,
+        });
+        const json = await res.json();
+        if (!res.ok) throw json;
+
+        showAlert('Guideline uploaded successfully!', 'success');
+        document.getElementById('upload-form').reset();
+        document.getElementById('drop-label').innerHTML =
+          'Drag & drop or <span class="text-primary-600 font-semibold">browse</span>';
+        loadMyGuidelines();
+      } catch (err) {
+        showAlert(err?.message || 'Upload failed. Please try again.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `${uploadIconBtn()} Upload`;
+      }
+    }
+
+    /* ── Delete ── */
+    function openDeleteModal(id) {
+      pendingDeleteId = id;
+      document.getElementById('delete-modal').classList.remove('hidden');
+    }
+    function closeDeleteModal() {
+      pendingDeleteId = null;
+      document.getElementById('delete-modal').classList.add('hidden');
+    }
+    async function confirmDelete() {
+      if (!pendingDeleteId) return;
+      const btn = document.getElementById('confirm-delete-btn');
+      btn.disabled = true;
+      btn.textContent = 'Deleting…';
+      try {
+        const res  = await fetch(`/api/v1/instructor-guidelines/${pendingDeleteId}`, {
+          method:  'DELETE',
+          headers: { Authorization: `Bearer ${getAccessToken()}` },
+        });
+        const json = await res.json();
+        if (!res.ok) throw json;
+        showAlert('Guideline deleted.', 'success');
+        closeDeleteModal();
+        loadMyGuidelines();
+      } catch (err) {
+        showAlert(err?.message || 'Delete failed.');
+        closeDeleteModal();
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Delete';
+      }
+    }
+
+    /* ── Download ── */
+    async function downloadFile(endpoint, fileName) {
+      try {
+        const res = await fetch(endpoint, {
+          headers: { Authorization: `Bearer ${getAccessToken()}` },
+        });
+        if (!res.ok) { showAlert('Could not download file.'); return; }
+        const blob = await res.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url; a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch {
+        showAlert('Download failed.');
+      }
+    }
+
+    /* ── SVG helpers ── */
+    function fileIcon(color) {
+      return `<svg class="w-5 h-5 ${color}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>`;
+    }
+    function downloadIcon() {
+      return `<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>`;
+    }
+    function uploadIconBtn() {
+      return `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>`;
     }
   </script>
 </body>

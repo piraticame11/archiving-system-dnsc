@@ -235,7 +235,13 @@
 
           <!-- Panelists -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Panelists</label>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-sm font-medium text-gray-700">Panelists</label>
+              <select id="sched-dept-filter" onchange="filterPanelistsByDept()"
+                class="text-xs border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white">
+                <option value="">All Departments</option>
+              </select>
+            </div>
             <div id="panelist-list" class="border border-gray-300 rounded-lg p-3 max-h-36 overflow-y-auto space-y-2">
               <p class="text-xs text-gray-400">Loading panelists…</p>
             </div>
@@ -360,6 +366,7 @@
     let allVenues      = [];
     let allPanelists   = [];
     let allGroups      = [];
+    let allDepartments = [];
     let bookedSlots    = [];   // slots booked for current venue+date (for the form)
 
     /* ─── tab ─────────────────────────────────────────────────────────── */
@@ -579,15 +586,32 @@
     ════════════════════════════════════════════════════════════════════ */
     async function prefetchDropdowns() {
       try {
-        const [vRes, pRes, gRes] = await Promise.all([
+        const [vRes, pRes, gRes, dRes] = await Promise.all([
           get('/api/v1/venues?limit=100'),
           get('/api/v1/users?role=panelist&limit=100'),
           get('/api/v1/groups'),
+          get('/api/v1/departments'),
         ]);
-        allVenues    = vRes.data?.data || vRes.data || [];
-        allPanelists = pRes.data?.data || pRes.data || [];
-        allGroups    = gRes.data || [];
+        allVenues      = vRes.data?.data || vRes.data || [];
+        allPanelists   = pRes.data?.data || pRes.data || [];
+        allGroups      = gRes.data || [];
+        allDepartments = dRes.data || [];
+
+        const deptSel = document.getElementById('sched-dept-filter');
+        deptSel.innerHTML = '<option value="">All Departments</option>';
+        allDepartments.forEach(d => {
+          const o = document.createElement('option');
+          o.value = d.id; o.textContent = `${d.code} – ${d.name}`;
+          deptSel.appendChild(o);
+        });
       } catch(_){}
+    }
+
+    function filterPanelistsByDept() {
+      const selectedIds = new Set(
+        [...document.querySelectorAll('input[name=panelist]:checked')].map(c => c.value)
+      );
+      populatePanelistList([...selectedIds]);
     }
 
     function populateVenueDropdown(selectedId) {
@@ -618,16 +642,35 @@
     }
 
     function populatePanelistList(selectedIds = []) {
-      const sel=new Set(selectedIds.map(String));
-      const el=document.getElementById('panelist-list');
-      if(!allPanelists.length){ el.innerHTML='<p class="text-xs text-gray-400">No panelists available.</p>'; return; }
-      el.innerHTML=allPanelists.map(p=>`
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" name="panelist" value="${p.id}" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-            ${sel.has(String(p.id))?'checked':''}>
-          <span class="text-sm text-gray-700">${esc(p.first_name+' '+p.last_name)}</span>
-          <span class="text-xs text-gray-400">${esc(p.email||'')}</span>
-        </label>`).join('');
+      const sel      = new Set(selectedIds.map(String));
+      const el       = document.getElementById('panelist-list');
+      const deptId   = document.getElementById('sched-dept-filter')?.value || '';
+      const filtered = deptId
+        ? allPanelists.filter(p => String(p.department_id) === deptId)
+        : allPanelists;
+
+      if (!allPanelists.length) { el.innerHTML = '<p class="text-xs text-gray-400">No panelists available.</p>'; return; }
+      if (!filtered.length)     { el.innerHTML = '<p class="text-xs text-gray-400">No panelists in this department.</p>'; return; }
+
+      // Group by department for display
+      const groups = {};
+      filtered.forEach(p => {
+        const key = p.department_code || '—';
+        if (!groups[key]) groups[key] = { label: p.department_name || 'No Department', code: key, items: [] };
+        groups[key].items.push(p);
+      });
+
+      el.innerHTML = Object.values(groups).map(g => `
+        <div>
+          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">${esc(g.code)} – ${esc(g.label)}</p>
+          ${g.items.map(p => `
+            <label class="flex items-center gap-2 cursor-pointer mb-1">
+              <input type="checkbox" name="panelist" value="${p.id}" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                ${sel.has(String(p.id)) ? 'checked' : ''}>
+              <span class="text-sm text-gray-700">${esc(p.first_name + ' ' + p.last_name)}</span>
+              <span class="text-xs text-gray-400">${esc(p.email || '')}</span>
+            </label>`).join('')}
+        </div>`).join('');
     }
 
     /* ════════════════════════════════════════════════════════════════════
@@ -643,6 +686,7 @@
       document.getElementById('conflict-warning').classList.add('hidden');
       document.getElementById('sched-modal-title').textContent = 'Add Schedule';
       document.getElementById('btn-save-sched').textContent    = 'Save Schedule';
+      document.getElementById('sched-dept-filter').value = '';
       bookedSlots = [];
       populateVenueDropdown(null);
       buildSlotCheckboxes(prefillSlot ? [prefillSlot] : []);
@@ -658,6 +702,7 @@
       document.getElementById('btn-save-sched').textContent    = 'Save Changes';
       document.getElementById('sched-alert').classList.add('hidden');
       document.getElementById('conflict-warning').classList.add('hidden');
+      document.getElementById('sched-dept-filter').value = '';
       document.getElementById('schedule-modal').classList.remove('hidden');
       try {
         const res=await get(`/api/v1/schedules/${id}`);
