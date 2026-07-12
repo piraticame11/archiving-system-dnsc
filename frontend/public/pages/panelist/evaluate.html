@@ -99,6 +99,14 @@
       </div>
     </div>
 
+    <!-- Panel & Minutes: base your evaluation on the uploaded minutes photo -->
+    <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
+      <p class="text-xs text-gray-400 uppercase tracking-wide mb-2">Panel</p>
+      <div id="panel-list" class="space-y-1 mb-4"></div>
+      <p class="text-xs text-gray-400 uppercase tracking-wide mb-2">Minutes Photo</p>
+      <div id="minutes-preview" class="text-xs text-gray-400">Loading…</div>
+    </div>
+
     <!-- ─── MULTI-GROUP CAROUSEL ─── -->
     <div id="carousel-section" class="hidden">
 
@@ -306,29 +314,59 @@
     const get  = path      => http(() => apiGet(path));
     const post = (path, b) => http(() => apiPost(path, b));
 
-    const TIME_SLOTS = {
-      '8:00-9:00':   '8:00 – 9:00 AM',
-      '9:00-10:00':  '9:00 – 10:00 AM',
-      '10:00-11:00': '10:00 – 11:00 AM',
-      '11:00-12:00': '11:00 AM – 12:00 PM',
-      '13:00-14:00': '1:00 – 2:00 PM',
-      '14:00-15:00': '2:00 – 3:00 PM',
-      '15:00-16:00': '3:00 – 4:00 PM',
-      '16:00-17:00': '4:00 – 5:00 PM',
-    };
+    /* Proposal defenses run 30 minutes; outline-to-final defenses run 1h30. */
+    function fmtHM(h, m) {
+      const period = h < 12 ? 'AM' : 'PM';
+      const h12 = h % 12 === 0 ? 12 : h % 12;
+      return m === 0 ? `${h12}:00 ${period}` : `${h12}:${String(m).padStart(2,'0')} ${period}`;
+    }
+    function buildSlotLabels(startMin, endMin, stepMin, out) {
+      for (let t = startMin; t + stepMin <= endMin; t += stepMin) {
+        const sh = Math.floor(t/60), sm = t%60, eh = Math.floor((t+stepMin)/60), em = (t+stepMin)%60;
+        out[`${sh}:${String(sm).padStart(2,'0')}-${eh}:${String(em).padStart(2,'0')}`] = `${fmtHM(sh,sm)} – ${fmtHM(eh,em)}`;
+      }
+    }
+    const TIME_SLOTS = {};
+    buildSlotLabels(8*60, 12*60, 30, TIME_SLOTS); buildSlotLabels(13*60, 17*60, 30, TIME_SLOTS);
+    buildSlotLabels(8*60, 12*60, 90, TIME_SLOTS); buildSlotLabels(13*60, 16*60, 90, TIME_SLOTS);
     function slotLabel(v) { return TIME_SLOTS[v] || v || '–'; }
     function slotsLabel(arr) {
       if (!arr || !arr.length) return '–';
-      if (arr.length === 1) return slotLabel(arr[0]);
-      const first = slotLabel(arr[0]).split('–')[0].trim();
-      const last  = (slotLabel(arr[arr.length-1]).split('–')[1] || '').trim();
-      return `${first} – ${last} (${arr.length}hr)`;
+      return slotLabel(arr[0]);
     }
     function fmtDate(d) {
       if (!d) return '–';
       const s = String(d).split('T')[0];
       const [y, m, day] = s.split('-');
       return new Date(+y, +m-1, +day).toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric' });
+    }
+
+    const PANEL_ROLE_LABEL = { chairperson: 'Chairperson', industry_panelist: 'Industry Panelist', member: 'Member' };
+
+    function renderPanel(panelists) {
+      const el = document.getElementById('panel-list');
+      if (!panelists.length) { el.innerHTML = '<p class="text-xs text-gray-400">No panel assigned yet.</p>'; return; }
+      el.innerHTML = panelists.map(p => `
+        <div class="text-sm text-gray-700 flex items-center gap-1.5">
+          <span class="text-xs font-semibold text-primary-700 bg-primary-50 px-1.5 py-0.5 rounded">${escHtml(PANEL_ROLE_LABEL[p.panel_role] || p.panel_role || '')}</span>
+          ${escHtml(p.full_name || '')}
+        </div>`).join('');
+    }
+
+    /* The system bases the defense outcome on the panel's uploaded minutes photo. */
+    async function loadMinutesPreview(scheduleId, hasMinutes) {
+      const el = document.getElementById('minutes-preview');
+      if (!hasMinutes) { el.innerHTML = '<p class="text-xs text-gray-400">No minutes photo uploaded yet.</p>'; return; }
+      try {
+        const token = getAccessToken();
+        const headers = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const res = await fetch(`/api/v1/schedules/${scheduleId}/minutes`, { headers, credentials: 'include' });
+        if (!res.ok) { el.innerHTML = '<p class="text-xs text-red-500">Failed to load minutes photo.</p>'; return; }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        el.innerHTML = `<img src="${url}" class="max-h-64 rounded-lg border border-gray-200">`;
+      } catch (_) { el.innerHTML = '<p class="text-xs text-red-500">Failed to load minutes photo.</p>'; }
     }
 
     const STATUS_CFG = {
@@ -722,6 +760,9 @@
         const sc = STATUS_CFG[s.status] || { label: s.status, cls: 'bg-gray-100 text-gray-700' };
         document.getElementById('sched-status-badge').innerHTML =
           `<span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${sc.cls}">${sc.label}</span>`;
+
+        renderPanel(s.panelists || []);
+        loadMinutesPreview(s.id, s.has_minutes);
 
         document.getElementById('loading-state').classList.add('hidden');
         document.getElementById('main-content').classList.remove('hidden');

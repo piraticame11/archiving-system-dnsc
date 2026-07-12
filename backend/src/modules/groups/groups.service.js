@@ -1,5 +1,7 @@
 const db = require('../../config/database');
 
+const JOIN_CODE_VALIDITY_DAYS = 7;
+
 function generateJoinCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
@@ -30,7 +32,7 @@ async function getMyGroup(studentId) {
 /* ─── get group by id ─────────────────────────────────────────────── */
 async function getGroupById(id) {
   const [[group]] = await db.query(
-    `SELECT tg.id, tg.name, tg.join_code, tg.title, tg.school_year, tg.max_members,
+    `SELECT tg.id, tg.name, tg.join_code, tg.join_code_expires_at, tg.title, tg.school_year, tg.max_members,
             tg.leader_id, tg.adviser_id, tg.department_id, tg.created_at,
             CONCAT(l.first_name, ' ', l.last_name) AS leader_name,
             CONCAT(a.first_name, ' ', a.last_name) AS adviser_name,
@@ -85,11 +87,11 @@ async function createGroup({ leader_id, name, adviser_id, title, school_year, ma
   }
 
   const join_code = await uniqueJoinCode();
-  const cap = Math.min(Math.max(parseInt(max_members) || 5, 2), 10);
+  const cap = Math.min(Math.max(parseInt(max_members) || 5, 4), 6);
 
   const [result] = await db.query(
-    `INSERT INTO thesis_groups (name, join_code, leader_id, adviser_id, department_id, title, school_year, max_members)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO thesis_groups (name, join_code, join_code_expires_at, leader_id, adviser_id, department_id, title, school_year, max_members)
+     VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ${JOIN_CODE_VALIDITY_DAYS} DAY), ?, ?, ?, ?, ?, ?)`,
     [name, join_code, leader_id, adviser_id || null, user.department_id, title || null, school_year, cap]
   );
   const groupId = result.insertId;
@@ -119,7 +121,7 @@ async function updateGroup(groupId, leaderId, { name, adviser_id, title, school_
   if (title       !== undefined) fields.title       = title || null;
   if (school_year !== undefined) fields.school_year = school_year;
   if (adviser_id  !== undefined) fields.adviser_id  = adviser_id || null;
-  if (max_members !== undefined) fields.max_members = Math.min(Math.max(parseInt(max_members) || 5, 2), 10);
+  if (max_members !== undefined) fields.max_members = Math.min(Math.max(parseInt(max_members) || 5, 4), 6);
 
   if (!Object.keys(fields).length) return group;
   const set = Object.keys(fields).map(k => `${k} = ?`).join(', ');
@@ -127,13 +129,36 @@ async function updateGroup(groupId, leaderId, { name, adviser_id, title, school_
   return getGroupById(groupId);
 }
 
+/* ─── regenerate join code (leader only) ─────────────────────────── */
+async function regenerateJoinCode(groupId, leaderId) {
+  const group = await getGroupById(groupId);
+  if (!group) throw Object.assign(new Error('Group not found.'), { statusCode: 404 });
+  if (group.leader_id !== leaderId) throw Object.assign(new Error('Only the group leader can regenerate the join code.'), { statusCode: 403 });
+
+  const join_code = await uniqueJoinCode();
+  await db.query(
+    `UPDATE thesis_groups
+     SET join_code = ?, join_code_expires_at = DATE_ADD(NOW(), INTERVAL ${JOIN_CODE_VALIDITY_DAYS} DAY)
+     WHERE id = ?`,
+    [join_code, groupId]
+  );
+  return getGroupById(groupId);
+}
+
 /* ─── request to join via code ────────────────────────────────────── */
 async function requestJoin(studentId, joinCode) {
   const [[group]] = await db.query(
-    'SELECT id, max_members, leader_id FROM thesis_groups WHERE join_code = ? AND deleted_at IS NULL',
+    'SELECT id, max_members, leader_id, join_code_expires_at FROM thesis_groups WHERE join_code = ? AND deleted_at IS NULL',
     [joinCode]
   );
   if (!group) throw Object.assign(new Error('Invalid join code. No group found.'), { statusCode: 404 });
+
+  if (group.join_code_expires_at && new Date(group.join_code_expires_at) < new Date()) {
+    throw Object.assign(
+      new Error('This join code has expired. Ask the group leader for a new one.'),
+      { statusCode: 410 }
+    );
+  }
 
   /* check if student is already in THIS group */
   const [[alreadyMember]] = await db.query(
@@ -347,6 +372,7 @@ module.exports = {
   getGroupById,
   createGroup,
   updateGroup,
+  regenerateJoinCode,
   requestJoin,
   getPendingRequests,
   acceptRequest,

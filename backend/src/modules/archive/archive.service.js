@@ -3,6 +3,8 @@ const fs   = require('fs');
 const db   = require('../../config/database');
 const { getPagination, paginatedResponse } = require('../../utils/pagination');
 
+const MIN_ARCHIVE_YEAR = 2023;
+
 /* ── helpers ─────────────────────────────────────────────────────── */
 const BASE_SELECT = `
   SELECT a.id, a.title, a.authors, a.adviser, a.school_year, a.semester,
@@ -134,6 +136,13 @@ async function promoteToArchive({ submission_id, document_id, authors, adviser, 
   if (!sub) throw Object.assign(new Error('Submission not found'), { statusCode: 404 });
   if (sub.status !== 'approved')
     throw Object.assign(new Error('Only approved submissions can be archived'), { statusCode: 400 });
+
+  const startYear = parseInt(String(sub.school_year).slice(0, 4), 10);
+  if (!startYear || startYear < MIN_ARCHIVE_YEAR)
+    throw Object.assign(
+      new Error(`Only theses/capstones from school year ${MIN_ARCHIVE_YEAR} onward can be archived.`),
+      { statusCode: 400 }
+    );
 
   /* check not already archived */
   const [[existing]] = await db.query('SELECT id FROM archive WHERE submission_id = ?', [submission_id]);

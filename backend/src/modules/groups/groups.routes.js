@@ -27,6 +27,9 @@ router.post('/request-join', studentOnly, v.joinRules, handleValidation, ctrl.re
 /* update group info (leader validates inside service) */
 router.patch('/:id', studentOnly, v.updateRules, handleValidation, ctrl.update);
 
+/* regenerate join code (leader only, validated inside service) */
+router.post('/:id/regenerate-code', studentOnly, v.idRules, handleValidation, ctrl.regenerateJoinCode);
+
 /* disband group (leader only, validated inside service) */
 router.delete('/:id', studentOnly, v.idRules, handleValidation, ctrl.disbandGroup);
 

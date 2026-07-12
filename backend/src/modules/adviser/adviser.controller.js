@@ -81,4 +81,47 @@ async function listAdvisers(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { myAdvisees, uploadList, submittedTitles, approveTitle, rejectTitle, myGroups, removeGroup, listAdvisers };
+async function importStudents(req, res, next) {
+  try {
+    if (!req.file) return send400(res, 'No file uploaded.');
+    const results = await service.importStudents(req.file.path, req.user);
+    sendCreated(res, results, `Import complete. Created: ${results.created}, Skipped: ${results.skipped.length}, Errors: ${results.errors.length}`);
+  } catch (err) {
+    if (err.statusCode === 400) return send400(res, err.message);
+    next(err);
+  }
+}
+
+async function downloadImportTemplate(req, res, next) {
+  try {
+    const buffer = service.downloadImportTemplate();
+    res.setHeader('Content-Disposition', 'attachment; filename="student_import_template.xlsx"');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  } catch (err) { next(err); }
+}
+
+async function exportCredentials(req, res, next) {
+  try {
+    const credentials = req.body.credentials;
+    if (!Array.isArray(credentials) || !credentials.length) {
+      return send400(res, 'credentials array is required and must not be empty.');
+    }
+    const buffer = service.exportCredentials(credentials);
+    res.setHeader('Content-Disposition', 'attachment; filename="student_credentials.xlsx"');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  } catch (err) { next(err); }
+}
+
+async function myStudents(req, res, next) {
+  try {
+    const result = await service.getMyStudents(req.user.id);
+    sendSuccess(res, result);
+  } catch (err) { next(err); }
+}
+
+module.exports = {
+  myAdvisees, uploadList, submittedTitles, approveTitle, rejectTitle, myGroups, removeGroup, listAdvisers,
+  importStudents, downloadImportTemplate, exportCredentials, myStudents,
+};

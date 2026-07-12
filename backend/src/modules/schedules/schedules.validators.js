@@ -1,10 +1,10 @@
 const { body, query, param } = require('express-validator');
+const { SLOTS_BY_TYPE } = require('./schedules.service');
 
-const STATUSES   = ['scheduled', 'completed', 'cancelled', 'rescheduled'];
-const TIME_SLOTS = [
-  '8:00-9:00', '9:00-10:00', '10:00-11:00', '11:00-12:00',
-  '13:00-14:00', '14:00-15:00', '15:00-16:00', '16:00-17:00',
-];
+const STATUSES      = ['scheduled', 'completed', 'cancelled', 'rescheduled'];
+const DEFENSE_TYPES = ['proposal', 'final'];
+const PANEL_ROLES    = ['chairperson', 'industry_panelist', 'member'];
+const ALL_SLOTS      = [...new Set([...SLOTS_BY_TYPE.proposal, ...SLOTS_BY_TYPE.final])];
 
 const listRules = [
   query('page').optional().isInt({ min: 1 }),
@@ -22,12 +22,14 @@ const calendarRules = [
 
 const createRules = [
   body('venue_id').optional({ nullable: true }).isInt({ min: 1 }),
+  body('defense_type').isIn(DEFENSE_TYPES).withMessage('defense_type must be "proposal" or "final"'),
   body('scheduled_date').isDate().withMessage('Valid date (YYYY-MM-DD) is required'),
-  body('time_slots').isArray({ min: 1 }).withMessage('At least one timeslot is required'),
-  body('time_slots.*').isIn(TIME_SLOTS).withMessage('Invalid timeslot value'),
+  body('time_slots').isArray({ min: 1, max: 1 }).withMessage('Exactly one timeslot is required'),
+  body('time_slots.*').isIn(ALL_SLOTS).withMessage('Invalid timeslot value'),
   body('notes').optional({ nullable: true }).isString().trim().isLength({ max: 1000 }),
-  body('panelist_ids').optional().isArray(),
-  body('panelist_ids.*').optional().isInt({ min: 1 }),
+  body('panelists').optional().isArray(),
+  body('panelists.*.panelist_id').optional().isInt({ min: 1 }),
+  body('panelists.*.role').optional().isIn(PANEL_ROLES).withMessage('Panel role must be chairperson, industry_panelist, or member'),
   body('group_ids').optional().isArray(),
   body('group_ids.*').optional().isInt({ min: 1 }),
 ];
@@ -35,12 +37,14 @@ const createRules = [
 const updateRules = [
   param('id').isInt({ min: 1 }),
   body('venue_id').optional({ nullable: true }).isInt({ min: 1 }),
+  body('defense_type').optional().isIn(DEFENSE_TYPES).withMessage('defense_type must be "proposal" or "final"'),
   body('scheduled_date').optional().isDate(),
-  body('time_slots').optional().isArray({ min: 1 }),
-  body('time_slots.*').optional().isIn(TIME_SLOTS),
+  body('time_slots').optional().isArray({ min: 1, max: 1 }),
+  body('time_slots.*').optional().isIn(ALL_SLOTS),
   body('notes').optional({ nullable: true }).isString().trim().isLength({ max: 1000 }),
-  body('panelist_ids').optional().isArray(),
-  body('panelist_ids.*').optional().isInt({ min: 1 }),
+  body('panelists').optional().isArray(),
+  body('panelists.*.panelist_id').optional().isInt({ min: 1 }),
+  body('panelists.*.role').optional().isIn(PANEL_ROLES).withMessage('Panel role must be chairperson, industry_panelist, or member'),
   body('group_ids').optional().isArray(),
   body('group_ids.*').optional().isInt({ min: 1 }),
 ];

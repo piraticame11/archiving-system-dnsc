@@ -141,6 +141,12 @@ async function createSubmission({ student_id, title, adviser_id, type, school_ye
 
   /* if the student is a group leader, apply the same limits at group level */
   if (groupRole.inGroup && groupRole.isLeader) {
+    const group = await groupService.getGroupById(groupRole.groupId);
+    if (group.member_count < 4) throw Object.assign(
+      new Error(`Your group needs at least 4 members to submit a title. You currently have ${group.member_count}.`),
+      { statusCode: 400 }
+    );
+
     const [[{ groupTotal }]] = await db.query(
       `SELECT COUNT(*) AS groupTotal FROM thesis_submissions
        WHERE group_id = ? AND school_year = ? AND semester = ?

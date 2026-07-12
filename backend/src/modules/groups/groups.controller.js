@@ -77,6 +77,18 @@ async function requestJoin(req, res, next) {
   } catch (err) {
     if (err.statusCode === 404) return send404(res, err.message);
     if (err.statusCode === 409) return res.status(409).json({ success: false, message: err.message });
+    if (err.statusCode === 410) return res.status(410).json({ success: false, message: err.message });
+    next(err);
+  }
+}
+
+async function regenerateJoinCode(req, res, next) {
+  try {
+    const group = await service.regenerateJoinCode(parseInt(req.params.id), req.user.id);
+    sendSuccess(res, group, 'Join code regenerated');
+  } catch (err) {
+    if (err.statusCode === 404) return send404(res, err.message);
+    if (err.statusCode === 403) return send403(res, err.message);
     next(err);
   }
 }
@@ -163,4 +175,4 @@ async function disbandGroup(req, res, next) {
   }
 }
 
-module.exports = { listAll, listInstructors, getMyGroup, create, update, requestJoin, getPendingRequests, acceptRequest, rejectRequest, removeMember, leaveGroup, disbandGroup };
+module.exports = { listAll, listInstructors, getMyGroup, create, update, regenerateJoinCode, requestJoin, getPendingRequests, acceptRequest, rejectRequest, removeMember, leaveGroup, disbandGroup };

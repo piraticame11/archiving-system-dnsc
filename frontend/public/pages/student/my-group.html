@@ -97,8 +97,9 @@
           <div class="flex items-center gap-3">
             <span id="join-code-display" class="font-mono text-3xl font-bold tracking-widest text-primary-700 bg-primary-50 px-4 py-2 rounded-lg"></span>
             <button onclick="copyJoinCode()" class="text-sm text-gray-500 hover:text-gray-700 border border-gray-200 px-3 py-2 rounded-lg transition-colors">Copy</button>
+            <button onclick="confirmRegenerateCode()" class="text-sm text-gray-500 hover:text-gray-700 border border-gray-200 px-3 py-2 rounded-lg transition-colors">Regenerate</button>
           </div>
-          <p class="text-xs text-gray-400 mt-1">Share this code with students you want to invite.</p>
+          <p id="join-code-expiry" class="text-xs text-gray-400 mt-1"></p>
         </div>
 
         <!-- Capacity -->
@@ -144,16 +145,11 @@
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Member Capacity <span class="text-red-500">*</span></label>
           <select id="c-max-members" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-            <option value="2">2</option>
-            <option value="3">3</option>
             <option value="4">4</option>
             <option value="5" selected>5</option>
             <option value="6">6</option>
-            <option value="7">7</option>
-            <option value="8">8</option>
-            <option value="9">9</option>
-            <option value="10">10</option>
           </select>
+          <p class="text-xs text-gray-400 mt-1">Groups must have between 4 and 6 members.</p>
         </div>
         <div class="relative">
           <label class="block text-sm font-medium text-gray-700 mb-1">Adviser <span class="text-gray-400 font-normal">(optional)</span></label>
@@ -209,16 +205,11 @@
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Member Capacity</label>
           <select id="e-max-members" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-            <option value="2">2</option>
-            <option value="3">3</option>
             <option value="4">4</option>
             <option value="5">5</option>
             <option value="6">6</option>
-            <option value="7">7</option>
-            <option value="8">8</option>
-            <option value="9">9</option>
-            <option value="10">10</option>
           </select>
+          <p class="text-xs text-gray-400 mt-1">Groups must have between 4 and 6 members.</p>
         </div>
         <div class="relative">
           <label class="block text-sm font-medium text-gray-700 mb-1">Adviser</label>
@@ -338,6 +329,19 @@
       if (isLeader) {
         document.getElementById('join-code-section').classList.remove('hidden');
         document.getElementById('join-code-display').textContent = group.join_code;
+
+        const expiryEl = document.getElementById('join-code-expiry');
+        if (group.join_code_expires_at) {
+          const expires = new Date(group.join_code_expires_at);
+          const expired = expires < new Date();
+          expiryEl.textContent = expired
+            ? 'This code has expired. Regenerate to invite new members.'
+            : `Expires ${expires.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })}. Share this code with students you want to invite.`;
+          expiryEl.className = expired ? 'text-xs text-red-500 mt-1 font-medium' : 'text-xs text-gray-400 mt-1';
+        } else {
+          expiryEl.textContent = 'Share this code with students you want to invite.';
+        }
+
         document.getElementById('requests-section').classList.remove('hidden');
         loadRequests(group.id);
       }
@@ -549,6 +553,20 @@
         btn.textContent = 'Copied!';
         setTimeout(() => btn.textContent = orig, 2000);
       });
+    }
+
+    /* ── Regenerate Join Code ───────────────────────────────────────── */
+    function confirmRegenerateCode() {
+      if (!confirm('Generate a new join code? The old code will stop working immediately.')) return;
+      regenerateJoinCode();
+    }
+    async function regenerateJoinCode() {
+      try {
+        const res = await apiPost(`/api/v1/groups/${currentGroup.id}/regenerate-code`, {}).then(r => r.json());
+        if (!res.success) throw new Error(res.message);
+        currentGroup = res.data;
+        renderGroup(currentGroup);
+      } catch (err) { alert(err.message || 'Failed to regenerate join code.'); }
     }
 
     function escHtml(str) {

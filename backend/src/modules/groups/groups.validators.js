@@ -7,7 +7,7 @@ const createRules = [
   body('school_year').trim().notEmpty().withMessage('School year is required')
     .matches(/^\d{4}-\d{4}$/).withMessage('School year must be in YYYY-YYYY format'),
   body('adviser_id').optional({ nullable: true }).isInt({ min: 1 }),
-  body('max_members').optional().isInt({ min: 2, max: 10 }).withMessage('Member capacity must be between 2 and 10'),
+  body('max_members').optional().isInt({ min: 4, max: 6 }).withMessage('Member capacity must be between 4 and 6'),
 ];
 
 const updateRules = [
@@ -16,7 +16,7 @@ const updateRules = [
   body('title').optional({ nullable: true }).trim().isLength({ max: 500 }),
   body('school_year').optional().trim().matches(/^\d{4}-\d{4}$/),
   body('adviser_id').optional({ nullable: true }).isInt({ min: 1 }),
-  body('max_members').optional().isInt({ min: 2, max: 10 }),
+  body('max_members').optional().isInt({ min: 4, max: 6 }),
 ];
 
 const joinRules = [

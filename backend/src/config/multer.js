@@ -63,6 +63,24 @@ const excelStorage = multer.diskStorage({
   filename(req, file, cb) { cb(null, `${Date.now()}_${file.originalname.replace(/\s/g, '_')}`); },
 });
 
+const minutesStorage = multer.diskStorage({
+  destination(req, file, cb) { cb(null, makeUploadDir('minutes')); },
+  filename(req, file, cb) {
+    const ext  = path.extname(file.originalname).toLowerCase();
+    const base = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
+    cb(null, `${Date.now()}_${base}${ext}`);
+  },
+});
+
+function imageFilter(req, file, cb) {
+  const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (!allowed.includes(file.mimetype) && !['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) {
+    return cb(new Error('Only JPG, PNG, or WEBP images are allowed.'), false);
+  }
+  cb(null, true);
+}
+
 function excelFilter(req, file, cb) {
   const allowed = [
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -80,5 +98,6 @@ const uploadCsv       = multer({ storage: csvStorage, fileFilter: csvFilter, lim
 const uploadImrad     = multer({ storage: imradStorage, fileFilter, limits: { fileSize: maxFileSizeMB() } });
 const uploadExcel     = multer({ storage: excelStorage, fileFilter: excelFilter, limits: { fileSize: 10 * 1024 * 1024 } });
 const uploadGuideline = multer({ storage: guidelineStorage, fileFilter, limits: { fileSize: maxFileSizeMB() } });
+const uploadMinutes   = multer({ storage: minutesStorage, fileFilter: imageFilter, limits: { fileSize: 10 * 1024 * 1024 } });
 
-module.exports = { uploadDocument, uploadCsv, uploadImrad, uploadExcel, uploadGuideline };
+module.exports = { uploadDocument, uploadCsv, uploadImrad, uploadExcel, uploadGuideline, uploadMinutes };

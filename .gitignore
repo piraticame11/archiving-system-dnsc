@@ -3,6 +3,9 @@ node_modules/
 backend/uploads/documents/
 backend/uploads/adviser-lists/
 backend/uploads/imrad/
+backend/uploads/instructor-guidelines/
+backend/uploads/student-imports/
+backend/uploads/minutes/
 *.log
 .DS_Store
 Thumbs.db

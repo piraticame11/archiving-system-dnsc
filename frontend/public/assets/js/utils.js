@@ -70,3 +70,144 @@ function statusBadgeClass(status) {
 function statusLabel(status) {
   return (status || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
+
+// Adds a show/hide eye icon to every password field on the page (including
+// fields inside modals that are hidden at load time). Runs once per input.
+function initPasswordToggles() {
+  document.querySelectorAll('input[type="password"]').forEach(input => {
+    if (input.dataset.toggleAttached) return;
+    input.dataset.toggleAttached = '1';
+
+    let wrapper = input.parentElement;
+    if (!wrapper.classList.contains('relative')) {
+      wrapper = document.createElement('div');
+      wrapper.className = 'relative';
+      input.parentNode.insertBefore(wrapper, input);
+      wrapper.appendChild(input);
+    }
+    input.classList.add('pr-10');
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.setAttribute('aria-label', 'Show password');
+    btn.className = 'absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600';
+    btn.innerHTML = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+    </svg>`;
+    btn.addEventListener('click', () => {
+      input.type = input.type === 'password' ? 'text' : 'password';
+      btn.setAttribute('aria-label', input.type === 'password' ? 'Show password' : 'Hide password');
+    });
+    wrapper.appendChild(btn);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', initPasswordToggles);
+
+// Hover-triggered quick-navigation menu, injected into the top nav bar of
+// every role page so users don't have to return to the dashboard to move
+// between pages.
+const NAV_ITEMS = {
+  superadmin: [
+    { label: 'Dashboard', href: '/pages/superadmin/dashboard.html' },
+    { label: 'Users',     href: '/pages/superadmin/users.html' },
+  ],
+  admin: [
+    { label: 'Dashboard',    href: '/pages/admin/dashboard.html' },
+    { label: 'Users',        href: '/pages/admin/users.html' },
+    { label: 'Panelists',    href: '/pages/admin/panelists.html' },
+    { label: 'Venues',       href: '/pages/admin/venues.html' },
+    { label: 'Schedules',    href: '/pages/admin/schedules.html' },
+    { label: 'Submissions',  href: '/pages/admin/submissions.html' },
+    { label: 'Archive',      href: '/pages/admin/archive.html' },
+    { label: 'Upload IMRAD', href: '/pages/admin/upload-imrad.html' },
+  ],
+  instructor: [
+    { label: 'Dashboard',               href: '/pages/instructor/dashboard.html' },
+    { label: 'My Advisees',             href: '/pages/instructor/my-advisees.html' },
+    { label: 'Create Student Accounts', href: '/pages/instructor/import-students.html' },
+    { label: 'Upload Adviser List',     href: '/pages/instructor/upload-adviser-list.html' },
+    { label: 'Title Approval',          href: '/pages/instructor/title-approval.html' },
+    { label: 'Guidelines',              href: '/pages/instructor/guidelines.html' },
+  ],
+  panelist: [
+    { label: 'Dashboard',    href: '/pages/panelist/dashboard.html' },
+    { label: 'My Schedules', href: '/pages/panelist/my-schedules.html' },
+  ],
+  student: [
+    { label: 'Dashboard',       href: '/pages/student/dashboard.html' },
+    { label: 'My Group',        href: '/pages/student/my-group.html' },
+    { label: 'Submit Title',    href: '/pages/student/submit-title.html' },
+    { label: 'My Submissions',  href: '/pages/student/my-submissions.html' },
+    { label: 'Upload Document', href: '/pages/student/upload-document.html' },
+    { label: 'My Schedule',     href: '/pages/student/my-schedule.html' },
+    { label: 'My Scores',       href: '/pages/student/my-scores.html' },
+    { label: 'Browse Archive',  href: '/pages/student/browse-archive.html' },
+  ],
+};
+
+// getUser() only becomes available once requireAuthAsync() (called by the
+// page itself) restores the session, so poll briefly instead of racing it.
+function _waitForNavUser(maxMs = 4000) {
+  return new Promise(resolve => {
+    const start = Date.now();
+    (function poll() {
+      if (typeof getUser === 'function') {
+        const u = getUser();
+        if (u) return resolve(u);
+      }
+      if (Date.now() - start >= maxMs) return resolve(null);
+      setTimeout(poll, 100);
+    })();
+  });
+}
+
+function initHoverNav() {
+  const nav = document.querySelector('nav');
+  if (!nav || document.getElementById('hover-nav-wrap')) return;
+
+  _waitForNavUser().then(user => {
+    const items = user && NAV_ITEMS[user.role];
+    if (!items || !items.length) return;
+
+    const brandGroup = nav.querySelector('div');
+    if (!brandGroup) return;
+
+    const currentPath = window.location.pathname;
+    const wrap = document.createElement('div');
+    wrap.id = 'hover-nav-wrap';
+    wrap.className = 'relative';
+
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.setAttribute('aria-haspopup', 'true');
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.className = 'flex items-center gap-1 text-sm text-primary-100 hover:text-white hover:bg-primary-800 transition-colors px-2.5 py-1.5 rounded-lg';
+    trigger.innerHTML = `Menu <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`;
+
+    const panel = document.createElement('div');
+    panel.className = 'hidden absolute left-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1.5 z-50';
+    panel.innerHTML = items.map(item => {
+      const active = currentPath === item.href;
+      return `<a href="${item.href}" class="block px-3 py-2 text-sm ${active ? 'font-semibold text-primary-700 bg-primary-50' : 'text-gray-700 hover:bg-gray-50'}">${item.label}</a>`;
+    }).join('');
+
+    let closeTimer = null;
+    function openPanel()  { clearTimeout(closeTimer); panel.classList.remove('hidden'); trigger.setAttribute('aria-expanded', 'true'); }
+    function closePanel() { panel.classList.add('hidden'); trigger.setAttribute('aria-expanded', 'false'); }
+    function scheduleClose() { closeTimer = setTimeout(closePanel, 150); }
+
+    wrap.addEventListener('mouseenter', openPanel);
+    wrap.addEventListener('mouseleave', scheduleClose);
+    trigger.addEventListener('click', () => panel.classList.contains('hidden') ? openPanel() : closePanel());
+    document.addEventListener('click', e => { if (!wrap.contains(e.target)) closePanel(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
+
+    wrap.appendChild(trigger);
+    wrap.appendChild(panel);
+    brandGroup.appendChild(wrap);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', initHoverNav);

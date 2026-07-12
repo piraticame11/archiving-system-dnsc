@@ -83,23 +83,25 @@
   <script>
     function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-    const TIME_SLOTS = {
-      '8:00-9:00':  '8:00 – 9:00 AM',
-      '9:00-10:00': '9:00 – 10:00 AM',
-      '10:00-11:00':'10:00 – 11:00 AM',
-      '11:00-12:00':'11:00 AM – 12:00 PM',
-      '13:00-14:00':'1:00 – 2:00 PM',
-      '14:00-15:00':'2:00 – 3:00 PM',
-      '15:00-16:00':'3:00 – 4:00 PM',
-      '16:00-17:00':'4:00 – 5:00 PM',
-    };
+    /* Proposal defenses run 30 minutes; outline-to-final defenses run 1h30. */
+    function fmtHM(h, m) {
+      const period = h < 12 ? 'AM' : 'PM';
+      const h12 = h % 12 === 0 ? 12 : h % 12;
+      return m === 0 ? `${h12}:00 ${period}` : `${h12}:${String(m).padStart(2,'0')} ${period}`;
+    }
+    function buildSlotLabels(startMin, endMin, stepMin, out) {
+      for (let t = startMin; t + stepMin <= endMin; t += stepMin) {
+        const sh = Math.floor(t/60), sm = t%60, eh = Math.floor((t+stepMin)/60), em = (t+stepMin)%60;
+        out[`${sh}:${String(sm).padStart(2,'0')}-${eh}:${String(em).padStart(2,'0')}`] = `${fmtHM(sh,sm)} – ${fmtHM(eh,em)}`;
+      }
+    }
+    const TIME_SLOTS = {};
+    buildSlotLabels(8*60, 12*60, 30, TIME_SLOTS); buildSlotLabels(13*60, 17*60, 30, TIME_SLOTS);
+    buildSlotLabels(8*60, 12*60, 90, TIME_SLOTS); buildSlotLabels(13*60, 16*60, 90, TIME_SLOTS);
     function slotLabel(v){ return TIME_SLOTS[v]||v||'–'; }
     function slotsLabel(arr){
       if(!arr||!arr.length) return '–';
-      if(arr.length===1) return slotLabel(arr[0]);
-      const first=slotLabel(arr[0]).split('–')[0].trim();
-      const last=(slotLabel(arr[arr.length-1]).split('–')[1]||'').trim();
-      return `${first} – ${last} (${arr.length}hr)`;
+      return slotLabel(arr[0]);
     }
 
     function fmtDate(d){

@@ -69,6 +69,7 @@ async function create(req, res, next) {
     sendCreated(res, schedule, 'Schedule created');
   } catch (err) {
     if (err.status === 409) return res.status(409).json({ success: false, message: err.message });
+    if (err.status === 400) return res.status(400).json({ success: false, message: err.message });
     next(err);
   }
 }
@@ -81,6 +82,7 @@ async function update(req, res, next) {
     sendSuccess(res, schedule, 'Schedule updated');
   } catch (err) {
     if (err.status === 409) return res.status(409).json({ success: false, message: err.message });
+    if (err.status === 400) return res.status(400).json({ success: false, message: err.message });
     next(err);
   }
 }
@@ -103,4 +105,33 @@ async function remove(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { list, calendar, myGroupSchedule, getOne, create, update, updateStatus, remove };
+async function uploadMinutes(req, res, next) {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
+    const existing = await service.getById(req.params.id);
+    if (!existing) return send404(res, 'Schedule not found');
+    const schedule = await service.uploadMinutes(req.params.id, req.file.path);
+    sendSuccess(res, schedule, 'Minutes photo uploaded');
+  } catch (err) {
+    if (err.status === 404) return send404(res, err.message);
+    next(err);
+  }
+}
+
+async function getMinutes(req, res, next) {
+  try {
+    const schedule = await service.getById(req.params.id);
+    if (!schedule) return send404(res, 'Schedule not found');
+    if (req.user.role === 'panelist') {
+      const assigned = schedule.panelists?.some(p => p.id === req.user.id);
+      if (!assigned) return send404(res, 'Schedule not found');
+    }
+    const absPath = await service.getMinutesFile(req.params.id);
+    res.sendFile(absPath);
+  } catch (err) {
+    if (err.status === 404) return send404(res, err.message);
+    next(err);
+  }
+}
+
+module.exports = { list, calendar, myGroupSchedule, getOne, create, update, updateStatus, remove, uploadMinutes, getMinutes };

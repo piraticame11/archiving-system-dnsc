@@ -1,5 +1,6 @@
 const db = require('../../config/database');
 const fs = require('fs');
+const usersService = require('../users/users.service');
 
 /* ─── Parse CSV (simple: one student_number per line, optional header) ── */
 function parseCsv(filePath) {
@@ -247,6 +248,40 @@ async function getMyGroups(adviserId) {
   return groups;
 }
 
+/* ─── Instructor creates accounts for the students they handle ─────── */
+async function importStudents(filePath, instructor) {
+  if (!instructor.department_id) {
+    try { fs.unlinkSync(filePath); } catch (_) {}
+    throw Object.assign(
+      new Error('Your account does not have a department assigned. Contact an admin.'),
+      { statusCode: 400 }
+    );
+  }
+  return usersService.importStudents(filePath, instructor.department_id, instructor.id);
+}
+
+function downloadImportTemplate() {
+  return usersService.generateStudentImportTemplate();
+}
+
+function exportCredentials(credentials) {
+  return usersService.generateCredentialsExport(credentials);
+}
+
+/* ─── Students created/handled directly by this instructor ─────────── */
+async function getMyStudents(adviserId) {
+  const [rows] = await db.query(
+    `SELECT u.id, u.first_name, u.last_name, u.email, u.student_number,
+            u.is_active, u.created_at
+     FROM users u
+     JOIN roles r ON u.role_id = r.id
+     WHERE r.name = 'student' AND u.adviser_id = ? AND u.deleted_at IS NULL
+     ORDER BY u.last_name ASC, u.first_name ASC`,
+    [adviserId]
+  );
+  return rows;
+}
+
 /* ─── List all active instructors (for student adviser selection) ──── */
 async function listAdvisers() {
   const [rows] = await db.query(
@@ -261,4 +296,8 @@ async function listAdvisers() {
   return rows;
 }
 
-module.exports = { bulkAssign, getMyAdvisees, getAllSubmittedTitles, approveTitle, rejectTitle, getMyGroups, removeFromGroup, listAdvisers };
+module.exports = {
+  bulkAssign, getMyAdvisees, getAllSubmittedTitles, approveTitle, rejectTitle,
+  getMyGroups, removeFromGroup, listAdvisers,
+  importStudents, downloadImportTemplate, exportCredentials, getMyStudents,
+};

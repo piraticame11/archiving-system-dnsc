@@ -160,7 +160,7 @@ function parseBirthdate(val) {
   return null;
 }
 
-async function importStudents(filePath, department_id) {
+async function importStudents(filePath, department_id, adviser_id = null) {
   let workbook;
   try {
     workbook = XLSX.readFile(filePath);
@@ -219,10 +219,10 @@ async function importStudents(filePath, department_id) {
     try {
       const password_hash = await bcrypt.hash(password, 10);
       await db.query(
-        `INSERT INTO users (role_id, department_id, student_number, first_name, last_name, email,
+        `INSERT INTO users (role_id, department_id, adviser_id, student_number, first_name, last_name, email,
                             password_hash, is_active, is_email_verified)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1)`,
-        [studentRole.id, department_id || null, id_number, first_name, last_name, email, password_hash]
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1)`,
+        [studentRole.id, department_id || null, adviser_id || null, id_number, first_name, last_name, email, password_hash]
       );
       results.created++;
       results.credentials.push({ first_name, last_name, email, password });
