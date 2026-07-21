@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guidelines &amp; Templates — ACES Research System</title>
+  <link rel="icon" type="image/webp" href="/assets/img/aw.webp">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 font-sans min-h-screen">
+
+  <nav class="bg-primary-700 text-white px-6 py-4 flex items-center justify-between shadow sticky top-0 z-40">
+    <div class="flex items-center gap-3">
+      <a href="/pages/student/dashboard.html" class="text-primary-200 hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </a>
+      <img src="/assets/img/aw.webp" alt="School Logo" class="w-9 h-9 object-contain rounded-lg">
+      <span class="font-bold text-lg">ACES Research System</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <span id="user-name" class="text-sm text-primary-100"></span>
+      <button onclick="logout()" class="text-sm bg-primary-800 hover:bg-primary-900 px-3 py-1.5 rounded-lg transition-colors">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="max-w-4xl mx-auto px-6 py-8">
+
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-gray-900">Guidelines &amp; Templates</h1>
+      <p class="text-sm text-gray-500 mt-0.5">Research format, templates, and guidelines shared by your instructors and the Research Office</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex gap-1 bg-gray-100 p-1 rounded-xl mb-6 w-fit">
+      <button id="tab-instructor" onclick="switchTab('instructor')"
+        class="tab-btn px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-white text-gray-900 shadow-sm">
+        Instructor Guidelines
+      </button>
+      <button id="tab-admin" onclick="switchTab('admin')"
+        class="tab-btn px-4 py-2 text-sm font-medium rounded-lg transition-colors text-gray-500 hover:text-gray-700">
+        Research Office Resources
+      </button>
+    </div>
+
+    <!-- ── INSTRUCTOR GUIDELINES TAB ── -->
+    <div id="panel-instructor">
+      <div id="instructor-list" class="space-y-3">
+        <p class="text-sm text-gray-400 text-center py-10">Loading…</p>
+      </div>
+      <div id="instructor-empty" class="hidden bg-white border border-dashed border-gray-300 rounded-xl p-12 text-center">
+        <svg class="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <p class="text-gray-500 font-medium mb-1">Nothing uploaded yet</p>
+        <p class="text-sm text-gray-400">Your instructor hasn't shared any guidelines or templates yet.</p>
+      </div>
+    </div>
+
+    <!-- ── ADMIN RESOURCES TAB ── -->
+    <div id="panel-admin" class="hidden">
+      <div id="admin-list" class="space-y-3">
+        <p class="text-sm text-gray-400 text-center py-10">Loading…</p>
+      </div>
+      <div id="admin-empty" class="hidden bg-white border border-dashed border-gray-300 rounded-xl p-12 text-center">
+        <svg class="w-10 h-10 text-gray-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <p class="text-gray-500 font-medium mb-1">No templates available</p>
+        <p class="text-sm text-gray-400">The Research Office hasn't uploaded any templates yet.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/utils.js"></script>
+  <script>
+    function escHtml(s) {
+      const d = document.createElement('div');
+      d.appendChild(document.createTextNode(s || ''));
+      return d.innerHTML;
+    }
+
+    function formatBytes(b) {
+      if (!b) return '—';
+      if (b < 1024) return b + ' B';
+      if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+      return (b / 1048576).toFixed(1) + ' MB';
+    }
+
+    function switchTab(tab) {
+      document.getElementById('panel-instructor').classList.toggle('hidden', tab !== 'instructor');
+      document.getElementById('panel-admin').classList.toggle('hidden', tab !== 'admin');
+      document.getElementById('tab-instructor').className = tab === 'instructor'
+        ? 'tab-btn px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-white text-gray-900 shadow-sm'
+        : 'tab-btn px-4 py-2 text-sm font-medium rounded-lg transition-colors text-gray-500 hover:text-gray-700';
+      document.getElementById('tab-admin').className = tab === 'admin'
+        ? 'tab-btn px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-white text-gray-900 shadow-sm'
+        : 'tab-btn px-4 py-2 text-sm font-medium rounded-lg transition-colors text-gray-500 hover:text-gray-700';
+    }
+
+    requireAuthAsync('student').then(async user => {
+      if (!user) return;
+      document.getElementById('user-name').textContent = user.full_name || user.email;
+      loadInstructorGuidelines();
+      loadAdminTemplates();
+    });
+
+    const CATEGORY_COLOR = {
+      Guidelines: 'bg-blue-100 text-blue-700',
+      Forms:      'bg-green-100 text-green-700',
+      Templates:  'bg-purple-100 text-purple-700',
+      References: 'bg-orange-100 text-orange-700',
+      General:    'bg-gray-100 text-gray-600',
+      Other:      'bg-gray-100 text-gray-600',
+    };
+    function categoryBadge(cat) {
+      const cls = CATEGORY_COLOR[cat] || 'bg-gray-100 text-gray-600';
+      return `<span class="text-xs font-medium px-2 py-0.5 rounded-full ${cls}">${escHtml(cat || 'General')}</span>`;
+    }
+
+    /* ── Instructor Guidelines ── */
+    async function loadInstructorGuidelines() {
+      const list = document.getElementById('instructor-list');
+      try {
+        const res   = await apiGet('/api/v1/instructor-guidelines');
+        const json  = await res.json();
+        if (!res.ok) throw json;
+        const items = json.data || [];
+
+        if (!items.length) {
+          list.innerHTML = '';
+          document.getElementById('instructor-empty').classList.remove('hidden');
+          return;
+        }
+        list.innerHTML = items.map(g => resourceCard({
+          title: g.title, description: g.description, badge: categoryBadge(g.category),
+          fileName: g.file_name, fileSize: g.file_size, createdAt: g.created_at,
+          downloadUrl: `/api/v1/instructor-guidelines/${g.id}/download`,
+          iconColor: 'text-primary-600', iconBg: 'bg-primary-100',
+        })).join('');
+      } catch (err) {
+        list.innerHTML = `<p class="text-sm text-red-500 text-center py-6">${escHtml(err?.message || 'Failed to load guidelines.')}</p>`;
+      }
+    }
+
+    /* ── Research Office (admin) templates ── */
+    async function loadAdminTemplates() {
+      const list = document.getElementById('admin-list');
+      try {
+        const res   = await apiGet('/api/v1/imrad-templates?limit=50');
+        const json  = await res.json();
+        if (!res.ok) throw json;
+        const items = json.data?.data || json.data || [];
+
+        if (!items.length) {
+          list.innerHTML = '';
+          document.getElementById('admin-empty').classList.remove('hidden');
+          return;
+        }
+        list.innerHTML = items.map(t => resourceCard({
+          title: t.title, description: t.description, badge: '',
+          fileName: t.file_name, fileSize: t.file_size, createdAt: t.created_at,
+          downloadUrl: `/api/v1/imrad-templates/${t.id}/download`,
+          iconColor: 'text-yellow-600', iconBg: 'bg-yellow-100',
+        })).join('');
+      } catch (err) {
+        list.innerHTML = `<p class="text-sm text-red-500 text-center py-6">${escHtml(err?.message || 'Failed to load templates.')}</p>`;
+      }
+    }
+
+    function resourceCard({ title, description, badge, fileName, fileSize, createdAt, downloadUrl, iconColor, iconBg }) {
+      return `
+        <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-5 flex items-start gap-4">
+          <div class="w-10 h-10 ${iconBg} rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+            <svg class="w-5 h-5 ${iconColor}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <p class="font-semibold text-gray-900">${escHtml(title)}</p>
+              ${badge}
+            </div>
+            ${description ? `<p class="text-sm text-gray-500 mt-0.5">${escHtml(description)}</p>` : ''}
+            <p class="text-xs text-gray-400 mt-1">${escHtml(fileName)} · ${formatBytes(fileSize)} · ${formatDate(createdAt)}</p>
+          </div>
+          <button onclick="downloadFile('${downloadUrl}', '${escHtml(fileName)}')"
+            class="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Download
+          </button>
+        </div>`;
+    }
+
+    async function downloadFile(endpoint, fileName) {
+      try {
+        const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${getAccessToken()}` } });
+        if (!res.ok) { showToast('Could not download file.', 'error'); return; }
+        const blob = await res.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url; a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch {
+        showToast('Download failed.', 'error');
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 const db = require('../../config/database');
 const fs = require('fs');
 const usersService = require('../users/users.service');
+const evaluationsService = require('../evaluations/evaluations.service');
 
 /* ─── Parse CSV (simple: one student_number per line, optional header) ── */
 function parseCsv(filePath) {
@@ -243,6 +244,10 @@ async function getMyGroups(adviserId) {
     );
     group.members = members;
     group.member_count = members.length;
+
+    const chair = await evaluationsService.getChairpersonDecision({ group_id: group.id });
+    group.decision = chair ? chair.decision : null;
+    group.decision_defense_type = chair ? chair.defense_type : null;
   }
 
   return groups;

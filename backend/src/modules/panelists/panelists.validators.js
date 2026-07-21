@@ -8,12 +8,15 @@ const listRules = [
   query('department_id').optional().isInt({ min: 1 }),
 ];
 
+const PANELIST_TYPES = ['regular', 'industry'];
+
 const createRules = [
   body('first_name').trim().notEmpty().withMessage('First name is required').isLength({ max: 80 }),
   body('last_name').trim().notEmpty().withMessage('Last name is required').isLength({ max: 80 }),
   body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
   body('department_id').optional({ nullable: true }).isInt({ min: 1 }),
+  body('panelist_type').optional().isIn(PANELIST_TYPES).withMessage('panelist_type must be "regular" or "industry"'),
 ];
 
 const updateRules = [
@@ -22,6 +25,7 @@ const updateRules = [
   body('last_name').optional().trim().notEmpty().isLength({ max: 80 }),
   body('email').optional().isEmail().normalizeEmail(),
   body('department_id').optional({ nullable: true }).isInt({ min: 1 }),
+  body('panelist_type').optional().isIn(PANELIST_TYPES).withMessage('panelist_type must be "regular" or "industry"'),
 ];
 
 const resetPasswordRules = [

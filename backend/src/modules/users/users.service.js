@@ -131,35 +131,6 @@ async function resetPassword(id, newPassword) {
   await db.query('UPDATE users SET password_hash = ? WHERE id = ?', [hash, id]);
 }
 
-function parseBirthdate(val) {
-  const s = String(val || '').trim();
-
-  // YYYY-MM-DD
-  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (m) return { year: m[1], month: m[2], day: m[3] };
-
-  // MM/DD/YYYY or M/D/YYYY
-  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (m) return { year: m[3], month: m[1].padStart(2, '0'), day: m[2].padStart(2, '0') };
-
-  // MM-DD-YYYY
-  m = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
-  if (m) return { year: m[3], month: m[1].padStart(2, '0'), day: m[2].padStart(2, '0') };
-
-  // Excel serial date (number)
-  const n = Number(s);
-  if (!isNaN(n) && n > 1000) {
-    const d = XLSX.SSF.parse_date_code(n);
-    if (d) return {
-      year: String(d.y),
-      month: String(d.m).padStart(2, '0'),
-      day:   String(d.d).padStart(2, '0'),
-    };
-  }
-
-  return null;
-}
-
 async function importStudents(filePath, department_id, adviser_id = null) {
   let workbook;
   try {
@@ -187,26 +158,19 @@ async function importStudents(filePath, department_id, adviser_id = null) {
     const row = dataRows[i];
     const rowNum = i + 2;
 
-    const first_name  = String(row[0] || '').trim();
-    const last_name   = String(row[1] || '').trim();
-    const birthdateRaw = String(row[2] || '').trim();
-    const id_number   = String(row[3] || '').trim();
+    const first_name = String(row[0] || '').trim();
+    const last_name  = String(row[1] || '').trim();
+    const id_number  = String(row[2] || '').trim();
 
-    if (!first_name || !last_name || !birthdateRaw || !id_number) {
-      results.errors.push({ row: rowNum, reason: 'Missing required fields (first_name, last_name, birthdate, id_number)' });
-      continue;
-    }
-
-    const bd = parseBirthdate(birthdateRaw);
-    if (!bd) {
-      results.errors.push({ row: rowNum, reason: `Invalid birthdate format: "${birthdateRaw}". Use MM/DD/YYYY or YYYY-MM-DD.` });
+    if (!first_name || !last_name || !id_number) {
+      results.errors.push({ row: rowNum, reason: 'Missing required fields (first_name, last_name, id_number)' });
       continue;
     }
 
     const initials  = first_name.split(/\s+/).map(w => w[0]).join('').toLowerCase();
     const emailBase = last_name.toLowerCase().replace(/\s+/g, '');
     const email     = `${initials}${emailBase}${id_number}@aces.edu.ph`;
-    const password  = `welcome@${bd.month}${bd.day}${bd.year}`;
+    const password  = `welcome@${id_number.replace(/[^a-zA-Z0-9]/g, '')}`;
 
     const [[existing]] = await db.query(
       'SELECT id FROM users WHERE email = ? AND deleted_at IS NULL', [email]
@@ -253,9 +217,9 @@ function generateStudentImportTemplate() {
   const wb = XLSX.utils.book_new();
 
   const wsData = [
-    ['first_name', 'last_name', 'birthdate', 'id_number'],
-    ['Howard Glen', 'Gloria',   '02/11/2003', '2021-00163'],
-    ['Maria Clara', 'Santos',   '07/04/2002', '2022-00045'],
+    ['first_name', 'last_name', 'id_number'],
+    ['Howard Glen', 'Gloria',   '2021-00163'],
+    ['Maria Clara', 'Santos',   '2022-00045'],
   ];
 
   const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -263,7 +227,6 @@ function generateStudentImportTemplate() {
   ws['!cols'] = [
     { wch: 20 },
     { wch: 20 },
-    { wch: 15 },
     { wch: 15 },
   ];
 

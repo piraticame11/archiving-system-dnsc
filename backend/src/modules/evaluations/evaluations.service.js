@@ -3,7 +3,7 @@ const { paginatedResponse } = require('../../utils/pagination');
 
 const BASE_SELECT = `
   SELECT e.id, e.schedule_id, e.panelist_id, e.submission_id, e.group_id,
-         e.score, e.remarks, e.status, e.submitted_at, e.created_at, e.updated_at,
+         e.score, e.decision, e.remarks, e.status, e.submitted_at, e.created_at, e.updated_at,
          CONCAT(p.first_name, ' ', p.last_name) AS panelist_name,
          ds.scheduled_date, ds.time_slots,
          ts.title AS submission_title, ts.type AS submission_type, ts.school_year,
@@ -13,6 +13,8 @@ const BASE_SELECT = `
   JOIN defense_schedules ds       ON e.schedule_id    = ds.id
   LEFT JOIN thesis_submissions ts ON e.submission_id  = ts.id
   LEFT JOIN venues v              ON ds.venue_id      = v.id`;
+
+const DECISIONS = ['approved', 'major_revisions', 'minor_revisions'];
 
 /* ─── list ─────────────────────────────────────────────────────────── */
 async function listEvaluations({ panelist_id, schedule_id, status, page, limit }) {
@@ -35,7 +37,7 @@ async function listEvaluations({ panelist_id, schedule_id, status, page, limit }
   const [[{ total }]] = await db.query(`SELECT COUNT(*) AS total ${from}`, params);
   const [rows] = await db.query(
     `SELECT e.id, e.schedule_id, e.panelist_id, e.submission_id, e.group_id,
-            e.score, e.remarks, e.status, e.submitted_at, e.created_at, e.updated_at,
+            e.score, e.decision, e.remarks, e.status, e.submitted_at, e.created_at, e.updated_at,
             CONCAT(p.first_name, ' ', p.last_name) AS panelist_name,
             ds.scheduled_date, ds.time_slots,
             ts.title AS submission_title, ts.type AS submission_type, ts.school_year,
@@ -76,7 +78,7 @@ async function getById(id) {
 async function getByScheduleAndPanelist(schedule_id, panelist_id) {
   const [rows] = await db.query(
     `SELECT e.id, e.schedule_id, e.panelist_id, e.submission_id, e.group_id,
-            e.score, e.remarks, e.status, e.submitted_at, e.created_at, e.updated_at
+            e.score, e.decision, e.remarks, e.status, e.submitted_at, e.created_at, e.updated_at
      FROM evaluations e
      WHERE e.schedule_id = ? AND e.panelist_id = ?`,
     [schedule_id, panelist_id]
@@ -85,7 +87,10 @@ async function getByScheduleAndPanelist(schedule_id, panelist_id) {
 }
 
 /* ─── upsert (save draft or submit) ────────────────────────────────── */
-async function upsertEvaluation({ schedule_id, panelist_id, group_id, score, remarks, submit }) {
+async function upsertEvaluation({ schedule_id, panelist_id, group_id, score, decision, remarks, submit }) {
+  if (decision != null && !DECISIONS.includes(decision)) {
+    throw Object.assign(new Error('Invalid decision value'), { statusCode: 400 });
+  }
   /* verify panelist is assigned to this schedule */
   const [[assigned]] = await db.query(
     'SELECT 1 FROM schedule_panelists WHERE schedule_id = ? AND panelist_id = ?',
@@ -124,22 +129,53 @@ async function upsertEvaluation({ schedule_id, panelist_id, group_id, score, rem
 
     await db.query(
       `UPDATE evaluations
-       SET score = ?, remarks = ?, status = ?, submitted_at = COALESCE(submitted_at, ?)
+       SET score = ?, decision = ?, remarks = ?, status = ?, submitted_at = COALESCE(submitted_at, ?)
        WHERE id = ?`,
-      [score ?? null, remarks ?? null, newStatus, submittedAt, existing.id]
+      [score ?? null, decision ?? null, remarks ?? null, newStatus, submittedAt, existing.id]
     );
     return getById(existing.id);
   }
 
   const [result] = await db.query(
-    `INSERT INTO evaluations (schedule_id, panelist_id, group_id, submission_id, score, remarks, status, submitted_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [schedule_id, panelist_id, gid, sched.submission_id, score ?? null, remarks ?? null, newStatus, submittedAt]
+    `INSERT INTO evaluations (schedule_id, panelist_id, group_id, submission_id, score, decision, remarks, status, submitted_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [schedule_id, panelist_id, gid, sched.submission_id, score ?? null, decision ?? null, remarks ?? null, newStatus, submittedAt]
   );
   return getById(result.insertId);
 }
 
-/* ─── student: scores for own group ─────────────────────────────── */
+/* ─── the chairperson's decision is the official/overall outcome ────── */
+async function getChairpersonDecision({ group_id, submission_id, schedule_id }) {
+  const conditions = ["e.status = 'submitted'", "sp.role_label = 'chairperson'"];
+  const params = [];
+  if (group_id) {
+    conditions.push('e.group_id = ?');
+    params.push(group_id);
+  } else if (submission_id) {
+    conditions.push('e.submission_id = ? AND e.group_id IS NULL');
+    params.push(submission_id);
+  } else {
+    return null;
+  }
+  if (schedule_id) {
+    conditions.push('e.schedule_id = ?');
+    params.push(schedule_id);
+  }
+
+  const [[row]] = await db.query(
+    `SELECT e.decision, e.schedule_id, ds.defense_type, ds.scheduled_date
+     FROM evaluations e
+     JOIN defense_schedules ds  ON e.schedule_id = ds.id
+     JOIN schedule_panelists sp ON sp.schedule_id = e.schedule_id AND sp.panelist_id = e.panelist_id
+     WHERE ${conditions.join(' AND ')}
+     ORDER BY ds.scheduled_date DESC, e.submitted_at DESC
+     LIMIT 1`,
+    params
+  );
+  return row || null;
+}
+
+/* ─── student: decision + comments for own group (never scores) ────── */
 async function getStudentScores(student_id) {
   const [[membership]] = await db.query(
     'SELECT group_id FROM group_members WHERE student_id = ? LIMIT 1',
@@ -158,10 +194,11 @@ async function getStudentScores(student_id) {
     [group_id]
   );
 
+  /* deliberately excludes e.score — students only see the decision + comments */
   const [rows] = await db.query(
-    `SELECT e.id, e.score, e.remarks, e.submitted_at,
+    `SELECT e.id, e.remarks, e.submitted_at,
             CONCAT(p.first_name, ' ', p.last_name) AS panelist_name,
-            ds.id AS schedule_id, ds.scheduled_date, ds.time_slots,
+            ds.id AS schedule_id, ds.defense_type, ds.scheduled_date, ds.time_slots,
             v.name AS venue_name,
             ts.title AS submission_title, ts.type AS submission_type
      FROM evaluations e
@@ -180,33 +217,33 @@ async function getStudentScores(student_id) {
     if (!scheduleMap.has(sid)) {
       scheduleMap.set(sid, {
         schedule_id:      sid,
+        defense_type:     ev.defense_type,
         scheduled_date:   ev.scheduled_date,
         time_slots:       parseSlots(ev.time_slots),
         venue_name:       ev.venue_name,
         submission_title: ev.submission_title,
         submission_type:  ev.submission_type,
-        evaluations:      [],
+        comments:         [],
       });
     }
-    scheduleMap.get(sid).evaluations.push({
+    scheduleMap.get(sid).comments.push({
       id:            ev.id,
       panelist_name: ev.panelist_name,
-      score:         ev.score,
       remarks:       ev.remarks,
       submitted_at:  ev.submitted_at,
     });
   }
 
-  const schedules = [...scheduleMap.values()].map(s => {
-    const scores = s.evaluations.map(e => e.score).filter(x => x != null);
-    s.average_score   = scores.length
-      ? +(scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2)
-      : null;
-    s.panelists_count = s.evaluations.length;
-    return s;
-  });
+  const schedules = [...scheduleMap.values()];
+  for (const s of schedules) {
+    const chair = await getChairpersonDecision({ group_id, schedule_id: s.schedule_id });
+    s.decision = chair ? chair.decision : null;
+  }
 
   return { group, schedules };
 }
 
-module.exports = { listEvaluations, getById, getByScheduleAndPanelist, upsertEvaluation, getStudentScores };
+module.exports = {
+  listEvaluations, getById, getByScheduleAndPanelist, upsertEvaluation,
+  getStudentScores, getChairpersonDecision,
+};

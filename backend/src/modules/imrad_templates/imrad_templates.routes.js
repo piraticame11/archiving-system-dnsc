@@ -7,7 +7,7 @@ const { uploadImrad }      = require('../../config/multer');
 const v = require('./imrad_templates.validators');
 
 const adminOnly      = [verifyToken, requireRole('admin', 'superadmin')];
-const staffAndAbove  = [verifyToken, requireRole('admin', 'superadmin', 'instructor', 'panelist')];
+const staffAndAbove  = [verifyToken, requireRole('admin', 'superadmin', 'instructor', 'panelist', 'student')];
 
 router.get(   '/',             staffAndAbove,                                                    ctrl.list);
 router.post(  '/',             adminOnly,     uploadImrad.single('file'), v.createRules, handleValidation, ctrl.upload);

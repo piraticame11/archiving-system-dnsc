@@ -134,4 +134,42 @@ async function getMinutes(req, res, next) {
   }
 }
 
-module.exports = { list, calendar, myGroupSchedule, getOne, create, update, updateStatus, remove, uploadMinutes, getMinutes };
+async function getAutoScheduleStatus(req, res, next) {
+  try {
+    const enabled = await service.isAutoSchedulingEnabled();
+    sendSuccess(res, { enabled });
+  } catch (err) { next(err); }
+}
+
+async function setAutoScheduleStatus(req, res, next) {
+  try {
+    const result = await service.setAutoSchedulingEnabled(Boolean(req.body.enabled));
+    sendSuccess(res, result, `Automatic scheduling ${result.enabled ? 'enabled' : 'disabled'}`);
+  } catch (err) { next(err); }
+}
+
+async function eligibleGroups(req, res, next) {
+  try {
+    const groups = await service.getEligibleGroupsForAutoSchedule(req.query.defense_type);
+    sendSuccess(res, groups);
+  } catch (err) {
+    if (err.status === 400) return res.status(400).json({ success: false, message: err.message });
+    next(err);
+  }
+}
+
+async function runAutoSchedule(req, res, next) {
+  try {
+    const result = await service.autoSchedule({ ...req.body, created_by: req.user.id });
+    sendCreated(res, result, `Auto-scheduled ${result.scheduled.length} of ${result.scheduled.length + result.failed.length} group(s)`);
+  } catch (err) {
+    if (err.status === 403) return res.status(403).json({ success: false, message: err.message });
+    if (err.status === 400) return res.status(400).json({ success: false, message: err.message });
+    next(err);
+  }
+}
+
+module.exports = {
+  list, calendar, myGroupSchedule, getOne, create, update, updateStatus, remove, uploadMinutes, getMinutes,
+  getAutoScheduleStatus, setAutoScheduleStatus, eligibleGroups, runAutoSchedule,
+};

@@ -7,15 +7,15 @@ const { uploadGuideline }  = require('../../config/multer');
 const v = require('./instructor_guidelines.validators');
 
 const instructorAndAbove = [verifyToken, requireRole('admin', 'superadmin', 'instructor')];
-const staffAndAbove      = [verifyToken, requireRole('admin', 'superadmin', 'instructor', 'panelist')];
+const staffAndAbove      = [verifyToken, requireRole('admin', 'superadmin', 'instructor', 'panelist', 'student')];
 
-// List all guidelines — visible to all staff
+// List all guidelines — visible to all staff and students
 router.get('/', staffAndAbove, ctrl.list);
 
 // Upload a guideline — instructors and above
 router.post('/', instructorAndAbove, uploadGuideline.single('file'), v.createRules, handleValidation, ctrl.upload);
 
-// Download a guideline — all staff
+// Download a guideline — all staff and students
 router.get('/:id/download', staffAndAbove, v.idRules, handleValidation, ctrl.download);
 
 // Delete — own uploads (instructors) or admins

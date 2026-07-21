@@ -182,10 +182,12 @@
       } catch {}
     }
 
+    const ARCHIVE_MIN_YEAR = 2023; // the archive only contains theses/capstones from this school year onward
+
     function populateYears() {
       const sel = document.getElementById('f-year');
       const now = new Date().getFullYear();
-      for (let y = now; y >= now - 8; y--) {
+      for (let y = now; y >= ARCHIVE_MIN_YEAR; y--) {
         const o = document.createElement('option');
         o.value = `${y}-${y+1}`; o.textContent = `${y}-${y+1}`; sel.appendChild(o);
       }

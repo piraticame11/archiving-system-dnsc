@@ -85,12 +85,13 @@
               <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Research Title</th>
               <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Department</th>
               <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">School Year</th>
+              <th class="text-left px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Defense Decision</th>
               <th class="text-center px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Members</th>
               <th class="text-right px-4 py-3 font-semibold text-gray-600 text-xs uppercase tracking-wide">Actions</th>
             </tr>
           </thead>
           <tbody id="table-body">
-            <tr><td colspan="7" class="px-4 py-8 text-center text-sm text-gray-400">Loading groups…</td></tr>
+            <tr><td colspan="8" class="px-4 py-8 text-center text-sm text-gray-400">Loading groups…</td></tr>
           </tbody>
         </table>
       </div>
@@ -103,6 +104,13 @@
   <script src="/assets/js/utils.js"></script>
   <script>
     function escHtml(s) { const d = document.createElement('div'); d.appendChild(document.createTextNode(s||'')); return d.innerHTML; }
+
+    const DECISION_LABEL = { approved: 'Approved', minor_revisions: 'Minor Modifications Required', major_revisions: 'Major Modifications Required' };
+    const DECISION_CLASS = { approved: 'bg-green-100 text-green-700', minor_revisions: 'bg-yellow-100 text-yellow-700', major_revisions: 'bg-red-100 text-red-700' };
+    function decisionBadge(decision) {
+      if (!decision) return `<span class="text-xs italic text-gray-400">No decision yet</span>`;
+      return `<span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${DECISION_CLASS[decision] || 'bg-gray-100 text-gray-600'}">${escHtml(DECISION_LABEL[decision] || decision)}</span>`;
+    }
 
     let allGroups = [];
     let searchTimer = null;
@@ -120,7 +128,7 @@
 
     async function loadGroups() {
       const tbody = document.getElementById('table-body');
-      tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-gray-400">Loading…</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-8 text-center text-sm text-gray-400">Loading…</td></tr>`;
       try {
         const res = await apiGet('/api/v1/adviser/my-groups');
         const json = await res.json();
@@ -128,7 +136,7 @@
         renderStats();
         renderTable();
       } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-6 text-center text-sm text-red-500">Failed to load groups.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-6 text-center text-sm text-red-500">Failed to load groups.</td></tr>`;
       }
     }
 
@@ -163,7 +171,7 @@
         : allGroups;
 
       if (!filtered.length) {
-        tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-12 text-center">
+        tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-12 text-center">
           <div class="flex flex-col items-center gap-2">
             <svg class="w-10 h-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
             <p class="text-sm font-medium text-gray-500">${q ? 'No groups match your search.' : 'No groups assigned to you yet.'}</p>
@@ -191,6 +199,7 @@
           </td>
           <td class="px-4 py-3 text-sm text-gray-600">${escHtml(g.department_name || '—')}</td>
           <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">${escHtml(g.school_year || '—')}</td>
+          <td class="px-4 py-3">${decisionBadge(g.decision)}</td>
           <td class="px-4 py-3 text-center">
             <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary-100 text-primary-700 font-bold text-xs">
               ${g.member_count || 0}
@@ -204,7 +213,7 @@
           </td>
         </tr>
         <tr class="members-row" id="members-row-${i}">
-          <td colspan="7" class="px-0 py-0 border-b border-gray-100">
+          <td colspan="8" class="px-0 py-0 border-b border-gray-100">
             <div class="bg-gray-50 border-t border-gray-100 px-6 py-4">
               ${buildMembersPanel(g)}
             </div>

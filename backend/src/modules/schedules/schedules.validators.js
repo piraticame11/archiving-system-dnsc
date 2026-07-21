@@ -56,4 +56,27 @@ const statusRules = [
 
 const idRules = [param('id').isInt({ min: 1 })];
 
-module.exports = { listRules, calendarRules, createRules, updateRules, statusRules, idRules };
+const autoScheduleStatusRules = [
+  body('enabled').isBoolean().withMessage('enabled must be true or false'),
+];
+
+const eligibleGroupsRules = [
+  query('defense_type').isIn(DEFENSE_TYPES).withMessage('defense_type must be "proposal" or "final"'),
+];
+
+const autoScheduleRules = [
+  body('defense_type').isIn(DEFENSE_TYPES).withMessage('defense_type must be "proposal" or "final"'),
+  body('group_ids').isArray({ min: 1 }).withMessage('Select at least one group'),
+  body('group_ids.*').isInt({ min: 1 }),
+  body('start_date').isDate().withMessage('Valid start_date (YYYY-MM-DD) is required'),
+  body('end_date').isDate().withMessage('Valid end_date (YYYY-MM-DD) is required'),
+  body('venue_ids').optional().isArray(),
+  body('venue_ids.*').optional().isInt({ min: 1 }),
+  body('panelist_ids').optional().isArray(),
+  body('panelist_ids.*').optional().isInt({ min: 1 }),
+];
+
+module.exports = {
+  listRules, calendarRules, createRules, updateRules, statusRules, idRules,
+  autoScheduleStatusRules, eligibleGroupsRules, autoScheduleRules,
+};

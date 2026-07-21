@@ -35,12 +35,13 @@ async function getBySchedule(req, res, next) {
 
 async function upsert(req, res, next) {
   try {
-    const { schedule_id, group_id, score, remarks, submit } = req.body;
+    const { schedule_id, group_id, score, decision, remarks, submit } = req.body;
     const ev = await service.upsertEvaluation({
       schedule_id,
       panelist_id: req.user.id,
       group_id:    group_id ?? null,
       score,
+      decision,
       remarks,
       submit: Boolean(submit),
     });

@@ -27,7 +27,7 @@ async function listPanelists({ search, status, department_id, page, limit }) {
   const [rows] = await db.query(
     `SELECT u.id, u.first_name, u.last_name, u.email,
             u.is_active, u.created_at,
-            u.department_id,
+            u.department_id, u.panelist_type,
             d.name AS department_name, d.code AS department_code,
             (SELECT COUNT(*) FROM schedule_panelists sp WHERE sp.panelist_id = u.id) AS schedules_count
      ${base}
@@ -43,7 +43,7 @@ async function listPanelists({ search, status, department_id, page, limit }) {
 async function getPanelistById(id) {
   const [[user]] = await db.query(
     `SELECT u.id, u.first_name, u.last_name, u.email, u.is_active, u.created_at, u.updated_at,
-            u.department_id, d.name AS department_name, d.code AS department_code,
+            u.department_id, u.panelist_type, d.name AS department_name, d.code AS department_code,
             r.name AS role
      FROM users u
      JOIN roles r ON u.role_id = r.id
@@ -54,15 +54,15 @@ async function getPanelistById(id) {
   if (!user) return null;
 
   const [schedules] = await db.query(
-    `SELECT ds.id, ds.scheduled_at, ds.status, ds.duration_min,
+    `SELECT ds.id, ds.scheduled_date, ds.time_slots, ds.status, ds.defense_type,
             ts.title AS submission_title, ts.type AS submission_type,
             v.name AS venue_name
      FROM schedule_panelists sp
-     JOIN defense_schedules ds  ON sp.schedule_id = ds.id
-     JOIN thesis_submissions ts ON ds.submission_id = ts.id
-     LEFT JOIN venues v         ON ds.venue_id = v.id
+     JOIN defense_schedules ds       ON sp.schedule_id = ds.id
+     LEFT JOIN thesis_submissions ts ON ds.submission_id = ts.id
+     LEFT JOIN venues v              ON ds.venue_id = v.id
      WHERE sp.panelist_id = ?
-     ORDER BY ds.scheduled_at DESC`,
+     ORDER BY ds.scheduled_date DESC`,
     [id]
   );
   user.schedules = schedules;
@@ -70,7 +70,7 @@ async function getPanelistById(id) {
 }
 
 /* ─── create ────────────────────────────────────────────────────────── */
-async function createPanelist({ first_name, last_name, email, password, department_id }) {
+async function createPanelist({ first_name, last_name, email, password, department_id, panelist_type }) {
   const [[roleRow]] = await db.query("SELECT id FROM roles WHERE name = 'panelist'");
   if (!roleRow) throw Object.assign(new Error('Panelist role not found'), { statusCode: 500 });
 
@@ -81,15 +81,15 @@ async function createPanelist({ first_name, last_name, email, password, departme
 
   const hash = await bcrypt.hash(password, 12);
   const [result] = await db.query(
-    `INSERT INTO users (role_id, first_name, last_name, email, password_hash, department_id, is_active, is_email_verified)
-     VALUES (?, ?, ?, ?, ?, ?, 1, 1)`,
-    [roleRow.id, first_name, last_name, email, hash, department_id || null]
+    `INSERT INTO users (role_id, first_name, last_name, email, password_hash, department_id, panelist_type, is_active, is_email_verified)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1)`,
+    [roleRow.id, first_name, last_name, email, hash, department_id || null, panelist_type || 'regular']
   );
   return getPanelistById(result.insertId);
 }
 
 /* ─── update ────────────────────────────────────────────────────────── */
-async function updatePanelist(id, { first_name, last_name, email, department_id }) {
+async function updatePanelist(id, { first_name, last_name, email, department_id, panelist_type }) {
   const user = await getPanelistById(id);
   if (!user) throw Object.assign(new Error('Panelist not found'), { statusCode: 404 });
 
@@ -97,6 +97,7 @@ async function updatePanelist(id, { first_name, last_name, email, department_id 
   if (first_name     !== undefined) updates.first_name     = first_name;
   if (last_name      !== undefined) updates.last_name      = last_name;
   if (department_id  !== undefined) updates.department_id  = department_id || null;
+  if (panelist_type  !== undefined) updates.panelist_type  = panelist_type;
   if (email          !== undefined) {
     const [[dup]] = await db.query(
       'SELECT id FROM users WHERE email = ? AND id != ? AND deleted_at IS NULL', [email, id]

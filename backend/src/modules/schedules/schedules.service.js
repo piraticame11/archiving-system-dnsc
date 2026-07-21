@@ -440,9 +440,280 @@ async function getMinutesFile(id) {
   return absPath;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   AUTOMATIC SCHEDULING
+   Manual scheduling (createSchedule/updateSchedule above) always stays
+   available — this is an additional tool the admin can toggle on/off.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+const AUTO_SCHEDULE_SETTING_KEY = 'auto_scheduling_enabled';
+const AUTO_SCHEDULE_MAX_RANGE_DAYS = 90;
+
+async function isAutoSchedulingEnabled() {
+  const [[row]] = await db.query(
+    `SELECT value FROM system_settings WHERE key_name = ?`, [AUTO_SCHEDULE_SETTING_KEY]
+  );
+  return row ? row.value === 'true' : true;
+}
+
+async function setAutoSchedulingEnabled(enabled) {
+  await db.query(
+    `INSERT INTO system_settings (key_name, value, description)
+     VALUES (?, ?, 'Allow admins to use the automatic scheduling tool (manual scheduling is always available)')
+     ON DUPLICATE KEY UPDATE value = VALUES(value)`,
+    [AUTO_SCHEDULE_SETTING_KEY, enabled ? 'true' : 'false']
+  );
+  return { enabled: !!enabled };
+}
+
+/* ─── groups eligible for a given defense type ───────────────────────── */
+async function getEligibleGroupsForAutoSchedule(defense_type) {
+  if (defense_type === 'proposal') {
+    const [rows] = await db.query(
+      `SELECT tg.id, tg.name, tg.title, tg.school_year,
+              d.name AS department_name, d.code AS department_code,
+              ts.approved_at
+       FROM thesis_groups tg
+       JOIN departments d ON tg.department_id = d.id
+       JOIN thesis_submissions ts ON ts.group_id = tg.id AND ts.status = 'approved' AND ts.deleted_at IS NULL
+       WHERE tg.deleted_at IS NULL
+         AND NOT EXISTS (
+           SELECT 1 FROM schedule_groups sg
+           JOIN defense_schedules ds ON sg.schedule_id = ds.id
+           WHERE sg.group_id = tg.id AND ds.defense_type = 'proposal' AND ds.status != 'cancelled'
+         )
+       ORDER BY ts.approved_at ASC`
+    );
+    return rows;
+  }
+
+  if (defense_type === 'final') {
+    const [rows] = await db.query(
+      `SELECT tg.id, tg.name, tg.title, tg.school_year,
+              d.name AS department_name, d.code AS department_code,
+              MIN(ds.scheduled_date) AS proposal_completed_date
+       FROM thesis_groups tg
+       JOIN departments d ON tg.department_id = d.id
+       JOIN schedule_groups sg   ON sg.group_id = tg.id
+       JOIN defense_schedules ds ON sg.schedule_id = ds.id AND ds.defense_type = 'proposal' AND ds.status = 'completed'
+       WHERE tg.deleted_at IS NULL
+         AND NOT EXISTS (
+           SELECT 1 FROM schedule_groups sg2
+           JOIN defense_schedules ds2 ON sg2.schedule_id = ds2.id
+           WHERE sg2.group_id = tg.id AND ds2.defense_type = 'final' AND ds2.status != 'cancelled'
+         )
+       GROUP BY tg.id
+       ORDER BY proposal_completed_date ASC`
+    );
+    return rows;
+  }
+
+  const err = new Error('Invalid defense type.');
+  err.status = 400;
+  throw err;
+}
+
+/* Pure UTC date-only arithmetic — avoids the server's local timezone ever
+   shifting a date by a day when formatting (toISOString() would). */
+function dateRangeArray(start, end) {
+  const dates = [];
+  const [sy, sm, sd] = start.split('-').map(Number);
+  const [ey, em, ed] = end.split('-').map(Number);
+  let cur = Date.UTC(sy, sm - 1, sd);
+  const last = Date.UTC(ey, em - 1, ed);
+  while (cur <= last) {
+    const d = new Date(cur);
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    dates.push(`${y}-${m}-${day}`);
+    cur += 24 * 60 * 60 * 1000;
+  }
+  return dates;
+}
+
+/* ─── run the auto-scheduler ─────────────────────────────────────────── */
+async function autoSchedule({ defense_type, group_ids, venue_ids, panelist_ids, start_date, end_date, created_by }) {
+  const enabled = await isAutoSchedulingEnabled();
+  if (!enabled) {
+    const err = new Error('Automatic scheduling is currently turned off by the admin. Use manual scheduling instead.');
+    err.status = 403;
+    throw err;
+  }
+
+  if (!SLOTS_BY_TYPE[defense_type]) {
+    const err = new Error('Invalid defense type.');
+    err.status = 400;
+    throw err;
+  }
+  if (!Array.isArray(group_ids) || !group_ids.length) {
+    const err = new Error('Select at least one group to schedule.');
+    err.status = 400;
+    throw err;
+  }
+
+  const dates = dateRangeArray(start_date, end_date);
+  if (!dates.length || dates.length > AUTO_SCHEDULE_MAX_RANGE_DAYS) {
+    const err = new Error(`Date range must be between 1 and ${AUTO_SCHEDULE_MAX_RANGE_DAYS} days.`);
+    err.status = 400;
+    throw err;
+  }
+
+  const venueParams = [];
+  let venueFilter = 'is_active = 1';
+  if (Array.isArray(venue_ids) && venue_ids.length) {
+    venueFilter += ' AND id IN (?)';
+    venueParams.push(venue_ids);
+  }
+  const [venueRows] = await db.query(`SELECT id, name FROM venues WHERE ${venueFilter}`, venueParams);
+  if (!venueRows.length) {
+    const err = new Error('No active venues available to schedule into.');
+    err.status = 400;
+    throw err;
+  }
+
+  const panelistParams = [];
+  let panelistFilter = "r.name = 'panelist' AND u.is_active = 1 AND u.deleted_at IS NULL";
+  if (Array.isArray(panelist_ids) && panelist_ids.length) {
+    panelistFilter += ' AND u.id IN (?)';
+    panelistParams.push(panelist_ids);
+  }
+  const [panelistRows] = await db.query(
+    `SELECT u.id, u.panelist_type FROM users u JOIN roles r ON u.role_id = r.id WHERE ${panelistFilter}`,
+    panelistParams
+  );
+  const regularPool  = panelistRows.filter(p => p.panelist_type !== 'industry').map(p => p.id);
+  const industryPool = panelistRows.filter(p => p.panelist_type === 'industry').map(p => p.id);
+
+  if (regularPool.length < 3) {
+    const err = new Error('Not enough regular panelists available (need at least 3 for chairperson + 2 members).');
+    err.status = 400;
+    throw err;
+  }
+  if (!industryPool.length) {
+    const err = new Error('No industry panelists available. Mark at least one panelist as "Industry" in Panelist Management first.');
+    err.status = 400;
+    throw err;
+  }
+
+  const [groupRows] = await db.query(
+    `SELECT id, name FROM thesis_groups WHERE id IN (?) AND deleted_at IS NULL`, [group_ids]
+  );
+  const groupMap = new Map(groupRows.map(g => [g.id, g]));
+
+  const venueIdList = venueRows.map(v => v.id);
+  const [existingVenueBookings] = await db.query(
+    `SELECT venue_id, scheduled_date, time_slots FROM defense_schedules
+     WHERE venue_id IN (?) AND scheduled_date BETWEEN ? AND ? AND status != 'cancelled'`,
+    [venueIdList, start_date, end_date]
+  );
+  const venueBusy = {};
+  existingVenueBookings.forEach(s => {
+    const key = `${s.venue_id}|${String(s.scheduled_date).slice(0, 10)}`;
+    (venueBusy[key] = venueBusy[key] || []).push(...parseSlots(s.time_slots));
+  });
+
+  const [existingPanelistBookings] = await db.query(
+    `SELECT sp.panelist_id, ds.scheduled_date, ds.time_slots
+     FROM schedule_panelists sp
+     JOIN defense_schedules ds ON sp.schedule_id = ds.id
+     WHERE ds.scheduled_date BETWEEN ? AND ? AND ds.status != 'cancelled'`,
+    [start_date, end_date]
+  );
+  const panelistBusy = {};
+  existingPanelistBookings.forEach(b => {
+    const key = `${b.panelist_id}|${String(b.scheduled_date).slice(0, 10)}`;
+    (panelistBusy[key] = panelistBusy[key] || []).push(...parseSlots(b.time_slots));
+  });
+
+  const usageCount = {};
+  panelistRows.forEach(p => { usageCount[p.id] = 0; });
+
+  const isBusy   = (map, key, slot) => (map[key] || []).some(s => slotsOverlap(s, slot));
+  const markBusy = (map, key, slot) => { (map[key] = map[key] || []).push(slot); };
+
+  const scheduled = [];
+  const failed = [];
+
+  for (const gid of group_ids) {
+    const group = groupMap.get(gid);
+    if (!group) { failed.push({ group_id: gid, reason: 'Group not found' }); continue; }
+
+    let placed = false;
+
+    findSlot:
+    for (const date of dates) {
+      for (const venue of venueRows) {
+        const venueKey = `${venue.id}|${date}`;
+        for (const slot of SLOTS_BY_TYPE[defense_type]) {
+          if (isBusy(venueBusy, venueKey, slot)) continue;
+
+          const availRegular = regularPool
+            .filter(id => !isBusy(panelistBusy, `${id}|${date}`, slot))
+            .sort((a, b) => usageCount[a] - usageCount[b]);
+          const availIndustry = industryPool
+            .filter(id => !isBusy(panelistBusy, `${id}|${date}`, slot))
+            .sort((a, b) => usageCount[a] - usageCount[b]);
+
+          if (availRegular.length < 3 || !availIndustry.length) continue;
+
+          const chairId      = availRegular[0];
+          const industryId   = availIndustry[0];
+          const memberIds    = [availRegular[1], availRegular[2]];
+          const panelistList = [
+            { panelist_id: chairId,      role: 'chairperson' },
+            { panelist_id: industryId,   role: 'industry_panelist' },
+            { panelist_id: memberIds[0], role: 'member' },
+            { panelist_id: memberIds[1], role: 'member' },
+          ];
+
+          try {
+            const schedule = await createSchedule({
+              venue_id: venue.id,
+              defense_type,
+              scheduled_date: date,
+              time_slots: [slot],
+              notes: 'Auto-scheduled',
+              panelists: panelistList,
+              group_ids: [gid],
+              created_by,
+            });
+
+            markBusy(venueBusy, venueKey, slot);
+            [chairId, industryId, ...memberIds].forEach(id => {
+              markBusy(panelistBusy, `${id}|${date}`, slot);
+              usageCount[id]++;
+            });
+
+            scheduled.push({
+              group_id: gid, group_name: group.name, schedule_id: schedule.id,
+              scheduled_date: date, venue_name: venue.name, time_slot: slot,
+            });
+            placed = true;
+            break findSlot;
+          } catch (_) {
+            continue; // race/edge case — try the next candidate slot
+          }
+        }
+      }
+    }
+
+    if (!placed) {
+      failed.push({
+        group_id: gid, group_name: group.name,
+        reason: 'No available venue/panel combination found in the given date range.',
+      });
+    }
+  }
+
+  return { scheduled, failed };
+}
+
 module.exports = {
   listSchedules, getCalendar, getById,
   createSchedule, updateSchedule, updateStatus, deleteSchedule,
   uploadMinutes, getMinutesFile,
+  isAutoSchedulingEnabled, setAutoSchedulingEnabled,
+  getEligibleGroupsForAutoSchedule, autoSchedule,
   SLOTS_BY_TYPE,
 };

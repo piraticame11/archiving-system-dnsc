@@ -149,10 +149,9 @@
 
         <!-- Submitted view -->
         <div id="submitted-view" class="hidden space-y-4">
-          <div class="bg-gray-50 rounded-xl p-5 text-center border border-gray-200">
-            <p class="text-xs text-gray-400 mb-1">Score</p>
-            <p id="view-score" class="text-5xl font-extrabold text-primary-600 leading-none">–</p>
-            <p class="text-xs text-gray-400 mt-1">out of 100</p>
+          <div>
+            <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Decision</p>
+            <span id="view-decision" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold"></span>
           </div>
           <div>
             <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Remarks</p>
@@ -164,28 +163,21 @@
 
         <!-- Editable form -->
         <div id="edit-form" class="space-y-5">
-          <!-- Score slider -->
+          <!-- Overall decision -->
           <div>
-            <div class="flex items-center justify-between mb-2">
-              <label class="block text-sm font-medium text-gray-700">Score <span class="text-gray-400 font-normal">(0 – 100)</span></label>
-              <span id="score-display" class="text-2xl font-bold text-primary-600">–</span>
-            </div>
-            <input id="score-range" type="range" min="0" max="100" step="0.5" value="75"
-              class="w-full accent-primary-600 cursor-pointer"
-              oninput="updateScore(this.value)">
-            <div class="flex justify-between text-xs text-gray-400 mt-1"><span>0</span><span>50</span><span>100</span></div>
-            <div class="mt-3 flex items-center gap-2">
-              <label class="text-xs text-gray-500">Or type:</label>
-              <input id="score-input" type="number" min="0" max="100" step="0.5" placeholder="e.g. 87.5"
-                class="w-28 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                oninput="syncScore(this.value)">
-            </div>
-            <p id="err-score" class="text-xs text-red-600 mt-1 hidden"></p>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Overall Decision <span class="text-gray-400 font-normal">(shown to the instructor and the group)</span></label>
+            <select id="decision-select" class="form-input">
+              <option value="">— Select decision —</option>
+              <option value="approved">Approved</option>
+              <option value="minor_revisions">Minor Modifications Required</option>
+              <option value="major_revisions">Major Modifications Required</option>
+            </select>
+            <p id="err-decision" class="text-xs text-red-600 mt-1 hidden"></p>
           </div>
 
           <!-- Remarks -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Remarks <span class="text-gray-400 font-normal">(optional)</span></label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Remarks <span class="text-gray-400 font-normal">(shown to the group, optional)</span></label>
             <textarea id="remarks" rows="4" maxlength="2000" placeholder="Provide feedback, suggestions, or overall comments…"
               class="form-input resize-none"></textarea>
             <p class="text-xs text-gray-400 mt-1 text-right"><span id="remarks-count">0</span>/2000</p>
@@ -226,10 +218,9 @@
 
         <!-- Submitted view -->
         <div id="single-submitted-view" class="hidden space-y-4">
-          <div class="bg-gray-50 rounded-xl p-5 text-center border border-gray-200">
-            <p class="text-xs text-gray-400 mb-1">Score</p>
-            <p id="single-view-score" class="text-5xl font-extrabold text-primary-600 leading-none">–</p>
-            <p class="text-xs text-gray-400 mt-1">out of 100</p>
+          <div>
+            <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Decision</p>
+            <span id="single-view-decision" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold"></span>
           </div>
           <div>
             <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Remarks</p>
@@ -242,25 +233,18 @@
         <!-- Editable form -->
         <div id="single-edit-form" class="space-y-5">
           <div>
-            <div class="flex items-center justify-between mb-2">
-              <label class="block text-sm font-medium text-gray-700">Score <span class="text-gray-400 font-normal">(0 – 100)</span></label>
-              <span id="single-score-display" class="text-2xl font-bold text-primary-600">75.0</span>
-            </div>
-            <input id="single-score-range" type="range" min="0" max="100" step="0.5" value="75"
-              class="w-full accent-primary-600 cursor-pointer"
-              oninput="singleUpdateScore(this.value)">
-            <div class="flex justify-between text-xs text-gray-400 mt-1"><span>0</span><span>50</span><span>100</span></div>
-            <div class="mt-3 flex items-center gap-2">
-              <label class="text-xs text-gray-500">Or type:</label>
-              <input id="single-score-input" type="number" min="0" max="100" step="0.5" placeholder="e.g. 87.5"
-                class="w-28 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                oninput="singleSyncScore(this.value)">
-            </div>
-            <p id="single-err-score" class="text-xs text-red-600 mt-1 hidden"></p>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Overall Decision <span class="text-gray-400 font-normal">(shown to the instructor and the group)</span></label>
+            <select id="single-decision-select" class="form-input">
+              <option value="">— Select decision —</option>
+              <option value="approved">Approved</option>
+              <option value="minor_revisions">Minor Modifications Required</option>
+              <option value="major_revisions">Major Modifications Required</option>
+            </select>
+            <p id="single-err-decision" class="text-xs text-red-600 mt-1 hidden"></p>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Remarks <span class="text-gray-400 font-normal">(optional)</span></label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Remarks <span class="text-gray-400 font-normal">(shown to the group, optional)</span></label>
             <textarea id="single-remarks" rows="5" maxlength="2000" placeholder="Provide feedback, suggestions, or overall comments…"
               class="form-input resize-none"></textarea>
             <p class="text-xs text-gray-400 mt-1 text-right"><span id="single-remarks-count">0</span>/2000</p>
@@ -293,7 +277,7 @@
         <svg class="w-6 h-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
       </div>
       <h3 id="confirm-title" class="text-lg font-bold text-gray-900 mb-2">Submit Evaluation?</h3>
-      <p class="text-sm text-gray-500 mb-6">Once submitted, the score and remarks cannot be changed.</p>
+      <p class="text-sm text-gray-500 mb-6">Once submitted, the decision and remarks cannot be changed.</p>
       <div class="flex gap-3">
         <button onclick="closeConfirm()" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
         <button id="confirm-ok-btn" class="flex-1 px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">Yes, Submit</button>
@@ -342,6 +326,12 @@
     }
 
     const PANEL_ROLE_LABEL = { chairperson: 'Chairperson', industry_panelist: 'Industry Panelist', member: 'Member' };
+    const DECISION_LABEL = { approved: 'Approved', minor_revisions: 'Minor Modifications Required', major_revisions: 'Major Modifications Required' };
+    const DECISION_CLASS = { approved: 'bg-green-100 text-green-700', minor_revisions: 'bg-yellow-100 text-yellow-700', major_revisions: 'bg-red-100 text-red-700' };
+    function decisionBadge(el, decision) {
+      el.textContent = DECISION_LABEL[decision] || 'No decision recorded';
+      el.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ' + (DECISION_CLASS[decision] || 'bg-gray-100 text-gray-600');
+    }
 
     function renderPanel(panelists) {
       const el = document.getElementById('panel-list');
@@ -380,7 +370,7 @@
     let scheduleId   = null;
     let groups       = [];       // [{id, name, group_title}]
     let evalMap      = {};       // group_id (or 'legacy') → evaluation obj
-    let formState    = {};       // group_id → { score, remarks, scoreEnabled }
+    let formState    = {};       // group_id → { decision, remarks }
     let currentIdx   = 0;
     let isMulti      = false;    // true when ≥2 groups in schedule
 
@@ -405,9 +395,8 @@
       const key = g.id;
       if (evalMap[key]?.status === 'submitted') return; // don't overwrite submitted
       formState[key] = {
-        score:        document.getElementById('score-input').value,
-        remarks:      document.getElementById('remarks').value,
-        scoreEnabled: formState[key]?.scoreEnabled ?? false,
+        decision: document.getElementById('decision-select').value,
+        remarks:  document.getElementById('remarks').value,
       };
     }
 
@@ -456,8 +445,6 @@
       } else {
         showCarouselEditForm(ev, key);
       }
-
-      clearScoreError();
     }
 
     function renderProgressDots() {
@@ -478,7 +465,7 @@
     function showCarouselSubmittedView(ev) {
       document.getElementById('submitted-view').classList.remove('hidden');
       document.getElementById('edit-form').classList.add('hidden');
-      document.getElementById('view-score').textContent   = ev.score != null ? parseFloat(ev.score).toFixed(1) : '–';
+      decisionBadge(document.getElementById('view-decision'), ev.decision);
       document.getElementById('view-remarks').textContent = ev.remarks || 'No remarks provided.';
       document.getElementById('view-submitted-at').textContent =
         ev.submitted_at ? 'Submitted on ' + fmtDate(ev.submitted_at) : '';
@@ -491,77 +478,31 @@
       const saved = formState[key];
       const src   = saved || ev;
 
-      if (src?.score != null) {
-        const v = parseFloat(src.score);
-        document.getElementById('score-range').value         = v;
-        document.getElementById('score-input').value         = v.toFixed(1);
-        document.getElementById('score-display').textContent = v.toFixed(1);
-        if (!formState[key]) formState[key] = {};
-        formState[key].scoreEnabled = true;
-      } else {
-        document.getElementById('score-range').value         = 75;
-        document.getElementById('score-input').value         = '';
-        document.getElementById('score-display').textContent = '–';
-        if (!formState[key]) formState[key] = {};
-        formState[key].scoreEnabled = false;
-      }
-
       const remarks = src?.remarks || '';
       document.getElementById('remarks').value               = remarks;
       document.getElementById('remarks-count').textContent   = remarks.length;
-    }
 
-    function updateScore(val) {
-      document.getElementById('score-display').textContent = parseFloat(val).toFixed(1);
-      document.getElementById('score-input').value         = parseFloat(val).toFixed(1);
-      const key = groups[currentIdx]?.id;
-      if (key != null) {
-        if (!formState[key]) formState[key] = {};
-        formState[key].scoreEnabled = true;
-      }
-    }
-
-    function syncScore(val) {
-      const n = parseFloat(val);
-      if (!isNaN(n) && n >= 0 && n <= 100) {
-        document.getElementById('score-range').value         = n;
-        document.getElementById('score-display').textContent = n.toFixed(1);
-        const key = groups[currentIdx]?.id;
-        if (key != null) {
-          if (!formState[key]) formState[key] = {};
-          formState[key].scoreEnabled = true;
-        }
-      }
+      document.getElementById('decision-select').value = src?.decision || '';
+      document.getElementById('err-decision').classList.add('hidden');
     }
 
     document.getElementById('remarks').addEventListener('input', function() {
       document.getElementById('remarks-count').textContent = this.value.length;
     });
 
-    function clearScoreError() {
-      document.getElementById('err-score').classList.add('hidden');
-    }
-
     async function saveEvaluation(submit) {
       closeConfirm();
       const g   = groups[currentIdx];
       const key = g.id;
-      const scoreEnabled = formState[key]?.scoreEnabled ?? false;
 
-      const rawScore = document.getElementById('score-input').value || document.getElementById('score-range').value;
-      const score    = scoreEnabled ? parseFloat(rawScore) : null;
+      const decision = document.getElementById('decision-select').value || null;
       const remarks  = document.getElementById('remarks').value.trim() || null;
 
-      if (score != null && (isNaN(score) || score < 0 || score > 100)) {
-        document.getElementById('err-score').textContent = 'Score must be between 0 and 100.';
-        document.getElementById('err-score').classList.remove('hidden');
-        return;
-      }
-      clearScoreError();
+      document.getElementById('err-decision').classList.add('hidden');
 
-      if (submit && score == null) {
-        document.getElementById('err-score').textContent = 'Please provide a score before submitting.';
-        document.getElementById('err-score').classList.remove('hidden');
+      if (submit && !decision) {
+        document.getElementById('err-decision').textContent = 'Please select an overall decision before submitting.';
+        document.getElementById('err-decision').classList.remove('hidden');
         return;
       }
 
@@ -575,12 +516,10 @@
         const res = await post('/api/v1/evaluations', {
           schedule_id: parseInt(scheduleId),
           group_id:    key,
-          score, remarks, submit,
+          decision, remarks, submit,
         });
         const ev = res.data;
         evalMap[key] = ev;
-        if (!formState[key]) formState[key] = {};
-        formState[key].scoreEnabled = ev.score != null;
 
         if (submit) {
           showCarouselSubmittedView(ev);
@@ -612,34 +551,15 @@
 
     /* ─── Single / Legacy ─── */
 
-    let singleScoreEnabled = false;
     const LEGACY_KEY = 'legacy';
-
-    function singleUpdateScore(val) {
-      document.getElementById('single-score-display').textContent = parseFloat(val).toFixed(1);
-      document.getElementById('single-score-input').value         = parseFloat(val).toFixed(1);
-      singleScoreEnabled = true;
-    }
-
-    function singleSyncScore(val) {
-      const n = parseFloat(val);
-      if (!isNaN(n) && n >= 0 && n <= 100) {
-        document.getElementById('single-score-range').value         = n;
-        document.getElementById('single-score-display').textContent = n.toFixed(1);
-        singleScoreEnabled = true;
-      }
-    }
 
     document.getElementById('single-remarks').addEventListener('input', function() {
       document.getElementById('single-remarks-count').textContent = this.value.length;
     });
 
     function singlePrefillForm(ev) {
-      if (ev?.score != null) {
-        document.getElementById('single-score-range').value         = ev.score;
-        document.getElementById('single-score-input').value         = ev.score;
-        document.getElementById('single-score-display').textContent = parseFloat(ev.score).toFixed(1);
-        singleScoreEnabled = true;
+      if (ev?.decision) {
+        document.getElementById('single-decision-select').value = ev.decision;
       }
       if (ev?.remarks) {
         document.getElementById('single-remarks').value              = ev.remarks;
@@ -651,7 +571,7 @@
       document.getElementById('single-edit-form').classList.add('hidden');
       document.getElementById('single-submitted-view').classList.remove('hidden');
       document.getElementById('single-eval-badge').classList.remove('hidden');
-      document.getElementById('single-view-score').textContent   = ev.score != null ? parseFloat(ev.score).toFixed(1) : '–';
+      decisionBadge(document.getElementById('single-view-decision'), ev.decision);
       document.getElementById('single-view-remarks').textContent = ev.remarks || 'No remarks provided.';
       if (ev.submitted_at)
         document.getElementById('single-view-submitted-at').textContent = 'Submitted on ' + fmtDate(ev.submitted_at);
@@ -659,19 +579,14 @@
 
     async function singleSaveEvaluation(submit) {
       singleCloseConfirm();
-      const score   = singleScoreEnabled ? parseFloat(document.getElementById('single-score-input').value || document.getElementById('single-score-range').value) : null;
-      const remarks = document.getElementById('single-remarks').value.trim() || null;
+      const decision = document.getElementById('single-decision-select').value || null;
+      const remarks  = document.getElementById('single-remarks').value.trim() || null;
 
-      if (score != null && (isNaN(score) || score < 0 || score > 100)) {
-        document.getElementById('single-err-score').textContent = 'Score must be between 0 and 100.';
-        document.getElementById('single-err-score').classList.remove('hidden');
-        return;
-      }
-      document.getElementById('single-err-score').classList.add('hidden');
+      document.getElementById('single-err-decision').classList.add('hidden');
 
-      if (submit && score == null) {
-        document.getElementById('single-err-score').textContent = 'Please provide a score before submitting.';
-        document.getElementById('single-err-score').classList.remove('hidden');
+      if (submit && !decision) {
+        document.getElementById('single-err-decision').textContent = 'Please select an overall decision before submitting.';
+        document.getElementById('single-err-decision').classList.remove('hidden');
         return;
       }
 
@@ -682,7 +597,7 @@
       btnSubmit.textContent = submit ? 'Submitting…' : 'Submit Evaluation';
 
       try {
-        const body = { schedule_id: parseInt(scheduleId), score, remarks, submit };
+        const body = { schedule_id: parseInt(scheduleId), decision, remarks, submit };
         /* For single-group schedules, send the group_id */
         if (groups.length === 1) body.group_id = groups[0].id;
         const res = await post('/api/v1/evaluations', body);

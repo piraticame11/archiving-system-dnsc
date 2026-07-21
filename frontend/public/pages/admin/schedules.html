@@ -59,16 +59,27 @@
 
   <div class="max-w-7xl mx-auto px-6 py-8">
 
-    <div class="mb-6 flex items-start justify-between">
+    <div class="mb-6 flex items-start justify-between flex-wrap gap-3">
       <div>
         <h1 class="text-2xl font-bold text-gray-900">Schedules</h1>
         <p class="text-sm text-gray-500 mt-0.5">Manage defense slots and venue availability</p>
       </div>
-      <button onclick="openCreateModal()"
-        class="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors shadow-sm">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-        Add Schedule
-      </button>
+      <div class="flex items-center gap-3">
+        <label class="flex items-center gap-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm cursor-pointer" title="Turning this off only hides the auto-scheduler — manual scheduling always stays available.">
+          <input id="auto-schedule-toggle" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" onchange="toggleAutoScheduling(this.checked)">
+          Automatic Scheduling
+        </label>
+        <button id="btn-auto-schedule" onclick="openAutoScheduleModal()"
+          class="hidden flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-sm">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          Auto-Schedule
+        </button>
+        <button onclick="openCreateModal()"
+          class="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors shadow-sm">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Add Schedule Manually
+        </button>
+      </div>
     </div>
 
     <div id="stats-row" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6"></div>
@@ -321,6 +332,62 @@
       <div class="flex gap-3">
         <button onclick="closeStatusModal()" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
         <button id="btn-save-status" onclick="submitStatusUpdate()" class="flex-1 px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg">Update Status</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Auto-Schedule Modal ═══════════════════════════════════════════ -->
+  <div id="auto-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div>
+          <h2 class="text-lg font-bold text-gray-900">Auto-Schedule Defenses</h2>
+          <p class="text-xs text-gray-500 mt-0.5">Automatically assigns venue, date, timeslot, and a valid panel per group. Manual scheduling is still available anytime.</p>
+        </div>
+        <button onclick="closeAutoModal()" class="text-gray-400 hover:text-gray-600">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="overflow-y-auto px-6 py-5 space-y-4 flex-1">
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Defense Type <span class="text-red-500">*</span></label>
+            <select id="auto-defense-type" class="form-input" onchange="loadEligibleGroups()">
+              <option value="proposal">Proposal Defense (30 min)</option>
+              <option value="final">Outline-to-Final Defense (1h30)</option>
+            </select>
+          </div>
+          <div></div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Start Date <span class="text-red-500">*</span></label>
+            <input id="auto-start-date" type="date" class="form-input">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">End Date <span class="text-red-500">*</span></label>
+            <input id="auto-end-date" type="date" class="form-input">
+          </div>
+        </div>
+        <p id="err-auto-dates" class="text-xs text-red-600 hidden"></p>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-sm font-medium text-gray-700">Eligible Groups</label>
+            <button type="button" onclick="toggleSelectAllEligible()" class="text-xs text-primary-600 hover:underline">Select all / none</button>
+          </div>
+          <div id="eligible-list" class="border border-gray-200 rounded-lg p-3 max-h-52 overflow-y-auto space-y-1">
+            <p class="text-xs text-gray-400">Loading eligible groups…</p>
+          </div>
+          <p id="err-auto-groups" class="text-xs text-red-600 mt-1 hidden"></p>
+        </div>
+
+        <div id="auto-alert" class="hidden px-3 py-2 rounded-lg text-sm text-red-700 bg-red-50 border border-red-200"></div>
+
+        <div id="auto-results" class="hidden space-y-3"></div>
+      </div>
+      <div class="px-6 py-4 border-t border-gray-100 flex gap-3">
+        <button onclick="closeAutoModal()" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Close</button>
+        <button id="btn-run-auto" onclick="runAutoSchedule()" class="flex-1 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg">Run Auto-Schedule</button>
       </div>
     </div>
   </div>
@@ -1046,12 +1113,148 @@
       document.getElementById('user-name').textContent=user.full_name||user.email;
       prefetchDropdowns();
       renderCalendar();
+      loadAutoScheduleStatus();
       ['f-status','f-date-from','f-date-to'].forEach(id=>
         document.getElementById(id).addEventListener('change',()=>{ currentPage=1; loadSchedules(); }));
       document.getElementById('f-search').addEventListener('input',()=>{
         clearTimeout(searchTimer); searchTimer=setTimeout(()=>{ currentPage=1; loadSchedules(); },350);
       });
     });
+
+    /* ════════════════════════════════════════════════════════════════════
+       AUTOMATIC SCHEDULING
+       An optional layer on top of manual scheduling above — admin can turn
+       it off entirely and "Add Schedule Manually" keeps working either way.
+    ════════════════════════════════════════════════════════════════════ */
+    async function loadAutoScheduleStatus() {
+      try {
+        const res = await get('/api/v1/schedules/auto-schedule/status');
+        const enabled = !!res.data?.enabled;
+        document.getElementById('auto-schedule-toggle').checked = enabled;
+        document.getElementById('btn-auto-schedule').classList.toggle('hidden', !enabled);
+      } catch (_) {}
+    }
+
+    async function toggleAutoScheduling(enabled) {
+      try {
+        await patch('/api/v1/schedules/auto-schedule/status', { enabled });
+        document.getElementById('btn-auto-schedule').classList.toggle('hidden', !enabled);
+        showAlert(`Automatic scheduling ${enabled ? 'enabled' : 'disabled'}.`, 'success');
+      } catch (err) {
+        document.getElementById('auto-schedule-toggle').checked = !enabled;
+        showAlert(err?.message || 'Failed to update setting.', 'error');
+      }
+    }
+
+    let eligibleGroupsCache = [];
+
+    function openAutoScheduleModal() {
+      document.getElementById('auto-defense-type').value = 'proposal';
+      const today = new Date();
+      const in30  = new Date(); in30.setDate(today.getDate() + 30);
+      document.getElementById('auto-start-date').value = toYMD(today);
+      document.getElementById('auto-end-date').value   = toYMD(in30);
+      document.getElementById('auto-alert').classList.add('hidden');
+      document.getElementById('auto-results').classList.add('hidden');
+      document.getElementById('err-auto-dates').classList.add('hidden');
+      document.getElementById('err-auto-groups').classList.add('hidden');
+      document.getElementById('auto-modal').classList.remove('hidden');
+      loadEligibleGroups();
+    }
+    function closeAutoModal() { document.getElementById('auto-modal').classList.add('hidden'); }
+
+    async function loadEligibleGroups() {
+      const type = document.getElementById('auto-defense-type').value;
+      const list = document.getElementById('eligible-list');
+      list.innerHTML = '<p class="text-xs text-gray-400">Loading eligible groups…</p>';
+      try {
+        const res = await get(`/api/v1/schedules/auto-schedule/eligible-groups?defense_type=${type}`);
+        eligibleGroupsCache = res.data || [];
+        if (!eligibleGroupsCache.length) {
+          list.innerHTML = `<p class="text-xs text-gray-400">No groups are currently eligible for a ${type === 'proposal' ? 'proposal' : 'final'} defense.</p>`;
+          return;
+        }
+        list.innerHTML = eligibleGroupsCache.map(g => `
+          <label class="flex items-start gap-2 cursor-pointer py-1">
+            <input type="checkbox" name="eligible-group" value="${g.id}" checked class="mt-0.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+            <span class="text-sm text-gray-700 leading-snug">
+              ${esc(g.name)} <span class="text-xs text-gray-400">${esc(g.department_code || '')}</span>
+              ${g.title ? `<br><span class="text-xs text-gray-500">${esc(g.title)}</span>` : ''}
+            </span>
+          </label>`).join('');
+      } catch (err) {
+        list.innerHTML = `<p class="text-xs text-red-500">${esc(err?.message || 'Failed to load eligible groups.')}</p>`;
+      }
+    }
+
+    function toggleSelectAllEligible() {
+      const boxes = [...document.querySelectorAll('input[name=eligible-group]')];
+      const allChecked = boxes.every(b => b.checked);
+      boxes.forEach(b => { b.checked = !allChecked; });
+    }
+
+    async function runAutoSchedule() {
+      const defense_type = document.getElementById('auto-defense-type').value;
+      const start_date    = document.getElementById('auto-start-date').value;
+      const end_date       = document.getElementById('auto-end-date').value;
+      const group_ids = [...document.querySelectorAll('input[name=eligible-group]:checked')].map(c => parseInt(c.value));
+
+      document.getElementById('err-auto-dates').classList.add('hidden');
+      document.getElementById('err-auto-groups').classList.add('hidden');
+      document.getElementById('auto-alert').classList.add('hidden');
+
+      let valid = true;
+      if (!start_date || !end_date || start_date > end_date) {
+        document.getElementById('err-auto-dates').textContent = 'Please provide a valid start and end date.';
+        document.getElementById('err-auto-dates').classList.remove('hidden');
+        valid = false;
+      }
+      if (!group_ids.length) {
+        document.getElementById('err-auto-groups').textContent = 'Select at least one group.';
+        document.getElementById('err-auto-groups').classList.remove('hidden');
+        valid = false;
+      }
+      if (!valid) return;
+
+      const btn = document.getElementById('btn-run-auto');
+      btn.disabled = true; btn.textContent = 'Scheduling…';
+      document.getElementById('auto-results').classList.add('hidden');
+
+      try {
+        const res = await post('/api/v1/schedules/auto-schedule', { defense_type, start_date, end_date, group_ids });
+        const { scheduled, failed } = res.data;
+
+        const resultsEl = document.getElementById('auto-results');
+        let html = `<p class="text-sm font-semibold text-gray-800">${scheduled.length} scheduled, ${failed.length} could not be placed</p>`;
+        if (scheduled.length) {
+          html += `<div class="space-y-1.5">` + scheduled.map(s => `
+            <div class="flex items-center justify-between gap-3 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-xs">
+              <span class="font-medium text-green-800">${esc(s.group_name)}</span>
+              <span class="text-green-700">${fmtDate(s.scheduled_date)} · ${esc(slotLabel(s.time_slot))} · ${esc(s.venue_name)}</span>
+            </div>`).join('') + `</div>`;
+        }
+        if (failed.length) {
+          html += `<div class="space-y-1.5 mt-2">` + failed.map(f => `
+            <div class="flex items-center justify-between gap-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs">
+              <span class="font-medium text-red-800">${esc(f.group_name || ('Group #' + f.group_id))}</span>
+              <span class="text-red-700">${esc(f.reason)}</span>
+            </div>`).join('') + `</div>`;
+        }
+        resultsEl.innerHTML = html;
+        resultsEl.classList.remove('hidden');
+
+        if (scheduled.length) {
+          showAlert(`Auto-scheduled ${scheduled.length} group(s).`, 'success');
+          if (activeTab === 'list') loadSchedules(); else renderCalendar();
+          loadEligibleGroups();
+        }
+      } catch (err) {
+        document.getElementById('auto-alert').textContent = err?.message || 'Auto-scheduling failed.';
+        document.getElementById('auto-alert').classList.remove('hidden');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Run Auto-Schedule';
+      }
+    }
   </script>
 </body>
 </html>

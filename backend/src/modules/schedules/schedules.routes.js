@@ -13,6 +13,14 @@ const studentOnly     = [verifyToken, requireRole('student')];
 // Static routes before /:id
 router.get('/calendar',          adminOrPanelist, v.calendarRules, handleValidation, ctrl.calendar);
 router.get('/my-group-schedule', studentOnly,                                        ctrl.myGroupSchedule);
+
+/* Automatic scheduling — an optional tool on top of manual scheduling.
+   Admin can turn it off entirely; manual create/update above is unaffected. */
+router.get(  '/auto-schedule/status',          adminOnly, ctrl.getAutoScheduleStatus);
+router.patch('/auto-schedule/status',          adminOnly, v.autoScheduleStatusRules, handleValidation, ctrl.setAutoScheduleStatus);
+router.get(  '/auto-schedule/eligible-groups', adminOnly, v.eligibleGroupsRules,     handleValidation, ctrl.eligibleGroups);
+router.post( '/auto-schedule',                 adminOnly, v.autoScheduleRules,       handleValidation, ctrl.runAutoSchedule);
+
 router.get('/',                  adminOrPanelist, v.listRules,     handleValidation, ctrl.list);
 router.get('/:id',               adminOrPanelist, v.idRules,       handleValidation, ctrl.getOne);
 router.post('/',                 adminOnly, v.createRules,  handleValidation, ctrl.create);
