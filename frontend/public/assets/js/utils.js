@@ -171,50 +171,67 @@ function _waitForNavUser(maxMs = 4000) {
   });
 }
 
+// Docked to the left edge of the viewport as a small hover tab; expands into
+// a full side navbar on hover so it never reflows or covers page content
+// while idle. Appended to <body> (not the top nav) so it overlays everything.
 function initHoverNav() {
-  const nav = document.querySelector('nav');
-  if (!nav || document.getElementById('hover-nav-wrap')) return;
+  if (document.getElementById('side-nav-tab')) return;
 
   _waitForNavUser().then(user => {
     const items = user && NAV_ITEMS[user.role];
     if (!items || !items.length) return;
 
-    const brandGroup = nav.querySelector('div');
-    if (!brandGroup) return;
-
     const currentPath = window.location.pathname;
-    const wrap = document.createElement('div');
-    wrap.id = 'hover-nav-wrap';
-    wrap.className = 'relative';
 
-    const trigger = document.createElement('button');
-    trigger.type = 'button';
-    trigger.setAttribute('aria-haspopup', 'true');
-    trigger.setAttribute('aria-expanded', 'false');
-    trigger.className = 'flex items-center gap-1 text-sm text-primary-100 hover:text-white hover:bg-primary-800 transition-colors px-2.5 py-1.5 rounded-lg';
-    trigger.innerHTML = `Menu <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>`;
+    const tab = document.createElement('button');
+    tab.id = 'side-nav-tab';
+    tab.type = 'button';
+    tab.setAttribute('aria-label', 'Open navigation menu');
+    tab.setAttribute('aria-haspopup', 'true');
+    tab.setAttribute('aria-expanded', 'false');
+    tab.className = 'fixed left-0 top-1/2 -translate-y-1/2 z-40 flex items-center justify-center w-3.5 h-16 rounded-r-lg bg-primary-700 text-primary-100 hover:bg-primary-600 hover:text-white shadow-md transition-colors';
+    tab.innerHTML = `<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>`;
 
     const panel = document.createElement('div');
-    panel.className = 'hidden absolute left-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1.5 z-50';
-    panel.innerHTML = items.map(item => {
-      const active = currentPath === item.href;
-      return `<a href="${item.href}" class="block px-3 py-2 text-sm ${active ? 'font-semibold text-primary-700 bg-primary-50' : 'text-gray-700 hover:bg-gray-50'}">${item.label}</a>`;
-    }).join('');
+    panel.id = 'side-nav-panel';
+    panel.className = 'fixed left-0 top-0 h-full w-60 bg-white shadow-2xl border-r border-gray-200 z-40 -translate-x-full transition-transform duration-200 flex flex-col';
+    panel.innerHTML = `
+      <div class="px-4 py-4 border-b border-gray-100 flex items-center gap-2">
+        <img src="/assets/img/aw.webp" alt="School Logo" class="w-8 h-8 object-contain rounded-lg flex-shrink-0">
+        <span class="font-bold text-sm text-gray-800 leading-tight flex-1">ACES Research System</span>
+        <button type="button" id="side-nav-close" aria-label="Close navigation menu" class="text-gray-400 hover:text-gray-600 flex-shrink-0">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <nav class="flex-1 overflow-y-auto py-2">
+        ${items.map(item => {
+          const active = currentPath === item.href;
+          return `<a href="${item.href}" class="block px-4 py-2.5 text-sm border-l-4 ${active
+            ? 'font-semibold text-primary-700 bg-primary-50 border-primary-600'
+            : 'text-gray-700 border-transparent hover:bg-gray-50 hover:border-gray-200'}">${item.label}</a>`;
+        }).join('')}
+      </nav>`;
 
-    let closeTimer = null;
-    function openPanel()  { clearTimeout(closeTimer); panel.classList.remove('hidden'); trigger.setAttribute('aria-expanded', 'true'); }
-    function closePanel() { panel.classList.add('hidden'); trigger.setAttribute('aria-expanded', 'false'); }
-    function scheduleClose() { closeTimer = setTimeout(closePanel, 150); }
+    // Stays open once triggered — no auto-hide on mouseleave or outside click.
+    // Closed only by clicking the X or pressing Escape.
+    function openPanel() {
+      panel.classList.remove('-translate-x-full');
+      tab.classList.add('hidden');
+      tab.setAttribute('aria-expanded', 'true');
+    }
+    function closePanel() {
+      panel.classList.add('-translate-x-full');
+      tab.classList.remove('hidden');
+      tab.setAttribute('aria-expanded', 'false');
+    }
 
-    wrap.addEventListener('mouseenter', openPanel);
-    wrap.addEventListener('mouseleave', scheduleClose);
-    trigger.addEventListener('click', () => panel.classList.contains('hidden') ? openPanel() : closePanel());
-    document.addEventListener('click', e => { if (!wrap.contains(e.target)) closePanel(); });
+    tab.addEventListener('mouseenter', openPanel);
+    tab.addEventListener('click', openPanel);
+    panel.querySelector('#side-nav-close').addEventListener('click', closePanel);
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
 
-    wrap.appendChild(trigger);
-    wrap.appendChild(panel);
-    brandGroup.appendChild(wrap);
+    document.body.appendChild(tab);
+    document.body.appendChild(panel);
   });
 }
 
