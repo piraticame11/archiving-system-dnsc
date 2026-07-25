@@ -16,4 +16,8 @@ router.delete('/:id',                superAdminGuard, v.idRules,            hand
 router.patch( '/:id/toggle-active',  adminGuard,      v.idRules,            handleValidation, ctrl.toggleActive);
 router.post(  '/:id/reset-password', adminGuard,      v.resetPasswordRules, handleValidation, ctrl.resetPassword);
 
+router.get(   '/:id/unavailability',            adminGuard, v.idRules,             handleValidation, ctrl.listUnavailability);
+router.post(  '/:id/unavailability',            adminGuard, v.unavailabilityRules, handleValidation, ctrl.addUnavailability);
+router.delete('/:id/unavailability/:unavailId', adminGuard, v.unavailabilityIdRules, handleValidation, ctrl.removeUnavailability);
+
 module.exports = router;

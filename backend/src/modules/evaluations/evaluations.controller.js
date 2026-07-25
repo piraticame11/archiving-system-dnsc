@@ -33,14 +33,21 @@ async function getBySchedule(req, res, next) {
   } catch (err) { next(err); }
 }
 
+async function listCriteria(req, res, next) {
+  try {
+    const rows = await service.listCriteria();
+    sendSuccess(res, rows);
+  } catch (err) { next(err); }
+}
+
 async function upsert(req, res, next) {
   try {
-    const { schedule_id, group_id, score, decision, remarks, submit } = req.body;
+    const { schedule_id, group_id, scores, decision, remarks, submit } = req.body;
     const ev = await service.upsertEvaluation({
       schedule_id,
       panelist_id: req.user.id,
       group_id:    group_id ?? null,
-      score,
+      scores,
       decision,
       remarks,
       submit: Boolean(submit),
@@ -62,4 +69,4 @@ async function getMyScores(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { list, getOne, getBySchedule, upsert, getMyScores };
+module.exports = { list, getOne, getBySchedule, upsert, getMyScores, listCriteria };

@@ -92,6 +92,19 @@
 
         setAccessToken(data.data.accessToken);
         const user = getUser();
+
+        if (data.data.user?.must_change_password) {
+          const settingsMap = {
+            student:    '/pages/student/settings.html',
+            instructor: '/pages/instructor/settings.html',
+          };
+          if (settingsMap[user.role]) {
+            sessionStorage.setItem('temp-password-notice', '1');
+            window.location.href = settingsMap[user.role];
+            return;
+          }
+        }
+
         const map  = {
           student:    '/pages/student/dashboard.html',
           instructor: '/pages/instructor/dashboard.html',

@@ -98,6 +98,7 @@
 
     requireAuthAsync('student').then(async user => {
       if (!user) return;
+      if (!(await requireVerifiedStudent())) return;
       document.getElementById('user-name').textContent = user.full_name || user.email;
       loadInstructorGuidelines();
       loadAdminTemplates();

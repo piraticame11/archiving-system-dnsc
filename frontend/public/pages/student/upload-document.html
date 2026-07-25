@@ -27,7 +27,7 @@
   <!-- Navbar -->
   <nav class="bg-primary-700 text-white px-6 py-4 flex items-center justify-between shadow sticky top-0 z-40">
     <div class="flex items-center gap-3">
-      <a id="back-btn" href="/pages/student/my-submissions.html" class="text-primary-200 hover:text-white transition-colors">
+      <a id="back-btn" href="/pages/student/dashboard.html" class="text-primary-200 hover:text-white transition-colors">
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
       </a>
       <img src="/assets/img/aw.webp" alt="School Logo" class="w-9 h-9 object-contain rounded-lg">
@@ -50,13 +50,10 @@
     <!-- Alert -->
     <div id="alert" class="hidden mb-5 px-4 py-3 rounded-lg text-sm font-medium"></div>
 
-    <!-- Submission selector -->
+    <!-- Group submission info -->
     <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-5">
-      <label class="block text-sm font-medium text-gray-700 mb-2">Submission <span class="text-red-500">*</span></label>
-      <select id="f-submission" class="form-input">
-        <option value="">Select a submission…</option>
-      </select>
-      <div id="sub-detail" class="hidden mt-3 px-4 py-3 bg-gray-50 rounded-lg border border-gray-200 text-sm text-gray-700"></div>
+      <label class="block text-sm font-medium text-gray-700 mb-2">Group Title</label>
+      <div id="sub-detail" class="hidden px-4 py-3 bg-gray-50 rounded-lg border border-gray-200 text-sm text-gray-700"></div>
     </div>
 
     <!-- Upload form -->
@@ -136,13 +133,15 @@
     const get = path => http(() => apiGet(path));
 
     let selectedFile = null;
+    let currentSubmissionId = null;
 
     requireAuthAsync('student').then(async user => {
       if (!user) return;
+      if (!(await requireVerifiedStudent())) return;
       document.getElementById('user-name').textContent = user.full_name || 'Student';
 
       const locked = await checkGroupAccess(user.id);
-      if (!locked) loadSubmissions();
+      if (!locked) loadGroupSubmission();
     });
 
     async function checkGroupAccess(userId) {
@@ -160,7 +159,7 @@
     function lockPage() {
       showAlert('Only group leaders can upload documents. Contact your group leader to upload on behalf of the group.', 'warning');
 
-      ['f-submission', 'f-doc-type', 'btn-upload'].forEach(id => {
+      ['f-doc-type', 'btn-upload'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.disabled = true; el.title = 'Only group leaders can upload'; }
       });
@@ -174,50 +173,14 @@
       }
     }
 
-    async function loadSubmissions() {
-      // Check if URL has ?id= param "” pre-select that submission
-      const params = new URLSearchParams(window.location.search);
-      const preId  = params.get('id');
-
+    async function loadGroupSubmission() {
       try {
-        const res   = await get('/api/v1/submissions?limit=100');
-        const items = res.data?.data || res.data || [];
-        const sel   = document.getElementById('f-submission');
-
-        // Only show non-rejected, non-deleted subs
-        const allowed = items.filter(s => s.status !== 'rejected');
-        allowed.forEach(sub => {
-          const opt = document.createElement('option');
-          opt.value = sub.id;
-          opt.textContent = `${sub.title} (${sub.school_year} Â· ${sub.semester} Â· ${sub.status})`;
-          if (String(sub.id) === preId) opt.selected = true;
-          sel.appendChild(opt);
-        });
-
-        sel.addEventListener('change', onSubmissionChange);
-        if (preId) sel.dispatchEvent(new Event('change'));
-      } catch(err) {
-        showAlert(err?.message || 'Failed to load submissions.');
-      }
-    }
-
-    async function onSubmissionChange() {
-      const id = document.getElementById('f-submission').value;
-      if (!id) {
-        document.getElementById('sub-detail').classList.add('hidden');
-        document.getElementById('upload-section').classList.add('hidden');
-        document.getElementById('existing-docs-section').classList.add('hidden');
-        return;
-      }
-      try {
-        const res = await get(`/api/v1/submissions/${id}`);
+        const res = await get('/api/v1/submissions/my-group-submission');
         const sub = res.data;
+        currentSubmissionId = sub.id;
+
         const detail = document.getElementById('sub-detail');
-        const STATUS_LABELS = {
-          draft:'Draft', submitted:'Submitted', under_review:'Under Review',
-          revision_required:'Revision Required', approved:'Approved', rejected:'Rejected'
-        };
-        detail.innerHTML = `<strong>${escHtml(sub.title)}</strong> &mdash; ${sub.type} &middot; ${sub.school_year} &middot; ${sub.semester} Sem &middot; <span class="font-semibold">${STATUS_LABELS[sub.status]||sub.status}</span>`;
+        detail.innerHTML = `<strong>${escHtml(sub.title)}</strong> &mdash; ${sub.school_year}`;
         detail.classList.remove('hidden');
         document.getElementById('upload-section').classList.remove('hidden');
 
@@ -281,7 +244,6 @@
     }
 
     document.getElementById('btn-upload').addEventListener('click', async () => {
-      const subId   = document.getElementById('f-submission').value;
       const docType = document.getElementById('f-doc-type').value;
 
       let valid = true;
@@ -289,7 +251,7 @@
       else hideFieldErr('err-doc-type');
       if (!selectedFile) { showFieldErr('err-file', 'Please select a file.'); valid = false; }
       else hideFieldErr('err-file');
-      if (!subId) { showAlert('Please select a submission first.'); valid = false; }
+      if (!currentSubmissionId) { showAlert('Could not resolve your group submission.'); valid = false; }
       if (!valid) return;
 
       const formData = new FormData();
@@ -302,12 +264,12 @@
 
       try {
         // Use XHR for progress tracking
-        await uploadWithProgress(`/api/v1/submissions/${subId}/documents`, formData);
+        await uploadWithProgress(`/api/v1/submissions/${currentSubmissionId}/documents`, formData);
         showAlert('Document uploaded successfully!', 'success');
         clearFile();
         document.getElementById('f-doc-type').value = '';
         // Reload docs list
-        document.getElementById('f-submission').dispatchEvent(new Event('change'));
+        await loadGroupSubmission();
       } catch(err) {
         showAlert(err?.message || 'Upload failed. Please try again.');
       } finally {

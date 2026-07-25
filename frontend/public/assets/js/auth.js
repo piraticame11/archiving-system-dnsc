@@ -71,6 +71,29 @@ async function requireAuthAsync(...allowedRoles) {
   return user;
 }
 
+// Call right after requireAuthAsync('student') on every student page.
+// Redirects to the personal-email verification interstitial if the student
+// hasn't bound + OTP-verified a personal email yet. JWT payload doesn't carry
+// this (it would go stale), so it's checked fresh via /auth/me each load.
+async function requireVerifiedStudent() {
+  if (window.location.pathname.endsWith('/pages/student/verify-email.html')) return true;
+  try {
+    const res  = await fetch('/api/v1/auth/me', {
+      headers: { 'Authorization': `Bearer ${getAccessToken()}` },
+      credentials: 'include',
+    });
+    const json = await res.json();
+    const me   = json.data;
+    if (me && me.role === 'student' && !me.personal_email_verified_at) {
+      window.location.href = '/pages/student/verify-email.html';
+      return false;
+    }
+    return true;
+  } catch {
+    return true; // fail open — don't lock users out on a transient network error
+  }
+}
+
 // On page load, try to restore session via refresh token
 async function restoreSession() {
   if (_accessToken && getUser()) return true;

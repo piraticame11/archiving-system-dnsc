@@ -133,10 +133,11 @@ const NAV_ITEMS = {
   instructor: [
     { label: 'Dashboard',               href: '/pages/instructor/dashboard.html' },
     { label: 'My Advisees',             href: '/pages/instructor/my-advisees.html' },
+    { label: 'Group Requests',          href: '/pages/instructor/group-requests.html' },
     { label: 'Create Student Accounts', href: '/pages/instructor/import-students.html' },
     { label: 'Upload Adviser List',     href: '/pages/instructor/upload-adviser-list.html' },
-    { label: 'Title Approval',          href: '/pages/instructor/title-approval.html' },
     { label: 'Guidelines',              href: '/pages/instructor/guidelines.html' },
+    { label: 'Account Settings',        href: '/pages/instructor/settings.html' },
   ],
   panelist: [
     { label: 'Dashboard',    href: '/pages/panelist/dashboard.html' },
@@ -145,13 +146,12 @@ const NAV_ITEMS = {
   student: [
     { label: 'Dashboard',       href: '/pages/student/dashboard.html' },
     { label: 'My Group',        href: '/pages/student/my-group.html' },
-    { label: 'Submit Title',    href: '/pages/student/submit-title.html' },
-    { label: 'My Submissions',  href: '/pages/student/my-submissions.html' },
     { label: 'Upload Document', href: '/pages/student/upload-document.html' },
     { label: 'My Schedule',     href: '/pages/student/my-schedule.html' },
     { label: 'My Results',      href: '/pages/student/my-scores.html' },
     { label: 'Browse Archive',  href: '/pages/student/browse-archive.html' },
     { label: 'Guidelines & Templates', href: '/pages/student/guidelines.html' },
+    { label: 'Account Settings', href: '/pages/student/settings.html' },
   ],
 };
 
@@ -171,9 +171,9 @@ function _waitForNavUser(maxMs = 4000) {
   });
 }
 
-// Docked to the left edge of the viewport as a small hover tab; expands into
-// a full side navbar on hover so it never reflows or covers page content
-// while idle. Appended to <body> (not the top nav) so it overlays everything.
+// Docked to the left edge of the viewport as a small tab; click it to slide
+// out a full side navbar that overlays the page without reflowing content.
+// Appended to <body> (not the top nav) so it overlays everything.
 function initHoverNav() {
   if (document.getElementById('side-nav-tab')) return;
 
@@ -225,7 +225,6 @@ function initHoverNav() {
       tab.setAttribute('aria-expanded', 'false');
     }
 
-    tab.addEventListener('mouseenter', openPanel);
     tab.addEventListener('click', openPanel);
     panel.querySelector('#side-nav-close').addEventListener('click', closePanel);
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });

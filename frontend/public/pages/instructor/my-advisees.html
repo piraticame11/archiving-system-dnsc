@@ -71,6 +71,9 @@
         <input id="f-search" type="text" placeholder="Search group name, title, or member…"
           class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
       </div>
+      <select id="f-school-year" class="form-input w-auto text-sm py-2">
+        <option value="">All School Years</option>
+      </select>
       <button onclick="resetSearch()" class="px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Reset</button>
     </div>
 
@@ -115,22 +118,38 @@
     let allGroups = [];
     let searchTimer = null;
 
-    requireAuthAsync('instructor').then(user => {
+    requireAuthAsync('instructor').then(async user => {
       if (!user) return;
       document.getElementById('user-name').textContent = user.full_name || user.email;
+      await loadSchoolYears();
       loadGroups();
 
       document.getElementById('f-search').addEventListener('input', () => {
         clearTimeout(searchTimer);
         searchTimer = setTimeout(renderTable, 300);
       });
+      document.getElementById('f-school-year').addEventListener('change', loadGroups);
     });
+
+    async function loadSchoolYears() {
+      try {
+        const res = await apiGet('/api/v1/school-years').then(r => r.json());
+        const sel = document.getElementById('f-school-year');
+        (res.data || []).forEach(y => {
+          const o = document.createElement('option');
+          o.value = y.label; o.textContent = y.label;
+          sel.appendChild(o);
+        });
+      } catch (_) {}
+    }
 
     async function loadGroups() {
       const tbody = document.getElementById('table-body');
       tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-8 text-center text-sm text-gray-400">Loading…</td></tr>`;
       try {
-        const res = await apiGet('/api/v1/adviser/my-groups');
+        const schoolYear = document.getElementById('f-school-year').value;
+        const params = schoolYear ? `?school_year=${encodeURIComponent(schoolYear)}` : '';
+        const res = await apiGet(`/api/v1/adviser/my-groups${params}`);
         const json = await res.json();
         allGroups = json.data || [];
         renderStats();
@@ -266,7 +285,8 @@
 
     function resetSearch() {
       document.getElementById('f-search').value = '';
-      renderTable();
+      document.getElementById('f-school-year').value = '';
+      loadGroups();
     }
 
     async function confirmRemove(groupId, groupName) {

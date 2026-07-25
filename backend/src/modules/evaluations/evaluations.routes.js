@@ -13,6 +13,7 @@ router.get('/', adminOrPanelist, v.listRules, handleValidation, ctrl.list);
 
 /* specific routes before /:id wildcard */
 router.get('/my-scores', [verifyToken, requireRole('student')], ctrl.getMyScores);
+router.get('/criteria', adminOrPanelist, ctrl.listCriteria);
 router.get('/schedule/:scheduleId', panelistOnly, v.scheduleIdRules, handleValidation, ctrl.getBySchedule);
 
 router.get('/:id', adminOrPanelist, v.idRules, handleValidation, ctrl.getOne);

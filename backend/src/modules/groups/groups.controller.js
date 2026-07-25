@@ -45,7 +45,7 @@ async function create(req, res, next) {
       leader_id:   req.user.id,
       name:        req.body.name,
       adviser_id:  req.body.adviser_id,
-      title:       req.body.title,
+      titles:      req.body.titles,
       school_year: req.body.school_year,
       max_members: req.body.max_members,
     });

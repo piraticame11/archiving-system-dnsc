@@ -43,53 +43,16 @@ async function getOne(req, res, next) {
   } catch (err) { next(err); }
 }
 
-async function create(req, res, next) {
+async function myGroupSubmission(req, res, next) {
   try {
-    /* get student's department from their profile */
-    const db = require('../../config/database');
-    const [[user]] = await db.query('SELECT department_id FROM users WHERE id = ?', [req.user.id]);
-    if (!user?.department_id)
-      return send400(res, 'Your account does not have a department assigned. Please contact the admin.');
+    const groupService = require('../groups/groups.service');
+    const groupRole = await groupService.getStudentGroupRole(req.user.id);
+    if (!groupRole.inGroup) return send400(res, 'You are not in a group yet.');
 
-    const sub = await service.createSubmission({
-      ...req.body,
-      student_id:    req.user.id,
-      department_id: user.department_id,
-    });
-    sendCreated(res, sub, 'Submission created as draft');
-  } catch (err) {
-    if (err.statusCode === 409) return res.status(409).json({ success: false, message: err.message });
-    if (err.statusCode === 400) return send400(res, err.message);
-    next(err);
-  }
-}
-
-async function update(req, res, next) {
-  try {
-    const sub = await service.getById(req.params.id);
-    if (!sub) return send404(res, 'Submission not found');
-
-    if (req.user.role === ROLES.STUDENT) {
-      if (sub.student_id !== req.user.id) return send403(res, 'Forbidden');
-      if (sub.status !== 'draft')         return send400(res, 'Only draft submissions can be edited.');
-    }
-
-    const updated = await service.updateSubmission(req.params.id, req.body, req.user.id);
-    sendSuccess(res, updated, 'Submission updated');
+    const sub = await service.getOrCreateGroupSubmission(groupRole.groupId);
+    sendSuccess(res, sub);
   } catch (err) {
     if (err.statusCode === 404) return send404(res, err.message);
-    next(err);
-  }
-}
-
-async function submit(req, res, next) {
-  try {
-    const sub = await service.submitForReview(req.params.id, req.user.id);
-    sendSuccess(res, sub, 'Submission sent for review');
-  } catch (err) {
-    if (err.statusCode === 404) return send404(res, err.message);
-    if (err.statusCode === 403) return send403(res, err.message);
-    if (err.statusCode === 400) return send400(res, err.message);
     next(err);
   }
 }
@@ -180,4 +143,4 @@ async function stats(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { list, getOne, create, update, submit, updateStatus, remove, uploadDocument, viewDocument, stats };
+module.exports = { list, getOne, myGroupSubmission, updateStatus, remove, uploadDocument, viewDocument, stats };

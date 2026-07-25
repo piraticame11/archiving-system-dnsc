@@ -27,9 +27,14 @@ async function listPanelists({ search, status, department_id, page, limit }) {
   const [rows] = await db.query(
     `SELECT u.id, u.first_name, u.last_name, u.email,
             u.is_active, u.created_at,
-            u.department_id, u.panelist_type,
+            u.department_id, u.panelist_type, u.max_groups,
             d.name AS department_name, d.code AS department_code,
-            (SELECT COUNT(*) FROM schedule_panelists sp WHERE sp.panelist_id = u.id) AS schedules_count
+            (SELECT COUNT(*) FROM schedule_panelists sp WHERE sp.panelist_id = u.id) AS schedules_count,
+            (SELECT COUNT(DISTINCT sg.group_id)
+               FROM schedule_panelists sp2
+               JOIN defense_schedules ds2 ON sp2.schedule_id = ds2.id
+               JOIN schedule_groups sg    ON sg.schedule_id = ds2.id
+              WHERE sp2.panelist_id = u.id AND ds2.status != 'cancelled') AS assigned_groups_count
      ${base}
      ORDER BY d.name ASC, u.last_name ASC, u.first_name ASC
      LIMIT ? OFFSET ?`,
@@ -43,7 +48,7 @@ async function listPanelists({ search, status, department_id, page, limit }) {
 async function getPanelistById(id) {
   const [[user]] = await db.query(
     `SELECT u.id, u.first_name, u.last_name, u.email, u.is_active, u.created_at, u.updated_at,
-            u.department_id, u.panelist_type, d.name AS department_name, d.code AS department_code,
+            u.department_id, u.panelist_type, u.max_groups, d.name AS department_name, d.code AS department_code,
             r.name AS role
      FROM users u
      JOIN roles r ON u.role_id = r.id
@@ -66,6 +71,7 @@ async function getPanelistById(id) {
     [id]
   );
   user.schedules = schedules;
+  user.assigned_groups_count = await getCapacityUsage(id);
   return user;
 }
 
@@ -89,7 +95,7 @@ async function createPanelist({ first_name, last_name, email, password, departme
 }
 
 /* ─── update ────────────────────────────────────────────────────────── */
-async function updatePanelist(id, { first_name, last_name, email, department_id, panelist_type }) {
+async function updatePanelist(id, { first_name, last_name, email, department_id, panelist_type, max_groups }) {
   const user = await getPanelistById(id);
   if (!user) throw Object.assign(new Error('Panelist not found'), { statusCode: 404 });
 
@@ -98,6 +104,7 @@ async function updatePanelist(id, { first_name, last_name, email, department_id,
   if (last_name      !== undefined) updates.last_name      = last_name;
   if (department_id  !== undefined) updates.department_id  = department_id || null;
   if (panelist_type  !== undefined) updates.panelist_type  = panelist_type;
+  if (max_groups     !== undefined) updates.max_groups     = max_groups || null;
   if (email          !== undefined) {
     const [[dup]] = await db.query(
       'SELECT id FROM users WHERE email = ? AND id != ? AND deleted_at IS NULL', [email, id]
@@ -136,4 +143,58 @@ async function deletePanelist(id) {
   await db.query('UPDATE users SET deleted_at = NOW() WHERE id = ?', [id]);
 }
 
-module.exports = { listPanelists, getPanelistById, createPanelist, updatePanelist, toggleActive, resetPassword, deletePanelist };
+/* ─── capacity ──────────────────────────────────────────────────────── */
+async function getCapacityUsage(panelistId) {
+  const [[{ count }]] = await db.query(
+    `SELECT COUNT(DISTINCT sg.group_id) AS count
+     FROM schedule_panelists sp
+     JOIN defense_schedules ds ON sp.schedule_id = ds.id
+     JOIN schedule_groups sg   ON sg.schedule_id = ds.id
+     WHERE sp.panelist_id = ? AND ds.status != 'cancelled'`,
+    [panelistId]
+  );
+  return count;
+}
+
+/* ─── unavailability ────────────────────────────────────────────────── */
+async function listUnavailability(panelistId) {
+  const [rows] = await db.query(
+    `SELECT id, panelist_id, date, reason, created_at
+     FROM panelist_unavailability
+     WHERE panelist_id = ?
+     ORDER BY date ASC`,
+    [panelistId]
+  );
+  return rows;
+}
+
+async function addUnavailability(panelistId, date, reason) {
+  const user = await getPanelistById(panelistId);
+  if (!user) throw Object.assign(new Error('Panelist not found'), { statusCode: 404 });
+
+  const [[dup]] = await db.query(
+    'SELECT id FROM panelist_unavailability WHERE panelist_id = ? AND date = ?',
+    [panelistId, date]
+  );
+  if (dup) throw Object.assign(new Error('That date is already marked unavailable'), { statusCode: 409 });
+
+  const [result] = await db.query(
+    'INSERT INTO panelist_unavailability (panelist_id, date, reason) VALUES (?, ?, ?)',
+    [panelistId, date, reason || null]
+  );
+  const [[row]] = await db.query('SELECT id, panelist_id, date, reason, created_at FROM panelist_unavailability WHERE id = ?', [result.insertId]);
+  return row;
+}
+
+async function removeUnavailability(panelistId, unavailId) {
+  const [result] = await db.query(
+    'DELETE FROM panelist_unavailability WHERE id = ? AND panelist_id = ?',
+    [unavailId, panelistId]
+  );
+  if (!result.affectedRows) throw Object.assign(new Error('Unavailability entry not found'), { statusCode: 404 });
+}
+
+module.exports = {
+  listPanelists, getPanelistById, createPanelist, updatePanelist, toggleActive, resetPassword, deletePanelist,
+  getCapacityUsage, listUnavailability, addUnavailability, removeUnavailability,
+};

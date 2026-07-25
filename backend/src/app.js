@@ -19,6 +19,7 @@ const evaluationRoutes    = require('./modules/evaluations/evaluations.routes');
 const adviserRoutes            = require('./modules/adviser/adviser.routes');
 const groupRoutes              = require('./modules/groups/groups.routes');
 const instructorGuidelineRoutes = require('./modules/instructor_guidelines/instructor_guidelines.routes');
+const schoolYearRoutes          = require('./modules/school_years/school_years.routes');
 const { errorHandler }  = require('./middleware/errorHandler');
 
 const app = express();
@@ -58,6 +59,7 @@ app.use('/api/v1/evaluations',     evaluationRoutes);
 app.use('/api/v1/adviser',              adviserRoutes);
 app.use('/api/v1/groups',              groupRoutes);
 app.use('/api/v1/instructor-guidelines', instructorGuidelineRoutes);
+app.use('/api/v1/school-years',          schoolYearRoutes);
 
 // Serve frontend static files
 app.use(express.static(path.join(__dirname, '../../frontend/public')));

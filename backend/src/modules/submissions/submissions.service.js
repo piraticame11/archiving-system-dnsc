@@ -104,131 +104,29 @@ async function getById(id) {
   return sub;
 }
 
-/* ─── create (student) ────────────────────────────────────────────── */
-async function createSubmission({ student_id, title, adviser_id, type, school_year, semester, department_id }) {
-  /* enforce group leader-only submission */
-  const groupRole = await groupService.getStudentGroupRole(student_id);
-  if (groupRole.inGroup && !groupRole.isLeader) {
-    throw Object.assign(
-      new Error('Only the group leader can submit a title on behalf of the group.'),
-      { statusCode: 403 }
-    );
-  }
-
-  /* max 3 title submissions per student per period (rejected attempts still count) */
-  const [[{ total }]] = await db.query(
-    `SELECT COUNT(*) AS total FROM thesis_submissions
-     WHERE student_id = ? AND school_year = ? AND semester = ?
-       AND deleted_at IS NULL`,
-    [student_id, school_year, semester]
+/* ─── get-or-create the single submission a group uses as its document/
+       archive anchor. No draft/review workflow — titles no longer require
+       adviser approval (see group_titles), this row only exists so
+       submission_documents/evaluations/archive have something to hang off. */
+async function getOrCreateGroupSubmission(groupId) {
+  const [[existing]] = await db.query(
+    `SELECT id FROM thesis_submissions WHERE group_id = ? AND deleted_at IS NULL LIMIT 1`,
+    [groupId]
   );
-  if (total >= 3) throw Object.assign(
-    new Error('You have reached the maximum of 3 title submissions for this period.'),
-    { statusCode: 409 }
-  );
+  if (existing) return getById(existing.id);
 
-  /* block if student already has an active (non-rejected) submission — must wait for result first */
-  const [[dup]] = await db.query(
-    `SELECT id FROM thesis_submissions
-     WHERE student_id = ? AND school_year = ? AND semester = ?
-       AND status NOT IN ('rejected') AND deleted_at IS NULL`,
-    [student_id, school_year, semester]
-  );
-  if (dup) throw Object.assign(
-    new Error('You already have an active submission under review. You may resubmit once it is rejected.'),
-    { statusCode: 409 }
-  );
+  const group = await groupService.getGroupById(groupId);
+  if (!group) throw Object.assign(new Error('Group not found.'), { statusCode: 404 });
 
-  /* if the student is a group leader, apply the same limits at group level */
-  if (groupRole.inGroup && groupRole.isLeader) {
-    const group = await groupService.getGroupById(groupRole.groupId);
-    if (group.member_count < 4) throw Object.assign(
-      new Error(`Your group needs at least 4 members to submit a title. You currently have ${group.member_count}.`),
-      { statusCode: 400 }
-    );
-
-    const [[{ groupTotal }]] = await db.query(
-      `SELECT COUNT(*) AS groupTotal FROM thesis_submissions
-       WHERE group_id = ? AND school_year = ? AND semester = ?
-         AND deleted_at IS NULL`,
-      [groupRole.groupId, school_year, semester]
-    );
-    if (groupTotal >= 3) throw Object.assign(
-      new Error('Your group has reached the maximum of 3 title submissions for this period.'),
-      { statusCode: 409 }
-    );
-
-    const [[groupDup]] = await db.query(
-      `SELECT id FROM thesis_submissions
-       WHERE group_id = ? AND school_year = ? AND semester = ?
-         AND status NOT IN ('rejected') AND deleted_at IS NULL`,
-      [groupRole.groupId, school_year, semester]
-    );
-    if (groupDup) throw Object.assign(
-      new Error('Your group already has an active submission under review. You may resubmit once it is rejected.'),
-      { statusCode: 409 }
-    );
-  }
-
-  /* verify adviser exists and is an active instructor */
-  const [[adviser]] = await db.query(
-    `SELECT u.id FROM users u JOIN roles r ON u.role_id = r.id
-     WHERE u.id = ? AND r.name = 'instructor' AND u.is_active = 1 AND u.deleted_at IS NULL`,
-    [adviser_id]
-  );
-  if (!adviser) throw Object.assign(new Error('Selected adviser is invalid or no longer active.'), { statusCode: 400 });
-
-  const groupId = groupRole.isLeader ? groupRole.groupId : null;
+  const title = group.titles?.[0]?.title || group.title || 'Untitled';
 
   const [result] = await db.query(
     `INSERT INTO thesis_submissions
-       (student_id, group_id, department_id, adviser_id, title, type, school_year, semester, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
-    [student_id, groupId, department_id, adviser_id, title, type, school_year, semester]
+       (student_id, group_id, department_id, adviser_id, title, type, school_year, semester, status, approved_at)
+     VALUES (?, ?, ?, ?, ?, 'thesis', ?, '1st', 'approved', NOW())`,
+    [group.leader_id, groupId, group.department_id, group.adviser_id || null, title, group.school_year]
   );
   return getById(result.insertId);
-}
-
-/* ─── update (student edits draft / admin edits) ─────────────────── */
-async function updateSubmission(id, fields, actorId) {
-  const sub = await getById(id);
-  if (!sub) throw Object.assign(new Error('Submission not found'), { statusCode: 404 });
-
-  const updates = {};
-  const { title, type, school_year, semester } = fields;
-  if (title       !== undefined) updates.title       = title;
-  if (type        !== undefined) updates.type        = type;
-  if (school_year !== undefined) updates.school_year = school_year;
-  if (semester    !== undefined) updates.semester    = semester;
-
-  if (!Object.keys(updates).length) return sub;
-  const set = Object.keys(updates).map(k => `${k} = ?`).join(', ');
-  await db.query(`UPDATE thesis_submissions SET ${set} WHERE id = ?`, [...Object.values(updates), id]);
-  return getById(id);
-}
-
-/* ─── submit (draft → submitted) ─────────────────────────────────── */
-async function submitForReview(id, studentId) {
-  const sub = await getById(id);
-  if (!sub) throw Object.assign(new Error('Submission not found'), { statusCode: 404 });
-
-  /* group submission: only the leader can submit */
-  if (sub.group_id) {
-    const groupRole = await groupService.getStudentGroupRole(studentId);
-    if (!groupRole.isLeader || groupRole.groupId !== sub.group_id)
-      throw Object.assign(new Error('Only the group leader can submit this group\'s title.'), { statusCode: 403 });
-  } else if (sub.student_id !== studentId) {
-    throw Object.assign(new Error('Forbidden'), { statusCode: 403 });
-  }
-
-  if (sub.status !== 'draft' && sub.status !== 'revision_required')
-    throw Object.assign(new Error('Only draft or revision-required submissions can be submitted.'), { statusCode: 400 });
-
-  await db.query(
-    `UPDATE thesis_submissions SET status = 'submitted', submitted_at = NOW() WHERE id = ?`, [id]
-  );
-  await recordHistory(id, studentId, sub.status, 'submitted', null);
-  return getById(id);
 }
 
 /* ─── update status (admin) ───────────────────────────────────────── */
@@ -330,4 +228,4 @@ async function recordHistory(submission_id, changed_by, old_status, new_status, 
   );
 }
 
-module.exports = { listSubmissions, getById, createSubmission, updateSubmission, submitForReview, updateStatus, deleteSubmission, addDocument, getDocumentFile, getStats };
+module.exports = { listSubmissions, getById, getOrCreateGroupSubmission, updateStatus, deleteSubmission, addDocument, getDocumentFile, getStats };

@@ -1,11 +1,18 @@
 const { body, param } = require('express-validator');
+const schoolYearsService = require('../school_years/school_years.service');
+
+async function validSchoolYear(value) {
+  const ok = await schoolYearsService.isValidActiveLabel(value);
+  if (!ok) throw new Error('Select a valid, active school year.');
+  return true;
+}
 
 const createRules = [
   body('name').trim().notEmpty().withMessage('Group name is required')
     .isLength({ max: 255 }).withMessage('Name must be 255 characters or fewer'),
-  body('title').optional({ nullable: true }).trim().isLength({ max: 500 }),
-  body('school_year').trim().notEmpty().withMessage('School year is required')
-    .matches(/^\d{4}-\d{4}$/).withMessage('School year must be in YYYY-YYYY format'),
+  body('titles').isArray({ min: 1, max: 3 }).withMessage('Provide 1 to 3 candidate titles'),
+  body('titles.*').trim().notEmpty().withMessage('Titles cannot be empty').isLength({ max: 500 }),
+  body('school_year').trim().notEmpty().withMessage('School year is required').custom(validSchoolYear),
   body('adviser_id').optional({ nullable: true }).isInt({ min: 1 }),
   body('max_members').optional().isInt({ min: 4, max: 6 }).withMessage('Member capacity must be between 4 and 6'),
 ];
@@ -13,8 +20,9 @@ const createRules = [
 const updateRules = [
   param('id').isInt({ min: 1 }),
   body('name').optional().trim().notEmpty().isLength({ max: 255 }),
-  body('title').optional({ nullable: true }).trim().isLength({ max: 500 }),
-  body('school_year').optional().trim().matches(/^\d{4}-\d{4}$/),
+  body('titles').optional().isArray({ min: 1, max: 3 }).withMessage('Provide 1 to 3 candidate titles'),
+  body('titles.*').optional().trim().notEmpty().withMessage('Titles cannot be empty').isLength({ max: 500 }),
+  body('school_year').optional().trim().custom(validSchoolYear),
   body('adviser_id').optional({ nullable: true }).isInt({ min: 1 }),
   body('max_members').optional().isInt({ min: 4, max: 6 }),
 ];

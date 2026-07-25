@@ -59,19 +59,9 @@ async function logout(req, res, next) {
 
 async function forgotPassword(req, res, next) {
   try {
-    await authService.forgotPassword(req.body.email);
-    sendSuccess(res, null, 'If that email is registered, a reset link has been sent.');
+    await authService.forgotPassword(req.body.identifier);
+    sendSuccess(res, null, 'If that email is registered, a temporary password has been sent.');
   } catch (err) {
-    next(err);
-  }
-}
-
-async function resetPassword(req, res, next) {
-  try {
-    await authService.resetPassword(req.body.token, req.body.password);
-    sendSuccess(res, null, 'Password reset successfully.');
-  } catch (err) {
-    if (err.status) return sendError(res, err.status, err.message);
     next(err);
   }
 }
@@ -107,4 +97,37 @@ async function changePassword(req, res, next) {
   }
 }
 
-module.exports = { register, login, refresh, logout, forgotPassword, resetPassword, getMe, updateMe, changePassword };
+async function bindPersonalEmail(req, res, next) {
+  try {
+    await authService.bindPersonalEmail(req.user.id, req.body.personal_email);
+    sendSuccess(res, null, 'Verification code sent to your personal email.');
+  } catch (err) {
+    if (err.status) return sendError(res, err.status, err.message);
+    next(err);
+  }
+}
+
+async function resendPersonalEmailOtp(req, res, next) {
+  try {
+    await authService.resendPersonalEmailOtp(req.user.id);
+    sendSuccess(res, null, 'A new code has been sent.');
+  } catch (err) {
+    if (err.status) return sendError(res, err.status, err.message);
+    next(err);
+  }
+}
+
+async function verifyPersonalEmailOtp(req, res, next) {
+  try {
+    await authService.verifyPersonalEmailOtp(req.user.id, req.body.code);
+    sendSuccess(res, null, 'Personal email verified.');
+  } catch (err) {
+    if (err.status) return sendError(res, err.status, err.message);
+    next(err);
+  }
+}
+
+module.exports = {
+  register, login, refresh, logout, forgotPassword, getMe, updateMe, changePassword,
+  bindPersonalEmail, resendPersonalEmailOtp, verifyPersonalEmailOtp,
+};

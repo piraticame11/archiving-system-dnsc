@@ -132,8 +132,9 @@
 
     let currentPage=1, totalPages=1;
 
-    requireAuthAsync('student').then(user=>{
+    requireAuthAsync('student').then(async user=>{
       if(!user) return;
+      if (!(await requireVerifiedStudent())) return;
       document.getElementById('user-name').textContent=user.full_name||user.email;
       loadSchedules();
       document.getElementById('f-status').addEventListener('change',()=>{ currentPage=1; loadSchedules(); });

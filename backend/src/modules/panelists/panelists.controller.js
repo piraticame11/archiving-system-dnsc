@@ -75,4 +75,35 @@ async function remove(req, res, next) {
   }
 }
 
-module.exports = { list, getOne, create, update, toggleActive, resetPassword, remove };
+async function listUnavailability(req, res, next) {
+  try {
+    const rows = await service.listUnavailability(req.params.id);
+    sendSuccess(res, rows);
+  } catch (err) { next(err); }
+}
+
+async function addUnavailability(req, res, next) {
+  try {
+    const row = await service.addUnavailability(req.params.id, req.body.date, req.body.reason);
+    sendCreated(res, row, 'Unavailable date added');
+  } catch (err) {
+    if (err.statusCode === 404) return send404(res, err.message);
+    if (err.statusCode === 409) return res.status(409).json({ success: false, message: err.message });
+    next(err);
+  }
+}
+
+async function removeUnavailability(req, res, next) {
+  try {
+    await service.removeUnavailability(req.params.id, req.params.unavailId);
+    sendSuccess(res, null, 'Unavailable date removed');
+  } catch (err) {
+    if (err.statusCode === 404) return send404(res, err.message);
+    next(err);
+  }
+}
+
+module.exports = {
+  list, getOne, create, update, toggleActive, resetPassword, remove,
+  listUnavailability, addUnavailability, removeUnavailability,
+};

@@ -26,6 +26,7 @@ const updateRules = [
   body('email').optional().isEmail().normalizeEmail(),
   body('department_id').optional({ nullable: true }).isInt({ min: 1 }),
   body('panelist_type').optional().isIn(PANELIST_TYPES).withMessage('panelist_type must be "regular" or "industry"'),
+  body('max_groups').optional({ nullable: true }).isInt({ min: 1 }).withMessage('max_groups must be a positive integer'),
 ];
 
 const resetPasswordRules = [
@@ -35,4 +36,23 @@ const resetPasswordRules = [
 
 const idRules = [param('id').isInt({ min: 1 })];
 
-module.exports = { listRules, createRules, updateRules, resetPasswordRules, idRules };
+const unavailabilityRules = [
+  param('id').isInt({ min: 1 }),
+  body('date').isISO8601().withMessage('A valid date is required').custom(v => {
+    const d = new Date(v);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    if (d < today) throw new Error('Date cannot be in the past');
+    return true;
+  }),
+  body('reason').optional({ nullable: true }).trim().isLength({ max: 255 }),
+];
+
+const unavailabilityIdRules = [
+  param('id').isInt({ min: 1 }),
+  param('unavailId').isInt({ min: 1 }),
+];
+
+module.exports = {
+  listRules, createRules, updateRules, resetPasswordRules, idRules,
+  unavailabilityRules, unavailabilityIdRules,
+};

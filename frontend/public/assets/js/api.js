@@ -11,7 +11,7 @@ async function apiFetch(path, options = {}) {
     const newToken = await refreshAccessToken();
     if (!newToken) {
       // Only redirect if we're not already on a public auth page
-      const pub = ['/pages/login.html', '/pages/register.html', '/pages/forgot-password.html', '/pages/reset-password.html'];
+      const pub = ['/pages/login.html', '/pages/register.html', '/pages/forgot-password.html'];
       if (!pub.some(p => window.location.pathname.endsWith(p))) {
         window.location.href = '/pages/login.html';
       }

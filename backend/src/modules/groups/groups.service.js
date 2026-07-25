@@ -1,6 +1,43 @@
 const db = require('../../config/database');
+const { sendMail, adviserRequestHtml, adviserDecisionHtml } = require('../../config/mailer');
 
 const JOIN_CODE_VALIDITY_DAYS = 7;
+
+/* ─── titles helpers ──────────────────────────────────────────────── */
+async function getGroupTitles(groupId) {
+  const [rows] = await db.query(
+    'SELECT id, title, display_order FROM group_titles WHERE group_id = ? ORDER BY display_order ASC',
+    [groupId]
+  );
+  return rows;
+}
+
+async function setGroupTitles(groupId, titles) {
+  const clean = (titles || []).map(t => (t || '').trim()).filter(Boolean).slice(0, 3);
+  await db.query('DELETE FROM group_titles WHERE group_id = ?', [groupId]);
+  if (!clean.length) return;
+  const values = clean.map((title, i) => [groupId, title, i + 1]);
+  await db.query('INSERT INTO group_titles (group_id, title, display_order) VALUES ?', [values]);
+  await db.query('UPDATE thesis_groups SET title = ? WHERE id = ?', [clean[0], groupId]);
+}
+
+/* ─── adviser capacity check ─────────────────────────────────────── */
+async function assertAdviserHasCapacity(adviserId) {
+  const [[adv]] = await db.query('SELECT max_advisee_groups FROM users WHERE id = ?', [adviserId]);
+  if (!adv || adv.max_advisee_groups == null) return;
+
+  const [[{ count }]] = await db.query(
+    `SELECT COUNT(*) AS count FROM thesis_groups
+     WHERE adviser_id = ? AND adviser_status = 'approved' AND deleted_at IS NULL`,
+    [adviserId]
+  );
+  if (count >= adv.max_advisee_groups) {
+    throw Object.assign(
+      new Error('This adviser has reached their maximum number of advisee groups.'),
+      { statusCode: 409 }
+    );
+  }
+}
 
 function generateJoinCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
@@ -34,6 +71,7 @@ async function getGroupById(id) {
   const [[group]] = await db.query(
     `SELECT tg.id, tg.name, tg.join_code, tg.join_code_expires_at, tg.title, tg.school_year, tg.max_members,
             tg.leader_id, tg.adviser_id, tg.department_id, tg.created_at,
+            tg.adviser_status, tg.adviser_status_reason, tg.adviser_responded_at,
             CONCAT(l.first_name, ' ', l.last_name) AS leader_name,
             CONCAT(a.first_name, ' ', a.last_name) AS adviser_name,
             d.name AS department_name, d.code AS department_code
@@ -58,11 +96,32 @@ async function getGroupById(id) {
   );
   group.members = members;
   group.member_count = members.length;
+  group.titles = await getGroupTitles(id);
   return group;
 }
 
+/* ─── validate adviser + notify of a pending request ─────────────── */
+async function validateAdviserAndNotify(adviserId, groupName, leaderId) {
+  const [[adv]] = await db.query(
+    `SELECT u.id, u.first_name, u.last_name, u.email
+     FROM users u JOIN roles r ON u.role_id = r.id
+     WHERE u.id = ? AND r.name = 'instructor' AND u.is_active = 1 AND u.deleted_at IS NULL`,
+    [adviserId]
+  );
+  if (!adv) throw Object.assign(new Error('Adviser not found or is not an instructor.'), { statusCode: 404 });
+
+  await assertAdviserHasCapacity(adviserId);
+
+  const [[leader]] = await db.query('SELECT first_name, last_name FROM users WHERE id = ?', [leaderId]);
+  await sendMail({
+    to:      adv.email,
+    subject: 'Adviser Request — ACES Research System',
+    html:    adviserRequestHtml(`${adv.first_name} ${adv.last_name}`, groupName, `${leader.first_name} ${leader.last_name}`),
+  }).catch(() => {});
+}
+
 /* ─── create group ────────────────────────────────────────────────── */
-async function createGroup({ leader_id, name, adviser_id, title, school_year, max_members }) {
+async function createGroup({ leader_id, name, adviser_id, titles, school_year, max_members }) {
   /* leader must not already be in a group */
   const [[existing]] = await db.query(
     'SELECT group_id FROM group_members WHERE student_id = ?', [leader_id]
@@ -77,55 +136,54 @@ async function createGroup({ leader_id, name, adviser_id, title, school_year, ma
     new Error('Your account does not have a department assigned.'), { statusCode: 400 }
   );
 
-  /* validate adviser is an instructor */
-  if (adviser_id) {
-    const [[adv]] = await db.query(
-      `SELECT u.id FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = ? AND r.name = 'instructor' AND u.is_active = 1 AND u.deleted_at IS NULL`,
-      [adviser_id]
-    );
-    if (!adv) throw Object.assign(new Error('Adviser not found or is not an instructor.'), { statusCode: 404 });
-  }
+  if (adviser_id) await validateAdviserAndNotify(adviser_id, name, leader_id);
 
   const join_code = await uniqueJoinCode();
   const cap = Math.min(Math.max(parseInt(max_members) || 5, 4), 6);
 
   const [result] = await db.query(
-    `INSERT INTO thesis_groups (name, join_code, join_code_expires_at, leader_id, adviser_id, department_id, title, school_year, max_members)
+    `INSERT INTO thesis_groups (name, join_code, join_code_expires_at, leader_id, adviser_id, adviser_status, department_id, school_year, max_members)
      VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ${JOIN_CODE_VALIDITY_DAYS} DAY), ?, ?, ?, ?, ?, ?)`,
-    [name, join_code, leader_id, adviser_id || null, user.department_id, title || null, school_year, cap]
+    [name, join_code, leader_id, adviser_id || null, adviser_id ? 'pending' : null, user.department_id, school_year, cap]
   );
   const groupId = result.insertId;
 
   /* add leader as first member */
   await db.query('INSERT INTO group_members (group_id, student_id) VALUES (?, ?)', [groupId, leader_id]);
 
+  await setGroupTitles(groupId, titles);
+
   return getGroupById(groupId);
 }
 
 /* ─── update group info (leader only) ────────────────────────────── */
-async function updateGroup(groupId, leaderId, { name, adviser_id, title, school_year, max_members }) {
+async function updateGroup(groupId, leaderId, { name, adviser_id, titles, school_year, max_members }) {
   const group = await getGroupById(groupId);
   if (!group) throw Object.assign(new Error('Group not found.'), { statusCode: 404 });
   if (group.leader_id !== leaderId) throw Object.assign(new Error('Only the group leader can update group info.'), { statusCode: 403 });
 
-  if (adviser_id !== undefined && adviser_id !== null) {
-    const [[adv]] = await db.query(
-      `SELECT u.id FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = ? AND r.name = 'instructor' AND u.is_active = 1 AND u.deleted_at IS NULL`,
-      [adviser_id]
-    );
-    if (!adv) throw Object.assign(new Error('Adviser not found or is not an instructor.'), { statusCode: 404 });
+  const adviserChanged = adviser_id !== undefined && adviser_id !== group.adviser_id;
+  if (adviserChanged && adviser_id !== null) {
+    await validateAdviserAndNotify(adviser_id, group.name, leaderId);
   }
 
   const fields = {};
   if (name        !== undefined) fields.name        = name;
-  if (title       !== undefined) fields.title       = title || null;
   if (school_year !== undefined) fields.school_year = school_year;
-  if (adviser_id  !== undefined) fields.adviser_id  = adviser_id || null;
   if (max_members !== undefined) fields.max_members = Math.min(Math.max(parseInt(max_members) || 5, 4), 6);
+  if (adviserChanged) {
+    fields.adviser_id            = adviser_id || null;
+    fields.adviser_status        = adviser_id ? 'pending' : null;
+    fields.adviser_status_reason = null;
+    fields.adviser_responded_at  = null;
+  }
 
-  if (!Object.keys(fields).length) return group;
-  const set = Object.keys(fields).map(k => `${k} = ?`).join(', ');
-  await db.query(`UPDATE thesis_groups SET ${set} WHERE id = ?`, [...Object.values(fields), groupId]);
+  if (Object.keys(fields).length) {
+    const set = Object.keys(fields).map(k => `${k} = ?`).join(', ');
+    await db.query(`UPDATE thesis_groups SET ${set} WHERE id = ?`, [...Object.values(fields), groupId]);
+  }
+  if (titles !== undefined) await setGroupTitles(groupId, titles);
+
   return getGroupById(groupId);
 }
 
@@ -346,6 +404,59 @@ async function disbandGroup(groupId, leaderId) {
   await db.query('UPDATE thesis_groups SET deleted_at = NOW() WHERE id = ?', [groupId]);
 }
 
+/* ─── adviser: list pending group requests ───────────────────────── */
+async function getAdviserRequests(adviserId) {
+  const [rows] = await db.query(
+    `SELECT tg.id, tg.name, tg.title, tg.school_year, tg.max_members, tg.created_at,
+            CONCAT(l.first_name, ' ', l.last_name) AS leader_name,
+            d.name AS department_name, d.code AS department_code,
+            (SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = tg.id) AS member_count
+     FROM thesis_groups tg
+     JOIN users l        ON tg.leader_id     = l.id
+     JOIN departments d  ON tg.department_id = d.id
+     WHERE tg.adviser_id = ? AND tg.adviser_status = 'pending' AND tg.deleted_at IS NULL
+     ORDER BY tg.created_at ASC`,
+    [adviserId]
+  );
+  for (const g of rows) g.titles = await getGroupTitles(g.id);
+  return rows;
+}
+
+/* ─── adviser: approve/reject a pending group request ────────────── */
+async function respondToAdviserRequest(groupId, adviserId, decision, reason) {
+  if (!['approved', 'rejected'].includes(decision)) {
+    throw Object.assign(new Error('Decision must be "approved" or "rejected".'), { statusCode: 400 });
+  }
+  if (decision === 'rejected' && !(reason || '').trim()) {
+    throw Object.assign(new Error('A reason is required when declining a request.'), { statusCode: 400 });
+  }
+
+  const [[group]] = await db.query(
+    `SELECT id, name, leader_id, adviser_id, adviser_status FROM thesis_groups WHERE id = ? AND deleted_at IS NULL`,
+    [groupId]
+  );
+  if (!group) throw Object.assign(new Error('Group not found.'), { statusCode: 404 });
+  if (group.adviser_id !== adviserId) throw Object.assign(new Error('You are not the requested adviser for this group.'), { statusCode: 403 });
+  if (group.adviser_status !== 'pending') throw Object.assign(new Error('This request has already been processed.'), { statusCode: 400 });
+
+  if (decision === 'approved') await assertAdviserHasCapacity(adviserId);
+
+  const fields = { adviser_status: decision, adviser_status_reason: reason || null, adviser_responded_at: new Date() };
+  if (decision === 'rejected') fields.adviser_id = null;
+
+  const set = Object.keys(fields).map(k => `${k} = ?`).join(', ');
+  await db.query(`UPDATE thesis_groups SET ${set} WHERE id = ?`, [...Object.values(fields), groupId]);
+
+  const [[leader]] = await db.query('SELECT first_name, last_name, email FROM users WHERE id = ?', [group.leader_id]);
+  await sendMail({
+    to:      leader.email,
+    subject: 'Adviser Request Update — ACES Research System',
+    html:    adviserDecisionHtml(`${leader.first_name} ${leader.last_name}`, group.name, decision, reason),
+  }).catch(() => {});
+
+  return getGroupById(groupId);
+}
+
 /* ─── check if student is a group leader (used by submissions) ────── */
 async function getStudentGroupRole(studentId) {
   try {
@@ -381,4 +492,6 @@ module.exports = {
   leaveGroup,
   disbandGroup,
   getStudentGroupRole,
+  getAdviserRequests,
+  respondToAdviserRequest,
 };

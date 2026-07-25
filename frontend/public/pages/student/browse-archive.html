@@ -153,8 +153,9 @@
     let totalItems  = 0;
     let searchTimer = null;
 
-    requireAuthAsync('student', 'instructor', 'panelist', 'admin', 'superadmin').then(user => {
+    requireAuthAsync('student', 'instructor', 'panelist', 'admin', 'superadmin').then(async user => {
       if (!user) return;
+      if (!(await requireVerifiedStudent())) return;
       document.getElementById('user-name').textContent = user.full_name || user.email;
       loadDepts();
       populateYears();

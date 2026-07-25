@@ -16,8 +16,9 @@ router.post( '/upload-list',             instructorOnly, uploadCsv.single('file'
 router.get(  '/import-template',         instructorOnly, ctrl.downloadImportTemplate);
 router.post( '/import-students',         instructorOnly, uploadExcel.single('file'), ctrl.importStudents);
 router.post( '/export-credentials',      instructorOnly, ctrl.exportCredentials);
-router.get(  '/submitted-titles',        instructorOnly, ctrl.submittedTitles);
-router.patch('/submissions/:id/approve', instructorOnly, ctrl.approveTitle);
-router.patch('/submissions/:id/reject',  instructorOnly, ctrl.rejectTitle);
+router.get(  '/group-requests',                instructorOnly, ctrl.groupRequests);
+router.post( '/group-requests/:groupId/approve', instructorOnly, ctrl.approveGroupRequest);
+router.post( '/group-requests/:groupId/reject',  instructorOnly, ctrl.rejectGroupRequest);
+router.patch('/settings',                      instructorOnly, ctrl.updateSettings);
 
 module.exports = router;

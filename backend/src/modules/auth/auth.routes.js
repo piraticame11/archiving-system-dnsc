@@ -3,10 +3,12 @@ const rateLimit = require('express-rate-limit');
 const ctrl = require('./auth.controller');
 const {
   registerRules, loginRules, forgotPasswordRules,
-  resetPasswordRules, changePasswordRules, updateProfileRules,
+  changePasswordRules, updateProfileRules,
+  bindPersonalEmailRules, verifyOtpRules,
 } = require('./auth.validators');
 const { handleValidation } = require('../../middleware/validate');
 const { verifyToken } = require('../../middleware/auth');
+const { requireRole } = require('../../middleware/rbac');
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -21,10 +23,14 @@ router.post('/login',           authLimiter, loginRules,          handleValidati
 router.post('/refresh',         ctrl.refresh);
 router.post('/logout',          ctrl.logout);
 router.post('/forgot-password', authLimiter, forgotPasswordRules, handleValidation, ctrl.forgotPassword);
-router.post('/reset-password',  authLimiter, resetPasswordRules,  handleValidation, ctrl.resetPassword);
 
 router.get('/me',              verifyToken, ctrl.getMe);
 router.patch('/me',            verifyToken, updateProfileRules, handleValidation, ctrl.updateMe);
 router.patch('/me/password',   verifyToken, changePasswordRules, handleValidation, ctrl.changePassword);
+
+const studentGuard = [verifyToken, requireRole('student')];
+router.post('/me/personal-email',         studentGuard, authLimiter, bindPersonalEmailRules, handleValidation, ctrl.bindPersonalEmail);
+router.post('/me/personal-email/resend',  studentGuard, authLimiter, ctrl.resendPersonalEmailOtp);
+router.post('/me/personal-email/verify',  studentGuard, authLimiter, verifyOtpRules, handleValidation, ctrl.verifyPersonalEmailOtp);
 
 module.exports = router;

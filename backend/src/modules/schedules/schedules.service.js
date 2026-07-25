@@ -73,7 +73,7 @@ async function listSchedules({ search, status, from_date, to_date, page, limit, 
   const [[{ total }]] = await db.query(`SELECT COUNT(*) AS total ${from}`, params);
 
   const [rows] = await db.query(
-    `SELECT ds.id, ds.submission_id, ds.venue_id, ds.defense_type,
+    `SELECT ds.id, ds.submission_id, ds.venue_id, ds.defense_type, ds.panel_size,
             ds.scheduled_date, ds.time_slots,
             ds.status, ds.notes,
             ds.created_by, ds.created_at, ds.updated_at,
@@ -146,7 +146,7 @@ async function getCalendar({ from_date, to_date }) {
 /* ─── single ────────────────────────────────────────────────────────── */
 async function getById(id) {
   const [[row]] = await db.query(
-    `SELECT ds.id, ds.submission_id, ds.venue_id, ds.defense_type,
+    `SELECT ds.id, ds.submission_id, ds.venue_id, ds.defense_type, ds.panel_size,
             ds.scheduled_date, ds.time_slots,
             ds.status, ds.notes, ds.minutes_photo, ds.minutes_uploaded_at,
             ds.created_by, ds.created_at, ds.updated_at,
@@ -185,6 +185,13 @@ async function getById(id) {
      WHERE sg.schedule_id = ?`,
     [id]
   );
+  for (const g of groups) {
+    const [titles] = await db.query(
+      'SELECT id, title, display_order FROM group_titles WHERE group_id = ? ORDER BY display_order ASC',
+      [g.id]
+    );
+    g.titles = titles;
+  }
   row.groups = groups;
 
   return row;
@@ -248,9 +255,14 @@ function validateSlotsForType(defense_type, time_slots) {
   }
 }
 
-/* Every defense panel must have exactly 1 chairperson, 1 industry panelist,
-   and 2 members. An empty panel is allowed (assigned later). */
-const PANEL_COMPOSITION = { chairperson: 1, industry_panelist: 1, member: 2 };
+/* A full defense panel has 1 chairperson, 1 industry panelist, and 2 members.
+   A reduced 3-person panel (1 chairperson, 1 industry panelist, 1 member) is
+   also valid — used when department capacity can't fill a full panel. An
+   empty panel is allowed (assigned later). */
+const VALID_COMPOSITIONS = [
+  { chairperson: 1, industry_panelist: 1, member: 2 },
+  { chairperson: 1, industry_panelist: 1, member: 1 },
+];
 
 function validatePanelComposition(panelists) {
   if (!panelists.length) return;
@@ -262,9 +274,10 @@ function validatePanelComposition(panelists) {
     throw err;
   }
 
+  const roleNames = Object.keys(VALID_COMPOSITIONS[0]);
   const counts = { chairperson: 0, industry_panelist: 0, member: 0 };
   for (const p of panelists) {
-    if (!(p.role in PANEL_COMPOSITION)) {
+    if (!roleNames.includes(p.role)) {
       const err = new Error(`Invalid panel role: ${p.role}`);
       err.status = 400;
       throw err;
@@ -272,12 +285,12 @@ function validatePanelComposition(panelists) {
     counts[p.role]++;
   }
 
-  const mismatches = Object.entries(PANEL_COMPOSITION)
-    .filter(([role, expected]) => counts[role] !== expected)
-    .map(([role, expected]) => `${role.replace('_', ' ')}: need ${expected}, got ${counts[role]}`);
-  if (mismatches.length) {
+  const matches = VALID_COMPOSITIONS.some(comp =>
+    roleNames.every(role => counts[role] === comp[role])
+  );
+  if (!matches) {
     const err = new Error(
-      `A defense panel must have exactly 1 chairperson, 1 industry panelist, and 2 members. (${mismatches.join('; ')})`
+      'A defense panel must have exactly 1 chairperson, 1 industry panelist, and either 2 members (full panel) or 1 member (reduced panel).'
     );
     err.status = 400;
     throw err;
@@ -307,9 +320,9 @@ async function createSchedule({ venue_id, defense_type, scheduled_date, time_slo
 
   const [result] = await db.query(
     `INSERT INTO defense_schedules
-       (venue_id, defense_type, scheduled_date, time_slots, notes, created_by)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [venue_id || null, defense_type, scheduled_date, JSON.stringify(time_slots), notes || null, created_by]
+       (venue_id, defense_type, scheduled_date, time_slots, notes, created_by, panel_size)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [venue_id || null, defense_type, scheduled_date, JSON.stringify(time_slots), notes || null, created_by, panelList.length || 4]
   );
 
   const scheduleId = result.insertId;
@@ -370,6 +383,7 @@ async function updateSchedule(id, { venue_id, defense_type, scheduled_date, time
   if (scheduled_date !== undefined) updates.scheduled_date = scheduled_date;
   if (time_slots     !== undefined) updates.time_slots     = JSON.stringify(time_slots);
   if (notes          !== undefined) updates.notes          = notes || null;
+  if (Array.isArray(panelists) && panelists.length) updates.panel_size = panelists.length;
 
   if (Object.keys(updates).length) {
     const set = Object.keys(updates).map(k => `${k} = ?`).join(', ');
@@ -472,17 +486,18 @@ async function getEligibleGroupsForAutoSchedule(defense_type) {
     const [rows] = await db.query(
       `SELECT tg.id, tg.name, tg.title, tg.school_year,
               d.name AS department_name, d.code AS department_code,
-              ts.approved_at
+              tg.created_at
        FROM thesis_groups tg
        JOIN departments d ON tg.department_id = d.id
-       JOIN thesis_submissions ts ON ts.group_id = tg.id AND ts.status = 'approved' AND ts.deleted_at IS NULL
        WHERE tg.deleted_at IS NULL
+         AND tg.adviser_status = 'approved'
+         AND EXISTS (SELECT 1 FROM group_titles gt WHERE gt.group_id = tg.id)
          AND NOT EXISTS (
            SELECT 1 FROM schedule_groups sg
            JOIN defense_schedules ds ON sg.schedule_id = ds.id
            WHERE sg.group_id = tg.id AND ds.defense_type = 'proposal' AND ds.status != 'cancelled'
          )
-       ORDER BY ts.approved_at ASC`
+       ORDER BY tg.created_at ASC`
     );
     return rows;
   }
@@ -579,25 +594,20 @@ async function autoSchedule({ defense_type, group_ids, venue_ids, panelist_ids, 
     panelistParams.push(panelist_ids);
   }
   const [panelistRows] = await db.query(
-    `SELECT u.id, u.panelist_type FROM users u JOIN roles r ON u.role_id = r.id WHERE ${panelistFilter}`,
+    `SELECT u.id, u.panelist_type, u.department_id, u.max_groups
+     FROM users u JOIN roles r ON u.role_id = r.id WHERE ${panelistFilter}`,
     panelistParams
   );
-  const regularPool  = panelistRows.filter(p => p.panelist_type !== 'industry').map(p => p.id);
-  const industryPool = panelistRows.filter(p => p.panelist_type === 'industry').map(p => p.id);
-
-  if (regularPool.length < 3) {
-    const err = new Error('Not enough regular panelists available (need at least 3 for chairperson + 2 members).');
-    err.status = 400;
-    throw err;
-  }
-  if (!industryPool.length) {
-    const err = new Error('No industry panelists available. Mark at least one panelist as "Industry" in Panelist Management first.');
+  if (!panelistRows.length) {
+    const err = new Error('No active panelists available to schedule with.');
     err.status = 400;
     throw err;
   }
 
   const [groupRows] = await db.query(
-    `SELECT id, name FROM thesis_groups WHERE id IN (?) AND deleted_at IS NULL`, [group_ids]
+    `SELECT tg.id, tg.name, tg.department_id, d.name AS department_name
+     FROM thesis_groups tg JOIN departments d ON tg.department_id = d.id
+     WHERE tg.id IN (?) AND tg.deleted_at IS NULL`, [group_ids]
   );
   const groupMap = new Map(groupRows.map(g => [g.id, g]));
 
@@ -626,11 +636,49 @@ async function autoSchedule({ defense_type, group_ids, venue_ids, panelist_ids, 
     (panelistBusy[key] = panelistBusy[key] || []).push(...parseSlots(b.time_slots));
   });
 
+  const [unavailRows] = await db.query(
+    `SELECT panelist_id, date FROM panelist_unavailability WHERE date BETWEEN ? AND ?`,
+    [start_date, end_date]
+  );
+  const unavailableSet = new Set(unavailRows.map(r => `${r.panelist_id}|${String(r.date).slice(0, 10)}`));
+
+  /* Seed from persisted historical load (not 0) so ranking reflects real
+     assignment history across runs, not just this batch — this is what
+     makes panelist selection "reshuffle" fairly over time. */
+  const [historyRows] = await db.query(
+    `SELECT sp.panelist_id, COUNT(DISTINCT sg.group_id) AS c
+     FROM schedule_panelists sp
+     JOIN defense_schedules ds ON sp.schedule_id = ds.id
+     JOIN schedule_groups sg   ON sg.schedule_id = ds.id
+     WHERE ds.status != 'cancelled'
+     GROUP BY sp.panelist_id`
+  );
   const usageCount = {};
   panelistRows.forEach(p => { usageCount[p.id] = 0; });
+  historyRows.forEach(r => { usageCount[r.panelist_id] = r.c; });
 
-  const isBusy   = (map, key, slot) => (map[key] || []).some(s => slotsOverlap(s, slot));
-  const markBusy = (map, key, slot) => { (map[key] = map[key] || []).push(slot); };
+  const maxGroupsById = {};
+  panelistRows.forEach(p => { maxGroupsById[p.id] = p.max_groups; });
+
+  const isBusy        = (map, key, slot) => (map[key] || []).some(s => slotsOverlap(s, slot));
+  const markBusy      = (map, key, slot) => { (map[key] = map[key] || []).push(slot); };
+  const isUnavailable = (id, date) => unavailableSet.has(`${id}|${date}`);
+
+  /* Under-capacity candidates are ranked before at-capacity ones — this is
+     the "swap in another panelist first" behavior — but at-capacity
+     panelists are still selectable as a last resort (graceful degradation)
+     rather than hard-excluded. */
+  function rankCandidates(ids) {
+    const underCap = [];
+    const atCap = [];
+    for (const id of ids) {
+      const cap = maxGroupsById[id];
+      (cap == null || usageCount[id] < cap ? underCap : atCap).push(id);
+    }
+    underCap.sort((a, b) => usageCount[a] - usageCount[b]);
+    atCap.sort((a, b) => usageCount[a] - usageCount[b]);
+    return [...underCap, ...atCap];
+  }
 
   const scheduled = [];
   const failed = [];
@@ -639,60 +687,81 @@ async function autoSchedule({ defense_type, group_ids, venue_ids, panelist_ids, 
     const group = groupMap.get(gid);
     if (!group) { failed.push({ group_id: gid, reason: 'Group not found' }); continue; }
 
+    /* Strict department scoping — no cross-department fallback. */
+    const deptRegularPool  = panelistRows.filter(p => p.department_id === group.department_id && p.panelist_type !== 'industry').map(p => p.id);
+    const deptIndustryPool = panelistRows.filter(p => p.department_id === group.department_id && p.panelist_type === 'industry').map(p => p.id);
+
+    if (deptRegularPool.length < 2 || !deptIndustryPool.length) {
+      failed.push({
+        group_id: gid, group_name: group.name,
+        reason: `Not enough eligible panelists in ${group.department_name || 'this department'} (need at least 1 industry + 2 regular panelists).`,
+      });
+      continue;
+    }
+
     let placed = false;
 
-    findSlot:
-    for (const date of dates) {
-      for (const venue of venueRows) {
-        const venueKey = `${venue.id}|${date}`;
-        for (const slot of SLOTS_BY_TYPE[defense_type]) {
-          if (isBusy(venueBusy, venueKey, slot)) continue;
+    /* Try a full 4-person panel first across the whole date/venue/slot
+       search space; only if that's exhausted, retry requiring just 3
+       (chair + industry + 1 member) — graceful degradation on capacity
+       crunch rather than failing the group outright. */
+    sizeLoop:
+    for (const panelSize of [4, 3]) {
+      const membersNeeded = panelSize - 2;
+      if (deptRegularPool.length < 1 + membersNeeded) continue;
 
-          const availRegular = regularPool
-            .filter(id => !isBusy(panelistBusy, `${id}|${date}`, slot))
-            .sort((a, b) => usageCount[a] - usageCount[b]);
-          const availIndustry = industryPool
-            .filter(id => !isBusy(panelistBusy, `${id}|${date}`, slot))
-            .sort((a, b) => usageCount[a] - usageCount[b]);
+      for (const date of dates) {
+        for (const venue of venueRows) {
+          const venueKey = `${venue.id}|${date}`;
+          for (const slot of SLOTS_BY_TYPE[defense_type]) {
+            if (isBusy(venueBusy, venueKey, slot)) continue;
 
-          if (availRegular.length < 3 || !availIndustry.length) continue;
+            const availRegular = rankCandidates(
+              deptRegularPool.filter(id => !isUnavailable(id, date) && !isBusy(panelistBusy, `${id}|${date}`, slot))
+            );
+            const availIndustry = rankCandidates(
+              deptIndustryPool.filter(id => !isUnavailable(id, date) && !isBusy(panelistBusy, `${id}|${date}`, slot))
+            );
 
-          const chairId      = availRegular[0];
-          const industryId   = availIndustry[0];
-          const memberIds    = [availRegular[1], availRegular[2]];
-          const panelistList = [
-            { panelist_id: chairId,      role: 'chairperson' },
-            { panelist_id: industryId,   role: 'industry_panelist' },
-            { panelist_id: memberIds[0], role: 'member' },
-            { panelist_id: memberIds[1], role: 'member' },
-          ];
+            if (availRegular.length < 1 + membersNeeded || !availIndustry.length) continue;
 
-          try {
-            const schedule = await createSchedule({
-              venue_id: venue.id,
-              defense_type,
-              scheduled_date: date,
-              time_slots: [slot],
-              notes: 'Auto-scheduled',
-              panelists: panelistList,
-              group_ids: [gid],
-              created_by,
-            });
+            const chairId    = availRegular[0];
+            const industryId = availIndustry[0];
+            const memberIds  = availRegular.slice(1, 1 + membersNeeded);
+            const panelistList = [
+              { panelist_id: chairId,    role: 'chairperson' },
+              { panelist_id: industryId, role: 'industry_panelist' },
+              ...memberIds.map(id => ({ panelist_id: id, role: 'member' })),
+            ];
 
-            markBusy(venueBusy, venueKey, slot);
-            [chairId, industryId, ...memberIds].forEach(id => {
-              markBusy(panelistBusy, `${id}|${date}`, slot);
-              usageCount[id]++;
-            });
+            try {
+              const schedule = await createSchedule({
+                venue_id: venue.id,
+                defense_type,
+                scheduled_date: date,
+                time_slots: [slot],
+                notes: 'Auto-scheduled',
+                panelists: panelistList,
+                group_ids: [gid],
+                created_by,
+              });
 
-            scheduled.push({
-              group_id: gid, group_name: group.name, schedule_id: schedule.id,
-              scheduled_date: date, venue_name: venue.name, time_slot: slot,
-            });
-            placed = true;
-            break findSlot;
-          } catch (_) {
-            continue; // race/edge case — try the next candidate slot
+              markBusy(venueBusy, venueKey, slot);
+              [chairId, industryId, ...memberIds].forEach(id => {
+                markBusy(panelistBusy, `${id}|${date}`, slot);
+                usageCount[id]++;
+              });
+
+              scheduled.push({
+                group_id: gid, group_name: group.name, schedule_id: schedule.id,
+                scheduled_date: date, venue_name: venue.name, time_slot: slot,
+                panel_size: panelSize,
+              });
+              placed = true;
+              break sizeLoop;
+            } catch (_) {
+              continue; // race/edge case — try the next candidate slot
+            }
           }
         }
       }

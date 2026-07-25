@@ -19,15 +19,7 @@ const loginRules = [
 ];
 
 const forgotPasswordRules = [
-  body('email').isEmail().normalizeEmail().withMessage('Valid email is required.'),
-];
-
-const resetPasswordRules = [
-  body('token').notEmpty().withMessage('Token is required.'),
-  body('password')
-    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters.')
-    .matches(/[A-Z]/).withMessage('Password must contain an uppercase letter.')
-    .matches(/[0-9]/).withMessage('Password must contain a number.'),
+  body('identifier').trim().isEmail().withMessage('A valid school or personal email is required.'),
 ];
 
 const changePasswordRules = [
@@ -43,11 +35,20 @@ const updateProfileRules = [
   body('last_name').optional().trim().notEmpty().withMessage('Last name cannot be empty.'),
 ];
 
+const bindPersonalEmailRules = [
+  body('personal_email').isEmail().normalizeEmail().withMessage('Valid personal email is required.'),
+];
+
+const verifyOtpRules = [
+  body('code').trim().isLength({ min: 6, max: 6 }).isNumeric().withMessage('A valid 6-digit code is required.'),
+];
+
 module.exports = {
   registerRules,
   loginRules,
   forgotPasswordRules,
-  resetPasswordRules,
   changePasswordRules,
   updateProfileRules,
+  bindPersonalEmailRules,
+  verifyOtpRules,
 };

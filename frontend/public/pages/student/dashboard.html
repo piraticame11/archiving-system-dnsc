@@ -23,7 +23,7 @@
 
   <div class="max-w-5xl mx-auto px-6 py-10">
     <h1 class="text-2xl font-bold text-gray-900 mb-2">Student Dashboard</h1>
-    <p class="text-gray-500 text-sm mb-8">Submit your research title, upload documents, and track your progress.</p>
+    <p class="text-gray-500 text-sm mb-8">Manage your group, upload documents, and track your progress.</p>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
       <a href="/pages/student/my-group.html" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
@@ -32,23 +32,6 @@
         </div>
         <p class="font-semibold text-gray-800">My Group</p>
         <p class="text-xs text-gray-500 mt-1">Create or join a thesis/capstone group</p>
-      </a>
-
-      <a id="card-submit-title" href="/pages/student/submit-title.html" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
-        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mb-3">
-          <svg class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-        </div>
-        <p class="font-semibold text-gray-800">Submit</p>
-        <p class="text-xs text-gray-500 mt-1">Propose a new thesis or capstone title</p>
-        <p id="card-submit-title-note" class="hidden text-xs text-amber-600 font-medium mt-2">Only group leaders can submit</p>
-      </a>
-
-      <a href="/pages/student/my-submissions.html" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
-        <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center mb-3">
-          <svg class="w-5 h-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        </div>
-        <p class="font-semibold text-gray-800">My Submissions</p>
-        <p class="text-xs text-gray-500 mt-1">Track status of your submissions</p>
       </a>
 
       <a href="/pages/student/my-schedule.html" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
@@ -91,32 +74,9 @@
   <script>
     requireAuthAsync('student').then(async user => {
       if (!user) return;
+      if (!(await requireVerifiedStudent())) return;
       document.getElementById('user-name').textContent = `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Student';
-      await checkGroupRole(user.id);
     });
-
-    async function checkGroupRole(userId) {
-      try {
-        const res = await apiGet('/api/v1/groups/my').then(r => r.json());
-        const group = res.data;
-        if (group && group.leader_id !== userId) {
-          disableSubmissionCards();
-        }
-      } catch (_) {}
-    }
-
-    function disableSubmissionCards() {
-      ['card-submit-title'].forEach(id => {
-        const card = document.getElementById(id);
-        if (!card) return;
-        card.removeAttribute('href');
-        card.style.cursor = 'not-allowed';
-        card.classList.remove('hover:shadow-md');
-        card.classList.add('opacity-60');
-        card.addEventListener('click', e => e.preventDefault());
-        document.getElementById(id + '-note').classList.remove('hidden');
-      });
-    }
   </script>
 </body>
 </html>

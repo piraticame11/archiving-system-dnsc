@@ -2,6 +2,7 @@ const db = require('../../config/database');
 const fs = require('fs');
 const usersService = require('../users/users.service');
 const evaluationsService = require('../evaluations/evaluations.service');
+const groupsService = require('../groups/groups.service');
 
 /* ─── Parse CSV (simple: one student_number per line, optional header) ── */
 function parseCsv(filePath) {
@@ -108,101 +109,6 @@ async function getMyAdvisees(adviserId, { search, status, page, limit }) {
   return paginatedResponse(rows, total, page, limit);
 }
 
-/* ─── All submitted titles (for similarity checking) ──────────────── */
-async function getAllSubmittedTitles(instructorId) {
-  const [rows] = await db.query(
-    `SELECT ts.id, ts.title, ts.type, ts.school_year, ts.semester, ts.status,
-            ts.submitted_at, ts.adviser_id, ts.group_id,
-            CONCAT(st.first_name, ' ', st.last_name) AS student_name,
-            st.student_number,
-            COALESCE(
-              CONCAT(adv.first_name, ' ', adv.last_name),
-              CONCAT(gadv.first_name, ' ', gadv.last_name)
-            ) AS adviser_name,
-            d.name AS department_name,
-            (ts.adviser_id = ? OR tg.adviser_id = ?) AS is_mine
-     FROM thesis_submissions ts
-     JOIN users st            ON ts.student_id    = st.id
-     JOIN departments d       ON ts.department_id = d.id
-     LEFT JOIN users adv      ON ts.adviser_id    = adv.id
-     LEFT JOIN thesis_groups tg  ON ts.group_id   = tg.id
-     LEFT JOIN users gadv     ON tg.adviser_id    = gadv.id
-     WHERE ts.status IN ('submitted', 'under_review') AND ts.deleted_at IS NULL
-     ORDER BY ts.submitted_at DESC`,
-    [instructorId, instructorId]
-  );
-  return rows;
-}
-
-/* ─── Instructor approves their advisee's title ───────────────────── */
-async function approveTitle(submissionId, instructorId, remarks) {
-  const [[sub]] = await db.query(
-    `SELECT id, status, adviser_id, group_id FROM thesis_submissions WHERE id = ? AND deleted_at IS NULL`,
-    [submissionId]
-  );
-  if (!sub) throw Object.assign(new Error('Submission not found'), { statusCode: 404 });
-
-  let isAdviser = sub.adviser_id === instructorId;
-  if (!isAdviser && sub.group_id) {
-    const [[grp]] = await db.query(
-      'SELECT adviser_id FROM thesis_groups WHERE id = ? AND deleted_at IS NULL',
-      [sub.group_id]
-    );
-    isAdviser = grp?.adviser_id === instructorId;
-  }
-  if (!isAdviser)
-    throw Object.assign(new Error('You are not the adviser for this submission.'), { statusCode: 403 });
-
-  if (!['submitted', 'under_review'].includes(sub.status))
-    throw Object.assign(new Error('Only submitted or under-review titles can be approved.'), { statusCode: 400 });
-
-  await db.query(
-    `UPDATE thesis_submissions SET status = 'approved', approved_at = NOW() WHERE id = ?`,
-    [submissionId]
-  );
-  await db.query(
-    `INSERT INTO submission_history (submission_id, changed_by, old_status, new_status, remarks)
-     VALUES (?, ?, ?, 'approved', ?)`,
-    [submissionId, instructorId, sub.status, remarks || null]
-  );
-}
-
-/* ─── Instructor rejects their advisee's title ───────────────────── */
-async function rejectTitle(submissionId, instructorId, remarks) {
-  if (!remarks || !remarks.trim())
-    throw Object.assign(new Error('A reason is required when rejecting a title.'), { statusCode: 400 });
-
-  const [[sub]] = await db.query(
-    `SELECT id, status, adviser_id, group_id FROM thesis_submissions WHERE id = ? AND deleted_at IS NULL`,
-    [submissionId]
-  );
-  if (!sub) throw Object.assign(new Error('Submission not found.'), { statusCode: 404 });
-
-  let isAdviser = sub.adviser_id === instructorId;
-  if (!isAdviser && sub.group_id) {
-    const [[grp]] = await db.query(
-      'SELECT adviser_id FROM thesis_groups WHERE id = ? AND deleted_at IS NULL',
-      [sub.group_id]
-    );
-    isAdviser = grp?.adviser_id === instructorId;
-  }
-  if (!isAdviser)
-    throw Object.assign(new Error('You are not the adviser for this submission.'), { statusCode: 403 });
-
-  if (!['submitted', 'under_review'].includes(sub.status))
-    throw Object.assign(new Error('Only submitted or under-review titles can be rejected.'), { statusCode: 400 });
-
-  await db.query(
-    `UPDATE thesis_submissions SET status = 'rejected' WHERE id = ?`,
-    [submissionId]
-  );
-  await db.query(
-    `INSERT INTO submission_history (submission_id, changed_by, old_status, new_status, remarks)
-     VALUES (?, ?, ?, 'rejected', ?)`,
-    [submissionId, instructorId, sub.status, remarks.trim()]
-  );
-}
-
 /* ─── Remove adviser from a group ─────────────────────────────────── */
 async function removeFromGroup(groupId, adviserId) {
   const [[group]] = await db.query(
@@ -217,7 +123,11 @@ async function removeFromGroup(groupId, adviserId) {
 }
 
 /* ─── My groups: groups where instructor is set as adviser ─────────── */
-async function getMyGroups(adviserId) {
+async function getMyGroups(adviserId, { school_year } = {}) {
+  const conditions = ["tg.adviser_id = ?", "tg.adviser_status = 'approved'", "tg.deleted_at IS NULL"];
+  const params = [adviserId];
+  if (school_year) { conditions.push('tg.school_year = ?'); params.push(school_year); }
+
   const [groups] = await db.query(
     `SELECT tg.id, tg.name, tg.join_code, tg.title, tg.school_year, tg.max_members, tg.created_at,
             tg.leader_id,
@@ -226,9 +136,9 @@ async function getMyGroups(adviserId) {
      FROM thesis_groups tg
      JOIN users l       ON tg.leader_id     = l.id
      JOIN departments d ON tg.department_id = d.id
-     WHERE tg.adviser_id = ? AND tg.deleted_at IS NULL
+     WHERE ${conditions.join(' AND ')}
      ORDER BY tg.created_at DESC`,
-    [adviserId]
+    params
   );
 
   for (const group of groups) {
@@ -301,8 +211,25 @@ async function listAdvisers() {
   return rows;
 }
 
+/* ─── group adviser-approval inbox (thin wrappers over groups module) ── */
+async function getAdviserRequests(adviserId) {
+  return groupsService.getAdviserRequests(adviserId);
+}
+
+async function respondToAdviserRequest(groupId, adviserId, decision, reason) {
+  return groupsService.respondToAdviserRequest(groupId, adviserId, decision, reason);
+}
+
+/* ─── instructor self-service: max advisee group slots ─────────────── */
+async function setMaxAdviseeGroups(adviserId, value) {
+  await db.query('UPDATE users SET max_advisee_groups = ? WHERE id = ?', [value == null ? null : value, adviserId]);
+  const [[row]] = await db.query('SELECT max_advisee_groups FROM users WHERE id = ?', [adviserId]);
+  return row;
+}
+
 module.exports = {
-  bulkAssign, getMyAdvisees, getAllSubmittedTitles, approveTitle, rejectTitle,
+  bulkAssign, getMyAdvisees,
   getMyGroups, removeFromGroup, listAdvisers,
   importStudents, downloadImportTemplate, exportCredentials, getMyStudents,
+  getAdviserRequests, respondToAdviserRequest, setMaxAdviseeGroups,
 };

@@ -919,9 +919,13 @@
       if (panels.length) {
         const counts = { chairperson: 0, industry_panelist: 0, member: 0 };
         panels.forEach(p => { counts[p.role]++; });
-        const bad = Object.keys(PANEL_ROLE_TARGET).some(role => counts[role] !== PANEL_ROLE_TARGET[role]);
-        if (bad) {
-          errPanel.textContent = 'The panel needs exactly 1 chairperson, 1 industry panelist, and 2 members.';
+        const validCompositions = [
+          { chairperson: 1, industry_panelist: 1, member: 2 },
+          { chairperson: 1, industry_panelist: 1, member: 1 },
+        ];
+        const ok = validCompositions.some(comp => Object.keys(comp).every(role => counts[role] === comp[role]));
+        if (!ok) {
+          errPanel.textContent = 'The panel needs exactly 1 chairperson, 1 industry panelist, and either 2 members (full panel) or 1 member (reduced panel).';
           errPanel.classList.remove('hidden');
           valid = false;
         } else errPanel.classList.add('hidden');
@@ -988,7 +992,7 @@
             <div><p class="text-xs text-gray-400 uppercase mb-0.5">Timeslot</p><p class="text-sm font-medium">${esc(slotsLabel(s.time_slots))}</p></div>
           </div>
           <div><p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Presenting Groups</p><div class="space-y-1">${groupHtml}</div></div>
-          <div><p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Panel</p><div class="space-y-1">${panelHtml}</div></div>
+          <div><p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Panel ${s.panel_size < 4 ? '<span class="ml-1 px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold normal-case tracking-normal">Reduced (3)</span>' : ''}</p><div class="space-y-1">${panelHtml}</div></div>
           ${s.notes?`<div><p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Notes</p><p class="text-sm text-gray-700">${esc(s.notes)}</p></div>`:''}
           <div>
             <div class="flex items-center justify-between mb-2">
@@ -1229,7 +1233,7 @@
         if (scheduled.length) {
           html += `<div class="space-y-1.5">` + scheduled.map(s => `
             <div class="flex items-center justify-between gap-3 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-xs">
-              <span class="font-medium text-green-800">${esc(s.group_name)}</span>
+              <span class="font-medium text-green-800">${esc(s.group_name)} ${s.panel_size < 4 ? '<span class="ml-1 px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">Reduced panel (3)</span>' : ''}</span>
               <span class="text-green-700">${fmtDate(s.scheduled_date)} · ${esc(slotLabel(s.time_slot))} · ${esc(s.venue_name)}</span>
             </div>`).join('') + `</div>`;
         }

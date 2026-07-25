@@ -3,7 +3,8 @@ const { paginatedResponse } = require('../../utils/pagination');
 
 const BASE_SELECT = `
   SELECT e.id, e.schedule_id, e.panelist_id, e.submission_id, e.group_id,
-         e.score, e.decision, e.remarks, e.status, e.submitted_at, e.created_at, e.updated_at,
+         e.score, e.research_output_score, e.oral_presentation_score,
+         e.decision, e.remarks, e.status, e.submitted_at, e.created_at, e.updated_at,
          CONCAT(p.first_name, ' ', p.last_name) AS panelist_name,
          ds.scheduled_date, ds.time_slots,
          ts.title AS submission_title, ts.type AS submission_type, ts.school_year,
@@ -15,6 +16,27 @@ const BASE_SELECT = `
   LEFT JOIN venues v              ON ds.venue_id      = v.id`;
 
 const DECISIONS = ['approved', 'major_revisions', 'minor_revisions'];
+
+/* ─── rubric criteria (Research Output + Oral Presentation) ──────────── */
+async function listCriteria() {
+  const [rows] = await db.query(
+    `SELECT id, rubric_group, name, description, max_score, weight, sort_order
+     FROM evaluation_criteria
+     WHERE is_active = 1
+     ORDER BY rubric_group ASC, sort_order ASC`
+  );
+  return rows;
+}
+
+async function attachScores(evaluation) {
+  if (!evaluation) return evaluation;
+  const [rows] = await db.query(
+    'SELECT criteria_id, raw_score FROM scores WHERE evaluation_id = ?',
+    [evaluation.id]
+  );
+  evaluation.scores = rows;
+  return evaluation;
+}
 
 /* ─── list ─────────────────────────────────────────────────────────── */
 async function listEvaluations({ panelist_id, schedule_id, status, page, limit }) {
@@ -63,6 +85,13 @@ async function attachGroups(row) {
      WHERE sg.schedule_id = ?`,
     [row.schedule_id]
   );
+  for (const g of groups) {
+    const [titles] = await db.query(
+      'SELECT id, title, display_order FROM group_titles WHERE group_id = ? ORDER BY display_order ASC',
+      [g.id]
+    );
+    g.titles = titles;
+  }
   row.groups = groups;
   row.time_slots = parseSlots(row.time_slots);
   return row;
@@ -71,23 +100,64 @@ async function attachGroups(row) {
 /* ─── single ────────────────────────────────────────────────────────── */
 async function getById(id) {
   const [[row]] = await db.query(`${BASE_SELECT} WHERE e.id = ?`, [id]);
-  return attachGroups(row || null);
+  const ev = await attachGroups(row || null);
+  return attachScores(ev);
 }
 
 /* Returns ALL evaluations for a schedule by this panelist (one per group). */
 async function getByScheduleAndPanelist(schedule_id, panelist_id) {
   const [rows] = await db.query(
     `SELECT e.id, e.schedule_id, e.panelist_id, e.submission_id, e.group_id,
-            e.score, e.decision, e.remarks, e.status, e.submitted_at, e.created_at, e.updated_at
+            e.score, e.research_output_score, e.oral_presentation_score,
+            e.decision, e.remarks, e.status, e.submitted_at, e.created_at, e.updated_at
      FROM evaluations e
      WHERE e.schedule_id = ? AND e.panelist_id = ?`,
     [schedule_id, panelist_id]
   );
+  for (const row of rows) await attachScores(row);
   return rows;
 }
 
+/* ─── save this panelist's per-criteria scores, return the two rubric totals ── */
+async function saveScores(evaluationId, scores) {
+  const criteria = await listCriteria();
+  const criteriaMap = new Map(criteria.map(c => [c.id, c]));
+
+  const clean = (scores || []).filter(s => criteriaMap.has(s.criteria_id) && s.raw_score != null);
+  for (const s of clean) {
+    const c = criteriaMap.get(s.criteria_id);
+    if (s.raw_score < 0 || s.raw_score > Number(c.max_score)) {
+      throw Object.assign(
+        new Error(`"${c.name}" must be between 0 and ${c.max_score}.`),
+        { statusCode: 400 }
+      );
+    }
+  }
+
+  await db.query('DELETE FROM scores WHERE evaluation_id = ?', [evaluationId]);
+  if (clean.length) {
+    const values = clean.map(s => [evaluationId, s.criteria_id, s.raw_score]);
+    await db.query('INSERT INTO scores (evaluation_id, criteria_id, raw_score) VALUES ?', [values]);
+  }
+
+  const totals = { research_output: 0, oral_presentation: 0 };
+  const counts = { research_output: 0, oral_presentation: 0 };
+  for (const s of clean) {
+    const c = criteriaMap.get(s.criteria_id);
+    totals[c.rubric_group] += Number(s.raw_score);
+    counts[c.rubric_group] += 1;
+  }
+  const expected = { research_output: 0, oral_presentation: 0 };
+  criteria.forEach(c => { expected[c.rubric_group] += 1; });
+
+  return {
+    research_output_score:   counts.research_output   === expected.research_output   ? totals.research_output   : null,
+    oral_presentation_score: counts.oral_presentation === expected.oral_presentation ? totals.oral_presentation : null,
+  };
+}
+
 /* ─── upsert (save draft or submit) ────────────────────────────────── */
-async function upsertEvaluation({ schedule_id, panelist_id, group_id, score, decision, remarks, submit }) {
+async function upsertEvaluation({ schedule_id, panelist_id, group_id, scores, decision, remarks, submit }) {
   if (decision != null && !DECISIONS.includes(decision)) {
     throw Object.assign(new Error('Invalid decision value'), { statusCode: 400 });
   }
@@ -123,25 +193,38 @@ async function upsertEvaluation({ schedule_id, panelist_id, group_id, score, dec
     [schedule_id, panelist_id, gid]
   );
 
+  let evaluationId;
   if (existing) {
     if (existing.status === 'submitted')
       throw Object.assign(new Error('Evaluation already submitted and cannot be edited'), { statusCode: 400 });
-
-    await db.query(
-      `UPDATE evaluations
-       SET score = ?, decision = ?, remarks = ?, status = ?, submitted_at = COALESCE(submitted_at, ?)
-       WHERE id = ?`,
-      [score ?? null, decision ?? null, remarks ?? null, newStatus, submittedAt, existing.id]
+    evaluationId = existing.id;
+  } else {
+    const [result] = await db.query(
+      `INSERT INTO evaluations (schedule_id, panelist_id, group_id, submission_id, status)
+       VALUES (?, ?, ?, ?, 'pending')`,
+      [schedule_id, panelist_id, gid, sched.submission_id]
     );
-    return getById(existing.id);
+    evaluationId = result.insertId;
   }
 
-  const [result] = await db.query(
-    `INSERT INTO evaluations (schedule_id, panelist_id, group_id, submission_id, score, decision, remarks, status, submitted_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [schedule_id, panelist_id, gid, sched.submission_id, score ?? null, decision ?? null, remarks ?? null, newStatus, submittedAt]
+  const totals = await saveScores(evaluationId, scores);
+
+  if (submit && (totals.research_output_score == null || totals.oral_presentation_score == null)) {
+    throw Object.assign(
+      new Error('Please score every criterion in both rubrics before submitting.'),
+      { statusCode: 400 }
+    );
+  }
+
+  await db.query(
+    `UPDATE evaluations
+     SET decision = ?, remarks = ?, status = ?, submitted_at = COALESCE(submitted_at, ?),
+         research_output_score = ?, oral_presentation_score = ?
+     WHERE id = ?`,
+    [decision ?? null, remarks ?? null, newStatus, submittedAt,
+     totals.research_output_score, totals.oral_presentation_score, evaluationId]
   );
-  return getById(result.insertId);
+  return getById(evaluationId);
 }
 
 /* ─── the chairperson's decision is the official/overall outcome ────── */
@@ -245,5 +328,5 @@ async function getStudentScores(student_id) {
 
 module.exports = {
   listEvaluations, getById, getByScheduleAndPanelist, upsertEvaluation,
-  getStudentScores, getChairpersonDecision,
+  getStudentScores, getChairpersonDecision, listCriteria,
 };

@@ -25,37 +25,6 @@ async function uploadList(req, res, next) {
   }
 }
 
-async function submittedTitles(req, res, next) {
-  try {
-    const result = await service.getAllSubmittedTitles(req.user.id);
-    sendSuccess(res, result);
-  } catch (err) { next(err); }
-}
-
-async function rejectTitle(req, res, next) {
-  try {
-    await service.rejectTitle(parseInt(req.params.id), req.user.id, req.body.remarks);
-    sendSuccess(res, null, 'Title rejected.');
-  } catch (err) {
-    if (err.statusCode === 404) return send404(res, err.message);
-    if (err.statusCode === 403) return send403(res, err.message);
-    if (err.statusCode === 400) return send400(res, err.message);
-    next(err);
-  }
-}
-
-async function approveTitle(req, res, next) {
-  try {
-    await service.approveTitle(parseInt(req.params.id), req.user.id, req.body.remarks);
-    sendSuccess(res, null, 'Title approved successfully');
-  } catch (err) {
-    if (err.statusCode === 404) return send404(res, err.message);
-    if (err.statusCode === 403) return send403(res, err.message);
-    if (err.statusCode === 400) return send400(res, err.message);
-    next(err);
-  }
-}
-
 async function removeGroup(req, res, next) {
   try {
     await service.removeFromGroup(parseInt(req.params.id), req.user.id);
@@ -69,8 +38,50 @@ async function removeGroup(req, res, next) {
 
 async function myGroups(req, res, next) {
   try {
-    const result = await service.getMyGroups(req.user.id);
+    const result = await service.getMyGroups(req.user.id, { school_year: req.query.school_year });
     sendSuccess(res, result);
+  } catch (err) { next(err); }
+}
+
+async function groupRequests(req, res, next) {
+  try {
+    const result = await service.getAdviserRequests(req.user.id);
+    sendSuccess(res, result);
+  } catch (err) { next(err); }
+}
+
+async function approveGroupRequest(req, res, next) {
+  try {
+    const group = await service.respondToAdviserRequest(parseInt(req.params.groupId), req.user.id, 'approved', null);
+    sendSuccess(res, group, 'Group request approved.');
+  } catch (err) {
+    if (err.statusCode === 404) return send404(res, err.message);
+    if (err.statusCode === 403) return send403(res, err.message);
+    if (err.statusCode === 400) return send400(res, err.message);
+    if (err.statusCode === 409) return res.status(409).json({ success: false, message: err.message });
+    next(err);
+  }
+}
+
+async function rejectGroupRequest(req, res, next) {
+  try {
+    const group = await service.respondToAdviserRequest(parseInt(req.params.groupId), req.user.id, 'rejected', req.body.reason);
+    sendSuccess(res, group, 'Group request declined.');
+  } catch (err) {
+    if (err.statusCode === 404) return send404(res, err.message);
+    if (err.statusCode === 403) return send403(res, err.message);
+    if (err.statusCode === 400) return send400(res, err.message);
+    next(err);
+  }
+}
+
+async function updateSettings(req, res, next) {
+  try {
+    const value = req.body.max_advisee_groups === '' || req.body.max_advisee_groups === null
+      ? null
+      : parseInt(req.body.max_advisee_groups);
+    const row = await service.setMaxAdviseeGroups(req.user.id, value);
+    sendSuccess(res, row, 'Settings updated.');
   } catch (err) { next(err); }
 }
 
@@ -122,6 +133,7 @@ async function myStudents(req, res, next) {
 }
 
 module.exports = {
-  myAdvisees, uploadList, submittedTitles, approveTitle, rejectTitle, myGroups, removeGroup, listAdvisers,
+  myAdvisees, uploadList, myGroups, removeGroup, listAdvisers,
   importStudents, downloadImportTemplate, exportCredentials, myStudents,
+  groupRequests, approveGroupRequest, rejectGroupRequest, updateSettings,
 };

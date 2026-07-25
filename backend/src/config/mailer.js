@@ -19,13 +19,6 @@ async function sendMail({ to, subject, html }) {
   return transporter.sendMail({ from: FROM, to, subject, html });
 }
 
-function passwordResetHtml(name, link) {
-  return `<p>Hello ${name},</p>
-<p>Click the link below to reset your password. It expires in 1 hour.</p>
-<p><a href="${link}">${link}</a></p>
-<p>If you did not request this, ignore this email.</p>`;
-}
-
 function scheduleAssignedHtml(name, title, date, venue) {
   return `<p>Hello ${name},</p>
 <p>You have been assigned as a panelist for the defense of:</p>
@@ -39,4 +32,35 @@ function statusChangedHtml(name, title, status, remarks) {
 ${remarks ? `<p>Remarks: ${remarks}</p>` : ''}`;
 }
 
-module.exports = { sendMail, passwordResetHtml, scheduleAssignedHtml, statusChangedHtml };
+function otpHtml(name, code) {
+  return `<p>Hello ${name},</p>
+<p>Your verification code is:</p>
+<p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${code}</p>
+<p>This code expires in 10 minutes. If you did not request this, ignore this email.</p>`;
+}
+
+function tempPasswordHtml(name, tempPassword, minutesValid) {
+  return `<p>Hello ${name},</p>
+<p>Here is a temporary password to sign back into your account:</p>
+<p style="font-size:20px;font-weight:bold;letter-spacing:2px;">${tempPassword}</p>
+<p>It is valid for ${minutesValid} minutes. Sign in with it and set a new password right away.</p>
+<p>If you did not request this, ignore this email.</p>`;
+}
+
+function adviserRequestHtml(adviserName, groupName, leaderName) {
+  return `<p>Hello ${adviserName},</p>
+<p><strong>${leaderName}</strong> has selected you as the adviser for their group <strong>${groupName}</strong>.</p>
+<p>Please review and respond to this request in the Group Requests section of your dashboard.</p>`;
+}
+
+function adviserDecisionHtml(leaderName, groupName, decision, reason) {
+  const verb = decision === 'approved' ? 'approved' : 'declined';
+  return `<p>Hello ${leaderName},</p>
+<p>Your adviser request for <strong>${groupName}</strong> was <strong>${verb}</strong>.</p>
+${reason ? `<p>Reason: ${reason}</p>` : ''}`;
+}
+
+module.exports = {
+  sendMail, scheduleAssignedHtml, statusChangedHtml, otpHtml, tempPasswordHtml,
+  adviserRequestHtml, adviserDecisionHtml,
+};

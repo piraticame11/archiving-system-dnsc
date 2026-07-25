@@ -265,7 +265,9 @@
           ? s.groups.map(g => `
             <div class=”bg-gray-50 rounded-lg p-3 border border-gray-100”>
               <p class=”font-semibold text-gray-800 text-sm”>${escHtml(g.name)}</p>
-              ${g.group_title ? `<p class=”text-xs text-gray-500 mt-0.5”>${escHtml(g.group_title)}</p>` : ''}
+              ${g.titles?.length
+                ? g.titles.map((t, i) => `<p class=”text-xs text-gray-500 mt-0.5”>${i + 1}. ${escHtml(t.title)}</p>`).join('')
+                : (g.group_title ? `<p class=”text-xs text-gray-500 mt-0.5”>${escHtml(g.group_title)}</p>` : '')}
             </div>`).join('')
           : s.submission_title
             ? `<p class=”text-sm text-gray-700”>${escHtml(s.submission_title)}</p>`
