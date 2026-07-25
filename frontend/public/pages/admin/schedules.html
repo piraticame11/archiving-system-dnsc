@@ -258,7 +258,7 @@
           <div>
             <div class="flex items-center justify-between mb-1">
               <label class="block text-sm font-medium text-gray-700">Panel
-                <span class="text-xs font-normal text-gray-400 ml-1">(1 chairperson, 1 industry panelist, 2 members)</span>
+                <span class="text-xs font-normal text-gray-400 ml-1">(1 chairperson, 3 members)</span>
               </label>
               <select id="sched-dept-filter" onchange="filterPanelistsByDept()"
                 class="text-xs border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white">
@@ -466,10 +466,10 @@
     let allGroups      = [];
     let allDepartments = [];
     let bookedSlots    = [];   // slots booked for current venue+date (for the form)
-    let panelistRoles  = {};   // { [panelist_id]: 'chairperson'|'industry_panelist'|'member' } for the open form
+    let panelistRoles  = {};   // { [panelist_id]: 'chairperson'|'member' } for the open form
 
-    const PANEL_ROLE_LABEL = { chairperson: 'Chairperson', industry_panelist: 'Industry Panelist', member: 'Member' };
-    const PANEL_ROLE_TARGET = { chairperson: 1, industry_panelist: 1, member: 2 };
+    const PANEL_ROLE_LABEL = { chairperson: 'Chairperson', member: 'Member' };
+    const PANEL_ROLE_TARGET = { chairperson: 1, member: 3 };
 
     /* ─── tab ─────────────────────────────────────────────────────────── */
     function switchTab(tab) {
@@ -802,7 +802,6 @@
                 <select class="text-xs border border-gray-300 rounded-lg px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white flex-shrink-0"
                   onchange="setPanelistRole(${p.id}, this.value)">
                   <option value="chairperson" ${role==='chairperson'?'selected':''}>Chairperson</option>
-                  <option value="industry_panelist" ${role==='industry_panelist'?'selected':''}>Industry Panelist</option>
                   <option value="member" ${role==='member'?'selected':''}>Member</option>
                 </select>` : ''}
             </div>`;
@@ -828,7 +827,7 @@
     }
 
     function renderPanelSummary() {
-      const counts = { chairperson: 0, industry_panelist: 0, member: 0 };
+      const counts = { chairperson: 0, member: 0 };
       Object.values(panelistRoles).forEach(r => { if (counts[r] !== undefined) counts[r]++; });
       const el = document.getElementById('panel-count-summary');
       el.innerHTML = Object.keys(PANEL_ROLE_LABEL).map(role => {
@@ -917,15 +916,15 @@
 
       const errPanel = document.getElementById('err-panel');
       if (panels.length) {
-        const counts = { chairperson: 0, industry_panelist: 0, member: 0 };
-        panels.forEach(p => { counts[p.role]++; });
+        const counts = { chairperson: 0, member: 0 };
+        panels.forEach(p => { if (counts[p.role] !== undefined) counts[p.role]++; });
         const validCompositions = [
-          { chairperson: 1, industry_panelist: 1, member: 2 },
-          { chairperson: 1, industry_panelist: 1, member: 1 },
+          { chairperson: 1, member: 3 },
+          { chairperson: 1, member: 2 },
         ];
         const ok = validCompositions.some(comp => Object.keys(comp).every(role => counts[role] === comp[role]));
         if (!ok) {
-          errPanel.textContent = 'The panel needs exactly 1 chairperson, 1 industry panelist, and either 2 members (full panel) or 1 member (reduced panel).';
+          errPanel.textContent = 'The panel needs exactly 1 chairperson and either 3 members (full panel) or 2 members (reduced panel).';
           errPanel.classList.remove('hidden');
           valid = false;
         } else errPanel.classList.add('hidden');

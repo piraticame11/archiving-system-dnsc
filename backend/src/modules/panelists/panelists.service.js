@@ -27,7 +27,7 @@ async function listPanelists({ search, status, department_id, page, limit }) {
   const [rows] = await db.query(
     `SELECT u.id, u.first_name, u.last_name, u.email,
             u.is_active, u.created_at,
-            u.department_id, u.panelist_type, u.max_groups,
+            u.department_id, u.max_groups,
             d.name AS department_name, d.code AS department_code,
             (SELECT COUNT(*) FROM schedule_panelists sp WHERE sp.panelist_id = u.id) AS schedules_count,
             (SELECT COUNT(DISTINCT sg.group_id)
@@ -48,7 +48,7 @@ async function listPanelists({ search, status, department_id, page, limit }) {
 async function getPanelistById(id) {
   const [[user]] = await db.query(
     `SELECT u.id, u.first_name, u.last_name, u.email, u.is_active, u.created_at, u.updated_at,
-            u.department_id, u.panelist_type, u.max_groups, d.name AS department_name, d.code AS department_code,
+            u.department_id, u.max_groups, d.name AS department_name, d.code AS department_code,
             r.name AS role
      FROM users u
      JOIN roles r ON u.role_id = r.id
@@ -76,7 +76,7 @@ async function getPanelistById(id) {
 }
 
 /* ─── create ────────────────────────────────────────────────────────── */
-async function createPanelist({ first_name, last_name, email, password, department_id, panelist_type }) {
+async function createPanelist({ first_name, last_name, email, password, department_id }) {
   const [[roleRow]] = await db.query("SELECT id FROM roles WHERE name = 'panelist'");
   if (!roleRow) throw Object.assign(new Error('Panelist role not found'), { statusCode: 500 });
 
@@ -87,15 +87,15 @@ async function createPanelist({ first_name, last_name, email, password, departme
 
   const hash = await bcrypt.hash(password, 12);
   const [result] = await db.query(
-    `INSERT INTO users (role_id, first_name, last_name, email, password_hash, department_id, panelist_type, is_active, is_email_verified)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1)`,
-    [roleRow.id, first_name, last_name, email, hash, department_id || null, panelist_type || 'regular']
+    `INSERT INTO users (role_id, first_name, last_name, email, password_hash, department_id, is_active, is_email_verified)
+     VALUES (?, ?, ?, ?, ?, ?, 1, 1)`,
+    [roleRow.id, first_name, last_name, email, hash, department_id || null]
   );
   return getPanelistById(result.insertId);
 }
 
 /* ─── update ────────────────────────────────────────────────────────── */
-async function updatePanelist(id, { first_name, last_name, email, department_id, panelist_type, max_groups }) {
+async function updatePanelist(id, { first_name, last_name, email, department_id, max_groups }) {
   const user = await getPanelistById(id);
   if (!user) throw Object.assign(new Error('Panelist not found'), { statusCode: 404 });
 
@@ -103,7 +103,6 @@ async function updatePanelist(id, { first_name, last_name, email, department_id,
   if (first_name     !== undefined) updates.first_name     = first_name;
   if (last_name      !== undefined) updates.last_name      = last_name;
   if (department_id  !== undefined) updates.department_id  = department_id || null;
-  if (panelist_type  !== undefined) updates.panelist_type  = panelist_type;
   if (max_groups     !== undefined) updates.max_groups     = max_groups || null;
   if (email          !== undefined) {
     const [[dup]] = await db.query(

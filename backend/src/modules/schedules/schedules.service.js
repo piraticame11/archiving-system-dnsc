@@ -255,13 +255,13 @@ function validateSlotsForType(defense_type, time_slots) {
   }
 }
 
-/* A full defense panel has 1 chairperson, 1 industry panelist, and 2 members.
-   A reduced 3-person panel (1 chairperson, 1 industry panelist, 1 member) is
-   also valid — used when department capacity can't fill a full panel. An
-   empty panel is allowed (assigned later). */
+/* A full defense panel has 1 chairperson and 3 members. A reduced 3-person
+   panel (1 chairperson, 2 members) is also valid — used when department
+   capacity can't fill a full panel. An empty panel is allowed (assigned
+   later). */
 const VALID_COMPOSITIONS = [
-  { chairperson: 1, industry_panelist: 1, member: 2 },
-  { chairperson: 1, industry_panelist: 1, member: 1 },
+  { chairperson: 1, member: 3 },
+  { chairperson: 1, member: 2 },
 ];
 
 function validatePanelComposition(panelists) {
@@ -275,7 +275,7 @@ function validatePanelComposition(panelists) {
   }
 
   const roleNames = Object.keys(VALID_COMPOSITIONS[0]);
-  const counts = { chairperson: 0, industry_panelist: 0, member: 0 };
+  const counts = { chairperson: 0, member: 0 };
   for (const p of panelists) {
     if (!roleNames.includes(p.role)) {
       const err = new Error(`Invalid panel role: ${p.role}`);
@@ -290,7 +290,7 @@ function validatePanelComposition(panelists) {
   );
   if (!matches) {
     const err = new Error(
-      'A defense panel must have exactly 1 chairperson, 1 industry panelist, and either 2 members (full panel) or 1 member (reduced panel).'
+      'A defense panel must have exactly 1 chairperson and either 3 members (full panel) or 2 members (reduced panel).'
     );
     err.status = 400;
     throw err;
@@ -594,7 +594,7 @@ async function autoSchedule({ defense_type, group_ids, venue_ids, panelist_ids, 
     panelistParams.push(panelist_ids);
   }
   const [panelistRows] = await db.query(
-    `SELECT u.id, u.panelist_type, u.department_id, u.max_groups
+    `SELECT u.id, u.department_id, u.max_groups
      FROM users u JOIN roles r ON u.role_id = r.id WHERE ${panelistFilter}`,
     panelistParams
   );
@@ -688,13 +688,12 @@ async function autoSchedule({ defense_type, group_ids, venue_ids, panelist_ids, 
     if (!group) { failed.push({ group_id: gid, reason: 'Group not found' }); continue; }
 
     /* Strict department scoping — no cross-department fallback. */
-    const deptRegularPool  = panelistRows.filter(p => p.department_id === group.department_id && p.panelist_type !== 'industry').map(p => p.id);
-    const deptIndustryPool = panelistRows.filter(p => p.department_id === group.department_id && p.panelist_type === 'industry').map(p => p.id);
+    const deptPool = panelistRows.filter(p => p.department_id === group.department_id).map(p => p.id);
 
-    if (deptRegularPool.length < 2 || !deptIndustryPool.length) {
+    if (deptPool.length < 3) {
       failed.push({
         group_id: gid, group_name: group.name,
-        reason: `Not enough eligible panelists in ${group.department_name || 'this department'} (need at least 1 industry + 2 regular panelists).`,
+        reason: `Not enough eligible panelists in ${group.department_name || 'this department'} (need at least 3: 1 chairperson + 2 members).`,
       });
       continue;
     }
@@ -703,12 +702,12 @@ async function autoSchedule({ defense_type, group_ids, venue_ids, panelist_ids, 
 
     /* Try a full 4-person panel first across the whole date/venue/slot
        search space; only if that's exhausted, retry requiring just 3
-       (chair + industry + 1 member) — graceful degradation on capacity
-       crunch rather than failing the group outright. */
+       (chair + 2 members) — graceful degradation on capacity crunch rather
+       than failing the group outright. */
     sizeLoop:
     for (const panelSize of [4, 3]) {
-      const membersNeeded = panelSize - 2;
-      if (deptRegularPool.length < 1 + membersNeeded) continue;
+      const membersNeeded = panelSize - 1;
+      if (deptPool.length < 1 + membersNeeded) continue;
 
       for (const date of dates) {
         for (const venue of venueRows) {
@@ -716,21 +715,16 @@ async function autoSchedule({ defense_type, group_ids, venue_ids, panelist_ids, 
           for (const slot of SLOTS_BY_TYPE[defense_type]) {
             if (isBusy(venueBusy, venueKey, slot)) continue;
 
-            const availRegular = rankCandidates(
-              deptRegularPool.filter(id => !isUnavailable(id, date) && !isBusy(panelistBusy, `${id}|${date}`, slot))
-            );
-            const availIndustry = rankCandidates(
-              deptIndustryPool.filter(id => !isUnavailable(id, date) && !isBusy(panelistBusy, `${id}|${date}`, slot))
+            const avail = rankCandidates(
+              deptPool.filter(id => !isUnavailable(id, date) && !isBusy(panelistBusy, `${id}|${date}`, slot))
             );
 
-            if (availRegular.length < 1 + membersNeeded || !availIndustry.length) continue;
+            if (avail.length < 1 + membersNeeded) continue;
 
-            const chairId    = availRegular[0];
-            const industryId = availIndustry[0];
-            const memberIds  = availRegular.slice(1, 1 + membersNeeded);
+            const chairId    = avail[0];
+            const memberIds  = avail.slice(1, 1 + membersNeeded);
             const panelistList = [
-              { panelist_id: chairId,    role: 'chairperson' },
-              { panelist_id: industryId, role: 'industry_panelist' },
+              { panelist_id: chairId, role: 'chairperson' },
               ...memberIds.map(id => ({ panelist_id: id, role: 'member' })),
             ];
 
@@ -747,7 +741,7 @@ async function autoSchedule({ defense_type, group_ids, venue_ids, panelist_ids, 
               });
 
               markBusy(venueBusy, venueKey, slot);
-              [chairId, industryId, ...memberIds].forEach(id => {
+              [chairId, ...memberIds].forEach(id => {
                 markBusy(panelistBusy, `${id}|${date}`, slot);
                 usageCount[id]++;
               });

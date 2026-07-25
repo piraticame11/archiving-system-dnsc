@@ -3,7 +3,7 @@ const { SLOTS_BY_TYPE } = require('./schedules.service');
 
 const STATUSES      = ['scheduled', 'completed', 'cancelled', 'rescheduled'];
 const DEFENSE_TYPES = ['proposal', 'final'];
-const PANEL_ROLES    = ['chairperson', 'industry_panelist', 'member'];
+const PANEL_ROLES    = ['chairperson', 'member'];
 const ALL_SLOTS      = [...new Set([...SLOTS_BY_TYPE.proposal, ...SLOTS_BY_TYPE.final])];
 
 const listRules = [
@@ -29,7 +29,7 @@ const createRules = [
   body('notes').optional({ nullable: true }).isString().trim().isLength({ max: 1000 }),
   body('panelists').optional().isArray(),
   body('panelists.*.panelist_id').optional().isInt({ min: 1 }),
-  body('panelists.*.role').optional().isIn(PANEL_ROLES).withMessage('Panel role must be chairperson, industry_panelist, or member'),
+  body('panelists.*.role').optional().isIn(PANEL_ROLES).withMessage('Panel role must be chairperson or member'),
   body('group_ids').optional().isArray(),
   body('group_ids.*').optional().isInt({ min: 1 }),
 ];
@@ -44,7 +44,7 @@ const updateRules = [
   body('notes').optional({ nullable: true }).isString().trim().isLength({ max: 1000 }),
   body('panelists').optional().isArray(),
   body('panelists.*.panelist_id').optional().isInt({ min: 1 }),
-  body('panelists.*.role').optional().isIn(PANEL_ROLES).withMessage('Panel role must be chairperson, industry_panelist, or member'),
+  body('panelists.*.role').optional().isIn(PANEL_ROLES).withMessage('Panel role must be chairperson or member'),
   body('group_ids').optional().isArray(),
   body('group_ids.*').optional().isInt({ min: 1 }),
 ];
