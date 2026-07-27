@@ -490,8 +490,6 @@ async function getEligibleGroupsForAutoSchedule(defense_type) {
        FROM thesis_groups tg
        JOIN departments d ON tg.department_id = d.id
        WHERE tg.deleted_at IS NULL
-         AND tg.adviser_status = 'approved'
-         AND EXISTS (SELECT 1 FROM group_titles gt WHERE gt.group_id = tg.id)
          AND NOT EXISTS (
            SELECT 1 FROM schedule_groups sg
            JOIN defense_schedules ds ON sg.schedule_id = ds.id

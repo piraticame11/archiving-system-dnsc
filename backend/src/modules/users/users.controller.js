@@ -14,6 +14,7 @@ async function list(req, res, next) {
       status: req.query.status,
       page,
       limit,
+      requesterRole: req.user.role,
     });
     sendSuccess(res, result);
   } catch (err) { next(err); }
@@ -21,7 +22,7 @@ async function list(req, res, next) {
 
 async function getOne(req, res, next) {
   try {
-    const user = await service.getUserById(req.params.id);
+    const user = await service.getUserById(req.params.id, req.user.role);
     if (!user) return send404(res, 'User not found');
     sendSuccess(res, user);
   } catch (err) { next(err); }

@@ -59,48 +59,27 @@
     <!-- Upload form -->
     <div id="upload-section" class="hidden bg-white rounded-xl border border-gray-200 shadow-sm p-5">
 
-      <!-- Document type -->
-      <div class="mb-5">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Document Type <span class="text-red-500">*</span></label>
-        <select id="f-doc-type" class="form-input">
-          <option value="">Select document type…</option>
-          <option value="title_proposal">Title Proposal</option>
-          <option value="full_document">Full Document</option>
-          <option value="imrad">IMRaD</option>
-          <option value="presentation">Presentation</option>
-          <option value="other">Other</option>
-        </select>
-        <p id="err-doc-type" class="text-xs text-red-600 mt-1 hidden"></p>
-      </div>
-
       <!-- Drop zone -->
       <div class="mb-5">
-        <label class="block text-sm font-medium text-gray-700 mb-2">File <span class="text-red-500">*</span></label>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Files <span class="text-red-500">*</span></label>
         <div id="drop-zone" class="drop-zone" onclick="document.getElementById('file-input').click()">
           <svg class="w-10 h-10 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
           <p class="text-sm font-medium text-gray-600">Click to select or drag &amp; drop</p>
-          <p class="text-xs text-gray-400 mt-0.5">PDF or DOCX, max 20 MB</p>
+          <p class="text-xs text-gray-400 mt-0.5">PDF or DOCX, max 20 MB each. You can select multiple files.</p>
         </div>
-        <input id="file-input" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden">
+        <input id="file-input" type="file" multiple accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden">
         <p id="err-file" class="text-xs text-red-600 mt-1 hidden"></p>
+      </div>
 
-        <!-- Selected file preview -->
-        <div id="file-preview" class="hidden mt-3 flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <svg class="w-6 h-6 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-          <div class="flex-1 min-w-0">
-            <p id="file-name" class="text-sm font-medium text-blue-800 truncate"></p>
-            <p id="file-size" class="text-xs text-blue-600"></p>
-          </div>
-          <button onclick="clearFile()" class="text-blue-400 hover:text-blue-600 transition-colors flex-shrink-0">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
-        </div>
+      <!-- Queued files -->
+      <div id="queue-section" class="hidden mb-5 space-y-3">
+        <div id="queue-list" class="space-y-3"></div>
       </div>
 
       <!-- Upload progress -->
       <div id="progress-wrap" class="hidden mb-4">
         <div class="flex justify-between text-xs text-gray-500 mb-1">
-          <span>Uploading…</span>
+          <span id="progress-label">Uploading…</span>
           <span id="progress-pct">0%</span>
         </div>
         <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -110,7 +89,7 @@
 
       <button id="btn-upload"
         class="w-full py-2.5 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
-        Upload Document
+        Upload Files
       </button>
     </div>
 
@@ -132,7 +111,6 @@
     }
     const get = path => http(() => apiGet(path));
 
-    let selectedFile = null;
     let currentSubmissionId = null;
 
     requireAuthAsync('student').then(async user => {
@@ -159,7 +137,7 @@
     function lockPage() {
       showAlert('Only group leaders can upload documents. Contact your group leader to upload on behalf of the group.', 'warning');
 
-      ['f-doc-type', 'btn-upload'].forEach(id => {
+      ['btn-upload'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.disabled = true; el.title = 'Only group leaders can upload'; }
       });
@@ -205,78 +183,111 @@
       }
     }
 
+    let queue = []; // { file, docType }
+    const DOC_TYPES = [
+      ['title_proposal', 'Title Proposal'],
+      ['full_document',  'Full Document'],
+      ['imrad',          'IMRaD'],
+      ['presentation',   'Presentation'],
+      ['other',          'Other'],
+    ];
+
     // Drag & drop
     const dropZone = document.getElementById('drop-zone');
     dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
     dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
     dropZone.addEventListener('drop', e => {
       e.preventDefault(); dropZone.classList.remove('dragover');
-      const file = e.dataTransfer.files[0];
-      if (file) setFile(file);
+      addFiles(e.dataTransfer.files);
     });
     document.getElementById('file-input').addEventListener('change', e => {
-      if (e.target.files[0]) setFile(e.target.files[0]);
+      addFiles(e.target.files);
+      e.target.value = '';
     });
 
-    function setFile(file) {
+    function addFiles(fileList) {
       const allowed = ['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-      if (!allowed.includes(file.type) && !file.name.match(/\.(pdf|docx)$/i)) {
-        showFieldErr('err-file', 'Only PDF or DOCX files are allowed.');
-        return;
-      }
-      if (file.size > 20 * 1024 * 1024) {
-        showFieldErr('err-file', 'File must be 20 MB or smaller.');
-        return;
-      }
-      hideFieldErr('err-file');
-      selectedFile = file;
-      document.getElementById('file-name').textContent = file.name;
-      document.getElementById('file-size').textContent = formatBytes(file.size);
-      document.getElementById('file-preview').classList.remove('hidden');
-      dropZone.classList.add('hidden');
+      let hadError = false;
+      Array.from(fileList).forEach(file => {
+        if (!allowed.includes(file.type) && !file.name.match(/\.(pdf|docx)$/i)) {
+          hadError = true;
+          return;
+        }
+        if (file.size > 20 * 1024 * 1024) {
+          hadError = true;
+          return;
+        }
+        queue.push({ file, docType: '' });
+      });
+      if (hadError) showFieldErr('err-file', 'Some files were skipped — only PDF/DOCX up to 20 MB are allowed.');
+      else hideFieldErr('err-file');
+      renderQueue();
     }
 
-    function clearFile() {
-      selectedFile = null;
-      document.getElementById('file-input').value = '';
-      document.getElementById('file-preview').classList.add('hidden');
-      dropZone.classList.remove('hidden');
+    function renderQueue() {
+      const section = document.getElementById('queue-section');
+      const list = document.getElementById('queue-list');
+      if (!queue.length) { section.classList.add('hidden'); list.innerHTML = ''; return; }
+      section.classList.remove('hidden');
+      list.innerHTML = queue.map((item, i) => `
+        <div class="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <svg class="w-6 h-6 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-blue-800 truncate">${escHtml(item.file.name)}</p>
+            <p class="text-xs text-blue-600">${formatBytes(item.file.size)}</p>
+          </div>
+          <select data-idx="${i}" class="queue-doc-type form-input w-40 text-xs">
+            <option value="">Type…</option>
+            ${DOC_TYPES.map(([v, label]) => `<option value="${v}" ${item.docType === v ? 'selected' : ''}>${label}</option>`).join('')}
+          </select>
+          <button data-idx="${i}" class="queue-remove text-blue-400 hover:text-blue-600 transition-colors flex-shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>`).join('');
+
+      list.querySelectorAll('.queue-doc-type').forEach(sel => {
+        sel.addEventListener('change', () => { queue[+sel.dataset.idx].docType = sel.value; });
+      });
+      list.querySelectorAll('.queue-remove').forEach(btn => {
+        btn.addEventListener('click', () => { queue.splice(+btn.dataset.idx, 1); renderQueue(); });
+      });
     }
 
     document.getElementById('btn-upload').addEventListener('click', async () => {
-      const docType = document.getElementById('f-doc-type').value;
-
-      let valid = true;
-      if (!docType) { showFieldErr('err-doc-type', 'Please select a document type.'); valid = false; }
-      else hideFieldErr('err-doc-type');
-      if (!selectedFile) { showFieldErr('err-file', 'Please select a file.'); valid = false; }
-      else hideFieldErr('err-file');
-      if (!currentSubmissionId) { showAlert('Could not resolve your group submission.'); valid = false; }
-      if (!valid) return;
-
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('doc_type', docType);
+      if (!queue.length) { showFieldErr('err-file', 'Please select at least one file.'); return; }
+      if (queue.some(item => !item.docType)) { showFieldErr('err-file', 'Select a document type for every queued file.'); return; }
+      hideFieldErr('err-file');
+      if (!currentSubmissionId) { showAlert('Could not resolve your group submission.'); return; }
 
       const btn = document.getElementById('btn-upload');
       btn.disabled = true; btn.textContent = 'Uploading…';
       document.getElementById('progress-wrap').classList.remove('hidden');
 
-      try {
-        // Use XHR for progress tracking
-        await uploadWithProgress(`/api/v1/submissions/${currentSubmissionId}/documents`, formData);
-        showAlert('Document uploaded successfully!', 'success');
-        clearFile();
-        document.getElementById('f-doc-type').value = '';
-        // Reload docs list
-        await loadGroupSubmission();
-      } catch(err) {
-        showAlert(err?.message || 'Upload failed. Please try again.');
-      } finally {
-        btn.disabled = false; btn.textContent = 'Upload Document';
-        document.getElementById('progress-wrap').classList.add('hidden');
-        document.getElementById('progress-bar').style.width = '0%';
+      const total = queue.length;
+      const failures = [];
+      for (let i = 0; i < total; i++) {
+        const { file, docType } = queue[i];
+        document.getElementById('progress-label').textContent = `Uploading ${i + 1} of ${total}…`;
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('doc_type', docType);
+        try {
+          await uploadWithProgress(`/api/v1/submissions/${currentSubmissionId}/documents`, formData);
+        } catch (err) {
+          failures.push(file.name);
+        }
       }
+
+      if (!failures.length) showAlert('All files uploaded successfully!', 'success');
+      else showAlert(`Some files failed to upload: ${failures.join(', ')}`, failures.length === total ? 'error' : 'warning');
+
+      queue = [];
+      renderQueue();
+      await loadGroupSubmission();
+
+      btn.disabled = false; btn.textContent = 'Upload Files';
+      document.getElementById('progress-wrap').classList.add('hidden');
+      document.getElementById('progress-bar').style.width = '0%';
     });
 
     function uploadWithProgress(url, formData) {

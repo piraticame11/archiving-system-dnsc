@@ -3,22 +3,14 @@ const { sendMail, adviserRequestHtml, adviserDecisionHtml } = require('../../con
 
 const JOIN_CODE_VALIDITY_DAYS = 7;
 
-/* ─── titles helpers ──────────────────────────────────────────────── */
+/* ─── titles helper (read-only — legacy groups may still have candidate
+   titles recorded; new groups no longer collect these at creation) ──── */
 async function getGroupTitles(groupId) {
   const [rows] = await db.query(
     'SELECT id, title, display_order FROM group_titles WHERE group_id = ? ORDER BY display_order ASC',
     [groupId]
   );
   return rows;
-}
-
-async function setGroupTitles(groupId, titles) {
-  const clean = (titles || []).map(t => (t || '').trim()).filter(Boolean).slice(0, 3);
-  await db.query('DELETE FROM group_titles WHERE group_id = ?', [groupId]);
-  if (!clean.length) return;
-  const values = clean.map((title, i) => [groupId, title, i + 1]);
-  await db.query('INSERT INTO group_titles (group_id, title, display_order) VALUES ?', [values]);
-  await db.query('UPDATE thesis_groups SET title = ? WHERE id = ?', [clean[0], groupId]);
 }
 
 /* ─── adviser capacity check ─────────────────────────────────────── */
@@ -121,7 +113,7 @@ async function validateAdviserAndNotify(adviserId, groupName, leaderId) {
 }
 
 /* ─── create group ────────────────────────────────────────────────── */
-async function createGroup({ leader_id, name, adviser_id, titles, school_year, max_members }) {
+async function createGroup({ leader_id, name, adviser_id, school_year, max_members }) {
   /* leader must not already be in a group */
   const [[existing]] = await db.query(
     'SELECT group_id FROM group_members WHERE student_id = ?', [leader_id]
@@ -151,13 +143,11 @@ async function createGroup({ leader_id, name, adviser_id, titles, school_year, m
   /* add leader as first member */
   await db.query('INSERT INTO group_members (group_id, student_id) VALUES (?, ?)', [groupId, leader_id]);
 
-  await setGroupTitles(groupId, titles);
-
   return getGroupById(groupId);
 }
 
 /* ─── update group info (leader only) ────────────────────────────── */
-async function updateGroup(groupId, leaderId, { name, adviser_id, titles, school_year, max_members }) {
+async function updateGroup(groupId, leaderId, { name, adviser_id, school_year, max_members }) {
   const group = await getGroupById(groupId);
   if (!group) throw Object.assign(new Error('Group not found.'), { statusCode: 404 });
   if (group.leader_id !== leaderId) throw Object.assign(new Error('Only the group leader can update group info.'), { statusCode: 403 });
@@ -182,7 +172,6 @@ async function updateGroup(groupId, leaderId, { name, adviser_id, titles, school
     const set = Object.keys(fields).map(k => `${k} = ?`).join(', ');
     await db.query(`UPDATE thesis_groups SET ${set} WHERE id = ?`, [...Object.values(fields), groupId]);
   }
-  if (titles !== undefined) await setGroupTitles(groupId, titles);
 
   return getGroupById(groupId);
 }

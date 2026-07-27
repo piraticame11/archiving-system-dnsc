@@ -10,8 +10,6 @@ async function validSchoolYear(value) {
 const createRules = [
   body('name').trim().notEmpty().withMessage('Group name is required')
     .isLength({ max: 255 }).withMessage('Name must be 255 characters or fewer'),
-  body('titles').isArray({ min: 1, max: 3 }).withMessage('Provide 1 to 3 candidate titles'),
-  body('titles.*').trim().notEmpty().withMessage('Titles cannot be empty').isLength({ max: 500 }),
   body('school_year').trim().notEmpty().withMessage('School year is required').custom(validSchoolYear),
   body('adviser_id').optional({ nullable: true }).isInt({ min: 1 }),
   body('max_members').optional().isInt({ min: 4, max: 6 }).withMessage('Member capacity must be between 4 and 6'),
@@ -20,8 +18,6 @@ const createRules = [
 const updateRules = [
   param('id').isInt({ min: 1 }),
   body('name').optional().trim().notEmpty().isLength({ max: 255 }),
-  body('titles').optional().isArray({ min: 1, max: 3 }).withMessage('Provide 1 to 3 candidate titles'),
-  body('titles.*').optional().trim().notEmpty().withMessage('Titles cannot be empty').isLength({ max: 500 }),
   body('school_year').optional().trim().custom(validSchoolYear),
   body('adviser_id').optional({ nullable: true }).isInt({ min: 1 }),
   body('max_members').optional().isInt({ min: 4, max: 6 }),

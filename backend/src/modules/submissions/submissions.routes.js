@@ -15,10 +15,13 @@ router.get('/stats', adminOnly, ctrl.stats);
 
 /* list — all authenticated (scoped by role in controller) */
 router.get('/',    auth, v.listRules,   handleValidation, ctrl.list);
-router.get('/:id', auth, v.idRules,     handleValidation, ctrl.getOne);
 
-/* student's group submission — get-or-create, used only as the document/archive anchor */
+/* student's group submission — get-or-create, used only as the document/archive anchor.
+   Must be registered before the generic '/:id' route below, or Express matches
+   '/:id' first and rejects "my-group-submission" as an invalid integer id. */
 router.get('/my-group-submission', studentOnly, ctrl.myGroupSubmission);
+
+router.get('/:id', auth, v.idRules,     handleValidation, ctrl.getOne);
 
 /* admin deletes / updates status */
 router.delete('/:id',       auth,      v.idRules,     handleValidation, ctrl.remove);

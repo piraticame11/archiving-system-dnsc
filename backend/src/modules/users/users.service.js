@@ -5,10 +5,12 @@ const fs       = require('fs');
 const XLSX     = require('xlsx');
 const { paginatedResponse } = require('../../utils/pagination');
 
-async function listUsers({ search, role, status, page, limit }) {
+async function listUsers({ search, role, status, page, limit, requesterRole }) {
   const offset = (page - 1) * limit;
   const conditions = ['u.deleted_at IS NULL'];
   const params = [];
+
+  if (requesterRole !== 'superadmin') conditions.push("r.name != 'superadmin'");
 
   if (search) {
     conditions.push(
@@ -39,7 +41,11 @@ async function listUsers({ search, role, status, page, limit }) {
   return paginatedResponse(rows, total, page, limit);
 }
 
-async function getUserById(id) {
+async function getUserById(id, requesterRole = 'superadmin') {
+  const conditions = ['u.id = ?', 'u.deleted_at IS NULL'];
+  const params = [id];
+  if (requesterRole !== 'superadmin') conditions.push("r.name != 'superadmin'");
+
   const [rows] = await db.query(
     `SELECT u.id, u.first_name, u.last_name, u.email, u.student_number,
             u.is_active, u.is_email_verified, u.created_at, u.updated_at, u.department_id,
@@ -48,8 +54,8 @@ async function getUserById(id) {
      FROM users u
      JOIN roles r ON u.role_id = r.id
      LEFT JOIN departments d ON u.department_id = d.id
-     WHERE u.id = ? AND u.deleted_at IS NULL`,
-    [id]
+     WHERE ${conditions.join(' AND ')}`,
+    params
   );
   return rows[0] || null;
 }
@@ -158,12 +164,13 @@ async function importStudents(filePath, department_id, adviser_id = null) {
     const row = dataRows[i];
     const rowNum = i + 2;
 
-    const first_name = String(row[0] || '').trim();
-    const last_name  = String(row[1] || '').trim();
-    const id_number  = String(row[2] || '').trim();
+    const id_number      = String(row[0] || '').trim();
+    const last_name      = String(row[1] || '').trim();
+    const first_name     = String(row[2] || '').trim();
+    const middle_initial = String(row[3] || '').trim().slice(0, 5) || null;
 
     if (!first_name || !last_name || !id_number) {
-      results.errors.push({ row: rowNum, reason: 'Missing required fields (first_name, last_name, id_number)' });
+      results.errors.push({ row: rowNum, reason: 'Missing required fields (Student ID, Student Last Name, Student First Name)' });
       continue;
     }
 
@@ -183,10 +190,10 @@ async function importStudents(filePath, department_id, adviser_id = null) {
     try {
       const password_hash = await bcrypt.hash(password, 10);
       await db.query(
-        `INSERT INTO users (role_id, department_id, adviser_id, student_number, first_name, last_name, email,
+        `INSERT INTO users (role_id, department_id, adviser_id, student_number, first_name, last_name, middle_initial, email,
                             password_hash, is_active, is_email_verified)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1)`,
-        [studentRole.id, department_id || null, adviser_id || null, id_number, first_name, last_name, email, password_hash]
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)`,
+        [studentRole.id, department_id || null, adviser_id || null, id_number, first_name, last_name, middle_initial, email, password_hash]
       );
       results.created++;
       results.credentials.push({ first_name, last_name, email, password });
@@ -217,17 +224,18 @@ function generateStudentImportTemplate() {
   const wb = XLSX.utils.book_new();
 
   const wsData = [
-    ['first_name', 'last_name', 'id_number'],
-    ['Howard Glen', 'Gloria',   '2021-00163'],
-    ['Maria Clara', 'Santos',   '2022-00045'],
+    ['Student ID', 'Student Last Name', 'Student First Name', 'Student Initial'],
+    ['2021-00163', 'Gloria',            'Howard',              'G'],
+    ['2022-00045', 'Santos',            'Maria Clara',         'D'],
   ];
 
   const ws = XLSX.utils.aoa_to_sheet(wsData);
 
   ws['!cols'] = [
-    { wch: 20 },
-    { wch: 20 },
     { wch: 15 },
+    { wch: 20 },
+    { wch: 20 },
+    { wch: 14 },
   ];
 
   XLSX.utils.book_append_sheet(wb, ws, 'Students');

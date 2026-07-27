@@ -81,7 +81,6 @@
               <span id="member-badge" class="hidden text-xs bg-gray-100 text-gray-600 font-semibold px-2 py-0.5 rounded-full">Member</span>
             </div>
             <p id="group-school-year" class="text-sm text-gray-500 mt-0.5"></p>
-            <div id="group-titles" class="text-sm text-gray-700 mt-2 space-y-0.5"></div>
             <p id="group-adviser" class="text-sm text-gray-500 mt-1"></p>
             <p id="group-adviser-status" class="text-xs mt-1"></p>
           </div>
@@ -142,13 +141,6 @@
           </select>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Candidate Titles <span class="text-red-500">*</span></label>
-          <input id="c-title-1" type="text" maxlength="500" placeholder="Title 1 (required)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-primary-500">
-          <input id="c-title-2" type="text" maxlength="500" placeholder="Title 2 (optional)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-primary-500">
-          <input id="c-title-3" type="text" maxlength="500" placeholder="Title 3 (optional)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-          <p class="text-xs text-gray-400 mt-1">Submit up to 3 candidate titles — no approval needed, they go straight to the panel once scheduled.</p>
-        </div>
-        <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Member Capacity <span class="text-red-500">*</span></label>
           <select id="c-max-members" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
             <option value="4">4</option>
@@ -205,12 +197,6 @@
           <select id="e-school-year" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
             <option value="">Select school year…</option>
           </select>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Candidate Titles</label>
-          <input id="e-title-1" type="text" maxlength="500" placeholder="Title 1 (required)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-primary-500">
-          <input id="e-title-2" type="text" maxlength="500" placeholder="Title 2 (optional)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-primary-500">
-          <input id="e-title-3" type="text" maxlength="500" placeholder="Title 3 (optional)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Member Capacity</label>
@@ -344,11 +330,6 @@
       document.getElementById('group-name').textContent = group.name;
       document.getElementById('group-school-year').textContent = `School Year: ${group.school_year}`;
 
-      const titlesEl = document.getElementById('group-titles');
-      titlesEl.innerHTML = (group.titles && group.titles.length)
-        ? group.titles.map((t, i) => `<p class="italic">${i + 1}. "${escHtml(t.title)}"</p>`).join('')
-        : '<p class="text-gray-400 italic">No titles submitted yet.</p>';
-
       document.getElementById('group-adviser').textContent = group.adviser_name ? `Adviser: ${group.adviser_name}` : '';
 
       const statusEl = document.getElementById('group-adviser-status');
@@ -450,17 +431,13 @@
       errEl.classList.add('hidden');
       const name = document.getElementById('c-name').value.trim();
       const school_year = document.getElementById('c-school-year').value;
-      const titles = ['c-title-1', 'c-title-2', 'c-title-3']
-        .map(id => document.getElementById(id).value.trim())
-        .filter(Boolean);
       const max_members = document.getElementById('c-max-members').value;
       const adviser_id = document.getElementById('c-adviser-id').value || null;
 
       if (!name || !school_year) { errEl.textContent = 'Group name and school year are required.'; errEl.classList.remove('hidden'); return; }
-      if (!titles.length) { errEl.textContent = 'At least one candidate title is required.'; errEl.classList.remove('hidden'); return; }
 
       try {
-        const res = await apiPost('/api/v1/groups', { name, school_year, titles, max_members: parseInt(max_members), adviser_id: adviser_id ? parseInt(adviser_id) : null }).then(r => r.json());
+        const res = await apiPost('/api/v1/groups', { name, school_year, max_members: parseInt(max_members), adviser_id: adviser_id ? parseInt(adviser_id) : null }).then(r => r.json());
         if (!res.success) throw new Error(res.message);
         hideCreateModal();
         await loadGroup();
@@ -498,10 +475,6 @@
       if (!currentGroup) return;
       document.getElementById('e-name').value = currentGroup.name || '';
       document.getElementById('e-school-year').value = currentGroup.school_year || '';
-      const titles = currentGroup.titles || [];
-      document.getElementById('e-title-1').value = titles[0]?.title || '';
-      document.getElementById('e-title-2').value = titles[1]?.title || '';
-      document.getElementById('e-title-3').value = titles[2]?.title || '';
       document.getElementById('e-max-members').value = currentGroup.max_members || 5;
       document.getElementById('e-adviser-input').value = currentGroup.adviser_name || '';
       document.getElementById('e-adviser-id').value = currentGroup.adviser_id || '';
@@ -514,14 +487,9 @@
       const errEl = document.getElementById('edit-error');
       errEl.classList.add('hidden');
       const school_year = document.getElementById('e-school-year').value;
-      const titles = ['e-title-1', 'e-title-2', 'e-title-3']
-        .map(id => document.getElementById(id).value.trim())
-        .filter(Boolean);
-      if (!titles.length) { errEl.textContent = 'At least one candidate title is required.'; errEl.classList.remove('hidden'); return; }
       const body = {
         name: document.getElementById('e-name').value.trim() || undefined,
         school_year: school_year || undefined,
-        titles,
         max_members: parseInt(document.getElementById('e-max-members').value),
         adviser_id: document.getElementById('e-adviser-id').value ? parseInt(document.getElementById('e-adviser-id').value) : null,
       };
