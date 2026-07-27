@@ -364,7 +364,7 @@
       try {
         const res   = await get(`/api/v1/submissions?${params}`);
         const items = res.data?.data || res.data || [];
-        totalPages  = res.data?.totalPages || 1;
+        totalPages  = res.data?.pagination?.totalPages || 1;
 
         document.getElementById('pagination').classList.toggle('hidden', totalPages <= 1);
 
