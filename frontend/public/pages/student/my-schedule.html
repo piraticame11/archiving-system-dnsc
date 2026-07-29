@@ -140,7 +140,9 @@
       document.getElementById('f-status').addEventListener('change',()=>{ currentPage=1; loadSchedules(); });
     });
 
+    let schedulesReqSeq = 0;
     async function loadSchedules(){
+      const reqId = ++schedulesReqSeq;
       const p=new URLSearchParams({page:currentPage,limit:10});
       const status=document.getElementById('f-status').value;
       if(status) p.set('status',status);
@@ -150,6 +152,7 @@
 
       try {
         const res=await get(`/api/v1/schedules/my-group-schedule?${p}`);
+        if (reqId !== schedulesReqSeq) return;
         const items=res.data?.data||[];
         totalPages=res.data?.pagination?.totalPages||1;
         const total=res.data?.pagination?.total||items.length;
@@ -202,6 +205,7 @@
         }).join('');
         updatePagination();
       } catch(err){
+        if (reqId !== schedulesReqSeq) return;
         grid.innerHTML=`<div class="col-span-full text-center text-sm text-red-500 py-10">${esc(err?.message||'Failed to load.')}</div>`;
       }
     }

@@ -653,7 +653,9 @@
     /* ════════════════════════════════════════════════════════════════════
        LIST VIEW
     ════════════════════════════════════════════════════════════════════ */
+    let schedulesReqSeq = 0;
     async function loadSchedules() {
+      const reqId = ++schedulesReqSeq;
       const p=new URLSearchParams({page:currentPage,limit:15});
       const search=document.getElementById('f-search').value.trim();
       const status=document.getElementById('f-status').value;
@@ -668,6 +670,7 @@
       tbody.innerHTML=`<tr><td colspan="8" class="px-4 py-8 text-center text-sm text-gray-400">Loading…</td></tr>`;
       try {
         const res=await get(`/api/v1/schedules?${p}`);
+        if (reqId !== schedulesReqSeq) return;
         const items=res.data?.data||[];
         totalPages=res.data?.pagination?.totalPages||1;
         renderStats(items);
@@ -694,6 +697,7 @@
         padTableRows(tbody, items.length, 15, 8, 1);
         updatePagination();
       } catch(err){
+        if (reqId !== schedulesReqSeq) return;
         tbody.innerHTML=`<tr><td colspan="8" class="px-4 py-6 text-center text-sm text-red-500">${esc(err?.message||'Failed to load.')}</td></tr>`;
       }
     }

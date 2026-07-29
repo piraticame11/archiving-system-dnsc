@@ -157,7 +157,9 @@
       });
     });
 
+    let schedulesReqSeq = 0;
     async function loadSchedules() {
+      const reqId = ++schedulesReqSeq;
       const params = new URLSearchParams({ page: currentPage, limit: 12 });
       const search = document.getElementById('f-search').value.trim();
       const status = document.getElementById('f-status').value;
@@ -169,6 +171,7 @@
 
       try {
         const res   = await get(`/api/v1/schedules?${params}`);
+        if (reqId !== schedulesReqSeq) return;
         const items = res.data?.data || [];
         totalPages  = res.data?.pagination?.totalPages || 1;
         const total = res.data?.pagination?.total || items.length;
@@ -226,6 +229,7 @@
 
         updatePagination();
       } catch (err) {
+        if (reqId !== schedulesReqSeq) return;
         grid.innerHTML = `<div class="col-span-full text-center text-sm text-red-500 py-10">${escHtml(err?.message || 'Failed to load.')}</div>`;
       }
     }

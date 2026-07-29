@@ -141,6 +141,13 @@
           </select>
         </div>
         <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Type <span class="text-red-500">*</span></label>
+          <select id="c-type" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+            <option value="thesis">Thesis</option>
+            <option value="capstone">Capstone</option>
+          </select>
+        </div>
+        <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Member Capacity <span class="text-red-500">*</span></label>
           <select id="c-max-members" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
             <option value="4">4</option>
@@ -196,6 +203,13 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">School Year</label>
           <select id="e-school-year" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
             <option value="">Select school year…</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+          <select id="e-type" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+            <option value="thesis">Thesis</option>
+            <option value="capstone">Capstone</option>
           </select>
         </div>
         <div>
@@ -328,7 +342,7 @@
       const isLeader = group.leader_id === currentUser.id;
 
       document.getElementById('group-name').textContent = group.name;
-      document.getElementById('group-school-year').textContent = `School Year: ${group.school_year}`;
+      document.getElementById('group-school-year').textContent = `School Year: ${group.school_year} · ${group.type === 'capstone' ? 'Capstone' : 'Thesis'}`;
 
       document.getElementById('group-adviser').textContent = group.adviser_name ? `Adviser: ${group.adviser_name}` : '';
 
@@ -431,13 +445,14 @@
       errEl.classList.add('hidden');
       const name = document.getElementById('c-name').value.trim();
       const school_year = document.getElementById('c-school-year').value;
+      const type = document.getElementById('c-type').value;
       const max_members = document.getElementById('c-max-members').value;
       const adviser_id = document.getElementById('c-adviser-id').value || null;
 
       if (!name || !school_year) { errEl.textContent = 'Group name and school year are required.'; errEl.classList.remove('hidden'); return; }
 
       try {
-        const res = await apiPost('/api/v1/groups', { name, school_year, max_members: parseInt(max_members), adviser_id: adviser_id ? parseInt(adviser_id) : null }).then(r => r.json());
+        const res = await apiPost('/api/v1/groups', { name, school_year, type, max_members: parseInt(max_members), adviser_id: adviser_id ? parseInt(adviser_id) : null }).then(r => r.json());
         if (!res.success) throw new Error(res.message);
         hideCreateModal();
         await loadGroup();
@@ -475,6 +490,7 @@
       if (!currentGroup) return;
       document.getElementById('e-name').value = currentGroup.name || '';
       document.getElementById('e-school-year').value = currentGroup.school_year || '';
+      document.getElementById('e-type').value = currentGroup.type || 'thesis';
       document.getElementById('e-max-members').value = currentGroup.max_members || 5;
       document.getElementById('e-adviser-input').value = currentGroup.adviser_name || '';
       document.getElementById('e-adviser-id').value = currentGroup.adviser_id || '';
@@ -490,6 +506,7 @@
       const body = {
         name: document.getElementById('e-name').value.trim() || undefined,
         school_year: school_year || undefined,
+        type: document.getElementById('e-type').value,
         max_members: parseInt(document.getElementById('e-max-members').value),
         adviser_id: document.getElementById('e-adviser-id').value ? parseInt(document.getElementById('e-adviser-id').value) : null,
       };

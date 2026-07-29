@@ -414,7 +414,9 @@
     }
 
     /* ── Browse ──────────────────────────────────────────────────── */
+    let browseReqSeq = 0;
     async function loadBrowse(page = browsePage) {
+      const reqId = ++browseReqSeq;
       const search   = document.getElementById('b-search').value.trim();
       const dept     = document.getElementById('b-dept').value;
       const type     = document.getElementById('b-type').value;
@@ -434,6 +436,7 @@
 
       try {
         const j = await get(`/api/v1/archive?${p}`);
+        if (reqId !== browseReqSeq) return;
         const { data, pagination } = j.data;
         browsePage       = pagination.page;
         browseTotalPages = pagination.totalPages;
@@ -445,6 +448,7 @@
         renderBrowsePagination(pagination);
         populateYearFilter(data);
       } catch (err) {
+        if (reqId !== browseReqSeq) return;
         grid.innerHTML = `<div class="col-span-3 py-16 text-center text-red-400">${esc(err?.message || 'Failed to load archive.')}</div>`;
       }
     }
@@ -586,17 +590,21 @@
     }
 
     /* ── Eligible / Promote ──────────────────────────────────────── */
+    let eligibleReqSeq = 0;
     async function loadEligible(page = eligPage) {
+      const reqId = ++eligibleReqSeq;
       const tbody = document.getElementById('eligible-tbody');
       tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-10 text-center text-gray-400">Loading…</td></tr>';
       try {
         const j = await get(`/api/v1/archive/eligible?page=${page}&limit=10`);
+        if (reqId !== eligibleReqSeq) return;
         const { data, pagination } = j.data;
         eligPage       = pagination.page;
         eligTotalPages = pagination.totalPages;
         renderEligibleTable(data, pagination);
         renderEligiblePagination(pagination);
       } catch (err) {
+        if (reqId !== eligibleReqSeq) return;
         tbody.innerHTML = `<tr><td colspan="8" class="px-4 py-10 text-center text-red-400">${esc(err?.message || 'Failed to load.')}</td></tr>`;
       }
     }

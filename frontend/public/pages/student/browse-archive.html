@@ -207,7 +207,9 @@
       } catch {}
     }
 
+    let archiveReqSeq = 0;
     async function loadArchive() {
+      const reqId = ++archiveReqSeq;
       const search   = document.getElementById('f-search').value.trim();
       const type     = document.getElementById('f-type').value;
       const dept     = document.getElementById('f-dept').value;
@@ -228,6 +230,7 @@
       try {
         const res  = await apiGet(`/api/v1/archive?${params}`);
         const json = await res.json();
+        if (reqId !== archiveReqSeq) return;
         if (!res.ok) throw json;
 
         const items = json.data?.data || json.data || [];
@@ -272,6 +275,7 @@
           </div>`).join('');
 
       } catch(err) {
+        if (reqId !== archiveReqSeq) return;
         resultsEl.innerHTML = `<div class="text-center py-10 text-sm text-red-500">${escHtml(err?.message || 'Failed to load archive.')}</div>`;
       }
     }

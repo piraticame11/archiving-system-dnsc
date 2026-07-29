@@ -260,6 +260,7 @@
 
     let currentPage = 1;
     let totalPages  = 1;
+    let submissionsReqSeq = 0;
     let statusTargetId = null;
     let statusCurrentStatus = null;
     let searchTimer = null;
@@ -346,6 +347,7 @@
     }
 
     async function loadSubmissions() {
+      const reqId = ++submissionsReqSeq;
       const params = new URLSearchParams({ page: currentPage, limit: 15 });
       const search = document.getElementById('f-search').value.trim();
       const status = document.getElementById('f-status').value;
@@ -363,6 +365,7 @@
 
       try {
         const res   = await get(`/api/v1/submissions?${params}`);
+        if (reqId !== submissionsReqSeq) return; // a newer request has since started
         const items = res.data?.data || res.data || [];
         totalPages  = res.data?.pagination?.totalPages || 1;
 
@@ -414,6 +417,7 @@
 
         updatePagination();
       } catch(err) {
+        if (reqId !== submissionsReqSeq) return;
         tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-sm text-red-500">${err?.message||'Failed to load.'}</td></tr>`;
       }
     }

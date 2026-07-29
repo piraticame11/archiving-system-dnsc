@@ -47,6 +47,7 @@ async function create(req, res, next) {
       adviser_id:  req.body.adviser_id,
       school_year: req.body.school_year,
       max_members: req.body.max_members,
+      type:        req.body.type,
     });
     sendCreated(res, group, 'Group created successfully');
   } catch (err) {

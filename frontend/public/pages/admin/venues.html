@@ -166,7 +166,9 @@
       });
     });
 
+    let venuesReqSeq = 0;
     async function loadVenues() {
+      const reqId = ++venuesReqSeq;
       const params = new URLSearchParams({ page: currentPage, limit: 15 });
       const search       = document.getElementById('f-search').value.trim();
       const showInactive = document.getElementById('f-show-inactive').checked;
@@ -178,6 +180,7 @@
 
       try {
         const res   = await get(`/api/v1/venues?${params}`);
+        if (reqId !== venuesReqSeq) return;
         const items = res.data?.data || [];
         totalPages  = res.data?.pagination?.totalPages || res.data?.totalPages || 1;
         allVenues   = items;
@@ -223,6 +226,7 @@
 
         updatePagination();
       } catch (err) {
+        if (reqId !== venuesReqSeq) return;
         tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-6 text-center text-sm text-red-500">${escHtml(err?.message || 'Failed to load.')}</td></tr>`;
       }
     }

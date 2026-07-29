@@ -123,8 +123,8 @@ async function getOrCreateGroupSubmission(groupId) {
   const [result] = await db.query(
     `INSERT INTO thesis_submissions
        (student_id, group_id, department_id, adviser_id, title, type, school_year, semester, status, approved_at)
-     VALUES (?, ?, ?, ?, ?, 'thesis', ?, '1st', 'approved', NOW())`,
-    [group.leader_id, groupId, group.department_id, group.adviser_id || null, title, group.school_year]
+     VALUES (?, ?, ?, ?, ?, ?, ?, '1st', 'approved', NOW())`,
+    [group.leader_id, groupId, group.department_id, group.adviser_id || null, title, group.type || 'thesis', group.school_year]
   );
   return getById(result.insertId);
 }

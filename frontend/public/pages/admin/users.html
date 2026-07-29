@@ -299,7 +299,9 @@
       });
     });
 
+    let usersReqSeq = 0;
     async function loadUsers() {
+      const reqId = ++usersReqSeq;
       const params = new URLSearchParams({ page: currentPage, limit: 15 });
       const search = document.getElementById('f-search').value.trim();
       const role   = document.getElementById('f-role').value;
@@ -314,6 +316,7 @@
 
       try {
         const res   = await get(`/api/v1/users?${params}`);
+        if (reqId !== usersReqSeq) return;
         const items = res.data?.data || [];
         totalPages  = res.data?.pagination?.totalPages || res.data?.totalPages || 1;
         allUsers    = items;
@@ -361,6 +364,7 @@
 
         updatePagination();
       } catch (err) {
+        if (reqId !== usersReqSeq) return;
         tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-sm text-red-500">${escHtml(err?.message || 'Failed to load.')}</td></tr>`;
       }
     }

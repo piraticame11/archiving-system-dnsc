@@ -61,7 +61,7 @@ async function getMyGroup(studentId) {
 /* ─── get group by id ─────────────────────────────────────────────── */
 async function getGroupById(id) {
   const [[group]] = await db.query(
-    `SELECT tg.id, tg.name, tg.join_code, tg.join_code_expires_at, tg.title, tg.school_year, tg.max_members,
+    `SELECT tg.id, tg.name, tg.join_code, tg.join_code_expires_at, tg.title, tg.type, tg.school_year, tg.max_members,
             tg.leader_id, tg.adviser_id, tg.department_id, tg.created_at,
             tg.adviser_status, tg.adviser_status_reason, tg.adviser_responded_at,
             CONCAT(l.first_name, ' ', l.last_name) AS leader_name,
@@ -113,7 +113,7 @@ async function validateAdviserAndNotify(adviserId, groupName, leaderId) {
 }
 
 /* ─── create group ────────────────────────────────────────────────── */
-async function createGroup({ leader_id, name, adviser_id, school_year, max_members }) {
+async function createGroup({ leader_id, name, adviser_id, school_year, max_members, type }) {
   /* leader must not already be in a group */
   const [[existing]] = await db.query(
     'SELECT group_id FROM group_members WHERE student_id = ?', [leader_id]
@@ -134,9 +134,9 @@ async function createGroup({ leader_id, name, adviser_id, school_year, max_membe
   const cap = Math.min(Math.max(parseInt(max_members) || 5, 4), 6);
 
   const [result] = await db.query(
-    `INSERT INTO thesis_groups (name, join_code, join_code_expires_at, leader_id, adviser_id, adviser_status, department_id, school_year, max_members)
-     VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ${JOIN_CODE_VALIDITY_DAYS} DAY), ?, ?, ?, ?, ?, ?)`,
-    [name, join_code, leader_id, adviser_id || null, adviser_id ? 'pending' : null, user.department_id, school_year, cap]
+    `INSERT INTO thesis_groups (name, join_code, join_code_expires_at, leader_id, adviser_id, adviser_status, department_id, school_year, max_members, type)
+     VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ${JOIN_CODE_VALIDITY_DAYS} DAY), ?, ?, ?, ?, ?, ?, ?)`,
+    [name, join_code, leader_id, adviser_id || null, adviser_id ? 'pending' : null, user.department_id, school_year, cap, type]
   );
   const groupId = result.insertId;
 
@@ -147,7 +147,7 @@ async function createGroup({ leader_id, name, adviser_id, school_year, max_membe
 }
 
 /* ─── update group info (leader only) ────────────────────────────── */
-async function updateGroup(groupId, leaderId, { name, adviser_id, school_year, max_members }) {
+async function updateGroup(groupId, leaderId, { name, adviser_id, school_year, max_members, type }) {
   const group = await getGroupById(groupId);
   if (!group) throw Object.assign(new Error('Group not found.'), { statusCode: 404 });
   if (group.leader_id !== leaderId) throw Object.assign(new Error('Only the group leader can update group info.'), { statusCode: 403 });
@@ -160,6 +160,7 @@ async function updateGroup(groupId, leaderId, { name, adviser_id, school_year, m
   const fields = {};
   if (name        !== undefined) fields.name        = name;
   if (school_year !== undefined) fields.school_year = school_year;
+  if (type        !== undefined) fields.type        = type;
   if (max_members !== undefined) fields.max_members = Math.min(Math.max(parseInt(max_members) || 5, 4), 6);
   if (adviserChanged) {
     fields.adviser_id            = adviser_id || null;
@@ -171,6 +172,15 @@ async function updateGroup(groupId, leaderId, { name, adviser_id, school_year, m
   if (Object.keys(fields).length) {
     const set = Object.keys(fields).map(k => `${k} = ?`).join(', ');
     await db.query(`UPDATE thesis_groups SET ${set} WHERE id = ?`, [...Object.values(fields), groupId]);
+  }
+
+  /* the group's submission (if already created) snapshots type at creation
+     time — see getOrCreateGroupSubmission — so keep it in sync here too. */
+  if (type !== undefined && type !== group.type) {
+    await db.query(
+      `UPDATE thesis_submissions SET type = ? WHERE group_id = ? AND deleted_at IS NULL`,
+      [type, groupId]
+    );
   }
 
   return getGroupById(groupId);
