@@ -68,6 +68,27 @@ async function updateStatus(req, res, next) {
   }
 }
 
+async function updateTitle(req, res, next) {
+  try {
+    if (![ROLES.STUDENT, ROLES.ADMIN, ROLES.SUPERADMIN].includes(req.user.role))
+      return send403(res, 'Forbidden');
+
+    const sub = await service.getById(req.params.id);
+    if (!sub) return send404(res, 'Submission not found');
+
+    /* sub.student_id is the group leader for group submissions (see
+       getOrCreateGroupSubmission), so this doubles as the leader check. */
+    if (req.user.role === ROLES.STUDENT && sub.student_id !== req.user.id)
+      return send403(res, 'Only the group leader can edit the title for this submission.');
+
+    const updated = await service.updateTitle(req.params.id, req.body.title);
+    sendSuccess(res, updated, 'Title updated');
+  } catch (err) {
+    if (err.statusCode === 404) return send404(res, err.message);
+    next(err);
+  }
+}
+
 async function remove(req, res, next) {
   try {
     await service.deleteSubmission(req.params.id, req.user.id, req.user.role);
@@ -143,4 +164,4 @@ async function stats(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { list, getOne, myGroupSubmission, updateStatus, remove, uploadDocument, viewDocument, stats };
+module.exports = { list, getOne, myGroupSubmission, updateStatus, updateTitle, remove, uploadDocument, viewDocument, stats };

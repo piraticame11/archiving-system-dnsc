@@ -405,6 +405,7 @@
             </td>
           </tr>`;
       }).join('');
+      padTableRows(tbody, rows.length, pagination.limit, 8, 2);
     }
 
     async function renderStats(search, role, status) {

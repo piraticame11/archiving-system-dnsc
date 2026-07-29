@@ -71,6 +71,21 @@ function statusLabel(status) {
   return (status || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
+// Appends invisible filler rows to a paginated table body so a short page
+// (e.g. the last page, or a filtered result set) doesn't visibly shrink the
+// table. `lines` should match the tallest real row's line count so filler
+// rows take up roughly the same height.
+function padTableRows(tbody, rowCount, pageSize, colspan, lines = 1) {
+  const fillerCount = pageSize - rowCount;
+  if (!tbody || rowCount <= 0 || fillerCount <= 0) return;
+  const content = lines >= 2 ? '&nbsp;<br>&nbsp;' : '&nbsp;';
+  let html = '';
+  for (let i = 0; i < fillerCount; i++) {
+    html += `<tr class="border-b border-gray-100" aria-hidden="true"><td colspan="${colspan}" class="px-4 py-3">${content}</td></tr>`;
+  }
+  tbody.insertAdjacentHTML('beforeend', html);
+}
+
 // Adds a show/hide eye icon to every password field on the page (including
 // fields inside modals that are hidden at load time). Runs once per input.
 const EYE_ICON_SVG = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

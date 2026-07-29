@@ -152,6 +152,15 @@ async function updateStatus(id, newStatus, adminId, remarks) {
   return getById(id);
 }
 
+/* ─── update title (group leader) ─────────────────────────────────── */
+async function updateTitle(id, title) {
+  const sub = await getById(id);
+  if (!sub) throw Object.assign(new Error('Submission not found'), { statusCode: 404 });
+
+  await db.query('UPDATE thesis_submissions SET title = ? WHERE id = ?', [title, id]);
+  return getById(id);
+}
+
 /* ─── soft delete ─────────────────────────────────────────────────── */
 async function deleteSubmission(id, userId, role) {
   const sub = await getById(id);
@@ -228,4 +237,4 @@ async function recordHistory(submission_id, changed_by, old_status, new_status, 
   );
 }
 
-module.exports = { listSubmissions, getById, getOrCreateGroupSubmission, updateStatus, deleteSubmission, addDocument, getDocumentFile, getStats };
+module.exports = { listSubmissions, getById, getOrCreateGroupSubmission, updateStatus, updateTitle, deleteSubmission, addDocument, getDocumentFile, getStats };

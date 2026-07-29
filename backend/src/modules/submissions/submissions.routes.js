@@ -27,6 +27,9 @@ router.get('/:id', auth, v.idRules,     handleValidation, ctrl.getOne);
 router.delete('/:id',       auth,      v.idRules,     handleValidation, ctrl.remove);
 router.patch('/:id/status', adminOnly, v.statusRules, handleValidation, ctrl.updateStatus);
 
+/* group leader renames their submission's title */
+router.patch('/:id/title', auth, v.titleRules, handleValidation, ctrl.updateTitle);
+
 /* document upload — student (own) or admin */
 router.post(
   '/:id/documents',

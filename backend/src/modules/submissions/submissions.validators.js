@@ -28,6 +28,12 @@ const docRules = [
   body('doc_type').isIn(DOC_TYPES).withMessage('Invalid document type'),
 ];
 
+const titleRules = [
+  param('id').isInt({ min: 1 }),
+  body('title').isString().trim().isLength({ min: 3, max: 500 })
+    .withMessage('Title must be 3-500 characters'),
+];
+
 const idRules = [param('id').isInt({ min: 1 })];
 
 const docViewRules = [
@@ -35,4 +41,4 @@ const docViewRules = [
   param('docId').isInt({ min: 1 }),
 ];
 
-module.exports = { listRules, statusRules, docRules, docViewRules, idRules };
+module.exports = { listRules, statusRules, docRules, titleRules, docViewRules, idRules };

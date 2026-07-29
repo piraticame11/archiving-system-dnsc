@@ -691,6 +691,7 @@
               </div>
             </td>
           </tr>`).join('');
+        padTableRows(tbody, items.length, 15, 8, 1);
         updatePagination();
       } catch(err){
         tbody.innerHTML=`<tr><td colspan="8" class="px-4 py-6 text-center text-sm text-red-500">${esc(err?.message||'Failed to load.')}</td></tr>`;

@@ -219,6 +219,7 @@
               </div>
             </td>
           </tr>`).join('');
+        padTableRows(tbody, items.length, 15, 5, 1);
 
         updatePagination();
       } catch (err) {
