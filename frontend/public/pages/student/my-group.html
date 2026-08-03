@@ -240,6 +240,12 @@
     let currentUser = null;
     let currentGroup = null;
     let instructors = [];
+    let deptColors = {};
+
+    const DEPT_COLOR_CLASSES = [
+      'bg-blue-500', 'bg-cyan-500', 'bg-teal-500', 'bg-lime-500',
+      'bg-purple-500', 'bg-orange-500', 'bg-pink-500', 'bg-indigo-500',
+    ];
 
     requireAuthAsync('student').then(async user => {
       if (!user) return;
@@ -270,6 +276,9 @@
       try {
         const res = await apiGet('/api/v1/groups/instructors').then(r => r.json());
         if (res.success) instructors = res.data || [];
+        const depts = [...new Set(instructors.map(i => i.department_name || 'Other'))].sort();
+        deptColors = {};
+        depts.forEach((d, idx) => { deptColors[d] = DEPT_COLOR_CLASSES[idx % DEPT_COLOR_CLASSES.length]; });
         bindAdviserAutocomplete('c-adviser-input', 'c-adviser-id', 'c-adviser-list');
         bindAdviserAutocomplete('e-adviser-input', 'e-adviser-id', 'e-adviser-list');
       } catch (_) {}
@@ -286,27 +295,38 @@
         if (!q) { list.classList.add('hidden'); list.innerHTML = ''; return; }
         const matches = instructors.filter(i =>
           `${i.first_name} ${i.last_name}`.toLowerCase().includes(q)
-        ).slice(0, 8);
+        ).slice(0, 30);
         if (!matches.length) { list.classList.add('hidden'); list.innerHTML = ''; return; }
-        list.innerHTML = matches.map(i => {
-          const full = i.slots_available === 0;
-          const slotLabel = i.slots_available == null
-            ? ''
-            : full
-              ? `<span class="text-red-500 text-xs ml-1 font-medium">Full</span>`
-              : `<span class="text-green-600 text-xs ml-1">${i.slots_available} slot${i.slots_available === 1 ? '' : 's'} left</span>`;
-          return `<li data-id="${i.id}" data-name="${escHtml(i.first_name + ' ' + i.last_name)}" data-full="${full}"
-               class="px-3 py-2 ${full ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-100'}">
-             ${escHtml(i.first_name + ' ' + i.last_name)}
-             ${i.department_name ? `<span class="text-gray-400 text-xs ml-1">${escHtml(i.department_name)}</span>` : ''}
-             ${slotLabel}
-           </li>`;
+
+        const groups = new Map();
+        matches.forEach(i => {
+          const dept = i.department_name || 'Other';
+          if (!groups.has(dept)) groups.set(dept, []);
+          groups.get(dept).push(i);
+        });
+
+        list.innerHTML = [...groups.entries()].map(([dept, advisers]) => {
+          const header = `<li class="px-3 py-1.5 text-xs font-bold text-white uppercase tracking-wide ${deptColors[dept] || 'bg-gray-500'}">${escHtml(dept)}</li>`;
+          const rows = advisers.map(i => {
+            const full = i.slots_available === 0;
+            const slotLabel = i.slots_available == null
+              ? ''
+              : full
+                ? `<span class="text-gray-400 text-xs ml-auto font-medium">Full</span>`
+                : `<span class="text-green-600 text-xs ml-auto">${i.slots_available} slot${i.slots_available === 1 ? '' : 's'}</span>`;
+            return `<li data-id="${i.id}" data-name="${escHtml(i.first_name + ' ' + i.last_name)}" data-full="${full}"
+                 class="px-3 py-2 flex items-center gap-2 ${full ? 'cursor-not-allowed bg-gray-100 text-gray-400' : 'cursor-pointer hover:bg-gray-100'}">
+               <span>${escHtml(i.first_name + ' ' + i.last_name)}</span>
+               ${slotLabel}
+             </li>`;
+          }).join('');
+          return header + rows;
         }).join('');
         list.classList.remove('hidden');
       });
 
       list.addEventListener('mousedown', e => {
-        const li = e.target.closest('li');
+        const li = e.target.closest('li[data-id]');
         if (!li || li.dataset.full === 'true') return;
         input.value  = li.dataset.name;
         hidden.value = li.dataset.id;

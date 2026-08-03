@@ -186,11 +186,13 @@ function _waitForNavUser(maxMs = 4000) {
   });
 }
 
-// Docked to the left edge of the viewport as a small tab; click it to slide
-// out a full side navbar that overlays the page without reflowing content.
-// Appended to <body> (not the top nav) so it overlays everything.
+// A hamburger button inserted into the top navbar (left of the logo) opens
+// a full side navbar that overlays the page without reflowing content.
 function initHoverNav() {
   if (document.getElementById('side-nav-tab')) return;
+
+  const navGroup = document.querySelector('nav .flex.items-center.gap-3');
+  if (!navGroup) return;
 
   _waitForNavUser().then(user => {
     const items = user && NAV_ITEMS[user.role];
@@ -204,8 +206,8 @@ function initHoverNav() {
     tab.setAttribute('aria-label', 'Open navigation menu');
     tab.setAttribute('aria-haspopup', 'true');
     tab.setAttribute('aria-expanded', 'false');
-    tab.className = 'fixed left-0 top-1/2 -translate-y-1/2 z-40 flex items-center justify-center w-3.5 h-16 rounded-r-lg bg-primary-700 text-primary-100 hover:bg-primary-600 hover:text-white shadow-md transition-colors';
-    tab.innerHTML = `<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>`;
+    tab.className = 'text-primary-200 hover:text-white transition-colors';
+    tab.innerHTML = `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>`;
 
     const panel = document.createElement('div');
     panel.id = 'side-nav-panel';
@@ -227,8 +229,7 @@ function initHoverNav() {
         }).join('')}
       </nav>`;
 
-    // Stays open once triggered — no auto-hide on mouseleave or outside click.
-    // Closed only by clicking the X or pressing Escape.
+    // Closed by clicking the X, pressing Escape, or clicking outside the panel.
     function openPanel() {
       panel.classList.remove('-translate-x-full');
       tab.classList.add('hidden');
@@ -243,8 +244,13 @@ function initHoverNav() {
     tab.addEventListener('click', openPanel);
     panel.querySelector('#side-nav-close').addEventListener('click', closePanel);
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
+    document.addEventListener('click', e => {
+      if (panel.classList.contains('-translate-x-full')) return;
+      if (panel.contains(e.target) || tab.contains(e.target)) return;
+      closePanel();
+    });
 
-    document.body.appendChild(tab);
+    navGroup.insertBefore(tab, navGroup.firstChild);
     document.body.appendChild(panel);
   });
 }
