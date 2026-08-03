@@ -311,9 +311,7 @@
             const full = i.slots_available === 0;
             const slotLabel = i.slots_available == null
               ? ''
-              : full
-                ? `<span class="text-gray-400 text-xs ml-auto font-medium">Full</span>`
-                : `<span class="text-green-600 text-xs ml-auto">${i.slots_available} slot${i.slots_available === 1 ? '' : 's'}</span>`;
+              : `<span class="text-xs ml-auto font-medium ${full ? 'text-gray-400' : 'text-green-600'}">${i.slots_available}/${i.slots_max}</span>`;
             return `<li data-id="${i.id}" data-name="${escHtml(i.first_name + ' ' + i.last_name)}" data-full="${full}"
                  class="px-3 py-2 flex items-center gap-2 ${full ? 'cursor-not-allowed bg-gray-100 text-gray-400' : 'cursor-pointer hover:bg-gray-100'}">
                <span>${escHtml(i.first_name + ' ' + i.last_name)}</span>
