@@ -23,9 +23,6 @@
 
   <div class="max-w-4xl mx-auto px-6 py-10">
     <div class="flex items-center gap-3 mb-8">
-      <a href="/pages/student/dashboard.html" class="text-gray-400 hover:text-gray-600 transition-colors">
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-      </a>
       <div>
         <h1 class="text-2xl font-bold text-gray-900">My Group</h1>
         <p class="text-gray-500 text-sm mt-0.5">Create or join a thesis/capstone group</p>
@@ -291,19 +288,26 @@
           `${i.first_name} ${i.last_name}`.toLowerCase().includes(q)
         ).slice(0, 8);
         if (!matches.length) { list.classList.add('hidden'); list.innerHTML = ''; return; }
-        list.innerHTML = matches.map(i =>
-          `<li data-id="${i.id}" data-name="${escHtml(i.first_name + ' ' + i.last_name)}"
-               class="px-3 py-2 cursor-pointer hover:bg-gray-100">
+        list.innerHTML = matches.map(i => {
+          const full = i.slots_available === 0;
+          const slotLabel = i.slots_available == null
+            ? ''
+            : full
+              ? `<span class="text-red-500 text-xs ml-1 font-medium">Full</span>`
+              : `<span class="text-green-600 text-xs ml-1">${i.slots_available} slot${i.slots_available === 1 ? '' : 's'} left</span>`;
+          return `<li data-id="${i.id}" data-name="${escHtml(i.first_name + ' ' + i.last_name)}" data-full="${full}"
+               class="px-3 py-2 ${full ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-100'}">
              ${escHtml(i.first_name + ' ' + i.last_name)}
              ${i.department_name ? `<span class="text-gray-400 text-xs ml-1">${escHtml(i.department_name)}</span>` : ''}
-           </li>`
-        ).join('');
+             ${slotLabel}
+           </li>`;
+        }).join('');
         list.classList.remove('hidden');
       });
 
       list.addEventListener('mousedown', e => {
         const li = e.target.closest('li');
-        if (!li) return;
+        if (!li || li.dataset.full === 'true') return;
         input.value  = li.dataset.name;
         hidden.value = li.dataset.id;
         list.classList.add('hidden');

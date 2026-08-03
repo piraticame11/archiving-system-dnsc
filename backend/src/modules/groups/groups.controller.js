@@ -21,14 +21,23 @@ async function listAll(req, res, next) {
 async function listInstructors(req, res, next) {
   try {
     const [rows] = await db.query(
-      `SELECT u.id, u.first_name, u.last_name, u.email, d.name AS department_name
+      `SELECT u.id, u.first_name, u.last_name, u.email, d.name AS department_name,
+              u.max_advisee_groups,
+              COUNT(tg.id) AS current_advisee_groups
        FROM users u
        JOIN roles r       ON u.role_id = r.id
        LEFT JOIN departments d ON u.department_id = d.id
+       LEFT JOIN thesis_groups tg
+              ON tg.adviser_id = u.id AND tg.adviser_status = 'approved' AND tg.deleted_at IS NULL
        WHERE r.name = 'instructor' AND u.is_active = 1 AND u.deleted_at IS NULL
+       GROUP BY u.id, u.first_name, u.last_name, u.email, d.name, u.max_advisee_groups
        ORDER BY u.last_name, u.first_name`
     );
-    sendSuccess(res, rows);
+    const withSlots = rows.map(({ max_advisee_groups, current_advisee_groups, ...rest }) => ({
+      ...rest,
+      slots_available: max_advisee_groups == null ? null : Math.max(0, max_advisee_groups - current_advisee_groups),
+    }));
+    sendSuccess(res, withSlots);
   } catch (err) { next(err); }
 }
 

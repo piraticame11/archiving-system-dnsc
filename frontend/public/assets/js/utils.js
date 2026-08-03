@@ -205,7 +205,7 @@ function initHoverNav() {
     tab.setAttribute('aria-haspopup', 'true');
     tab.setAttribute('aria-expanded', 'false');
     tab.className = 'fixed left-0 top-1/2 -translate-y-1/2 z-40 flex items-center justify-center w-3.5 h-16 rounded-r-lg bg-primary-700 text-primary-100 hover:bg-primary-600 hover:text-white shadow-md transition-colors';
-    tab.innerHTML = `<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>`;
+    tab.innerHTML = `<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>`;
 
     const panel = document.createElement('div');
     panel.id = 'side-nav-panel';
