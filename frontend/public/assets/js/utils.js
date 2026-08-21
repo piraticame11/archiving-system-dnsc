@@ -260,36 +260,25 @@ function initHoverNav() {
       </div>
 
       <!-- Navigation Section -->
-      <div class="flex-1 overflow-y-auto px-3 py-4 flex flex-col justify-between">
-        <div>
-          <div class="px-3 pb-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-            Menu Navigation
-          </div>
-          <nav class="space-y-1.5">
-            ${items.map(item => {
-              const active = currentPath === item.href || (item.label === 'My Schedules' && currentPath.includes('/evaluate.html'));
-              const icon = NAV_ICONS[item.label] || `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>`;
-              return `
-                <a href="${item.href}" class="flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-sm font-medium transition-all duration-150 ${active
-                  ? 'bg-primary-700 text-white font-semibold shadow-sm'
-                  : 'text-gray-600 hover:bg-primary-50/80 hover:text-primary-800 hover:translate-x-0.5'}">
-                  <span class="${active ? 'text-white' : 'text-gray-400 group-hover:text-primary-600 transition-colors'}">${icon}</span>
-                  <span class="truncate">${item.label}</span>
-                  ${active ? '<span class="ml-auto w-1.5 h-1.5 rounded-full bg-white flex-shrink-0"></span>' : ''}
-                </a>
-              `;
-            }).join('')}
-          </nav>
+      <div class="flex-1 overflow-y-auto px-3 py-4">
+        <div class="px-3 pb-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+          Menu Navigation
         </div>
-
-        <!-- Info Card for Extra Polish -->
-        <div class="mt-6 mx-1 p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-100/90">
-          <div class="flex items-center gap-2 text-primary-800 font-semibold text-xs mb-1">
-            <svg class="w-4 h-4 text-primary-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            <span>DNSC ACES System</span>
-          </div>
-          <p class="text-[11px] text-gray-500 leading-relaxed">Thesis & Capstone Archiving, Defense Scheduling, and Evaluation.</p>
-        </div>
+        <nav class="space-y-1.5">
+          ${items.map(item => {
+            const active = currentPath === item.href || (item.label === 'My Schedules' && currentPath.includes('/evaluate.html'));
+            const icon = NAV_ICONS[item.label] || `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>`;
+            return `
+              <a href="${item.href}" class="flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-sm font-medium transition-all duration-150 ${active
+                ? 'bg-primary-700 text-white font-semibold shadow-sm'
+                : 'text-gray-600 hover:bg-primary-50/80 hover:text-primary-800 hover:translate-x-0.5'}">
+                <span class="${active ? 'text-white' : 'text-gray-400 group-hover:text-primary-600 transition-colors'}">${icon}</span>
+                <span class="truncate">${item.label}</span>
+                ${active ? '<span class="ml-auto w-1.5 h-1.5 rounded-full bg-white flex-shrink-0"></span>' : ''}
+              </a>
+            `;
+          }).join('')}
+        </nav>
       </div>
 
       <!-- User Profile Footer -->
