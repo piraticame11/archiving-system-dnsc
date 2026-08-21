@@ -55,10 +55,20 @@ async function getOne(req, res, next) {
   try {
     const schedule = await service.getById(req.params.id);
     if (!schedule) return send404(res, 'Schedule not found');
+
     if (req.user.role === 'panelist') {
       const assigned = schedule.panelists?.some(p => p.id === req.user.id);
       if (!assigned) return send404(res, 'Schedule not found');
     }
+
+    if (req.user.role === 'student') {
+      const [[membership]] = await db.query(
+        `SELECT group_id FROM group_members WHERE student_id = ?`, [req.user.id]
+      );
+      const isGroupSchedule = membership && schedule.groups?.some(g => g.id === membership.group_id);
+      if (!isGroupSchedule) return send404(res, 'Schedule not found');
+    }
+
     sendSuccess(res, schedule);
   } catch (err) { next(err); }
 }
