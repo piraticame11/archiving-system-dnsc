@@ -221,6 +221,7 @@ function initHoverNav() {
     const currentPath = window.location.pathname;
     const roleTitle = (user.role || 'User').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     const userName = user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : (user.email || 'User');
+    const userInitial = (user.first_name ? user.first_name[0] : (user.email ? user.email[0] : 'U')).toUpperCase();
 
     // Hamburger button in top nav
     const tab = document.createElement('button');
@@ -229,60 +230,80 @@ function initHoverNav() {
     tab.setAttribute('aria-label', 'Open navigation menu');
     tab.setAttribute('aria-haspopup', 'true');
     tab.setAttribute('aria-expanded', 'false');
-    tab.className = 'p-1.5 -ml-1 text-primary-100 hover:text-white hover:bg-primary-600/60 rounded-lg transition-colors cursor-pointer';
+    tab.className = 'p-2 -ml-1 text-primary-100 hover:text-white hover:bg-primary-600/70 rounded-xl transition-all cursor-pointer flex items-center justify-center';
     tab.innerHTML = `<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 6h16M4 12h16M4 18h16"/></svg>`;
 
     // Backdrop overlay
     const backdrop = document.createElement('div');
     backdrop.id = 'side-nav-backdrop';
-    backdrop.className = 'fixed inset-0 bg-gray-900/50 backdrop-blur-[2px] z-40 opacity-0 pointer-events-none transition-opacity duration-200';
+    backdrop.className = 'fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-40 opacity-0 pointer-events-none transition-opacity duration-200';
 
-    // Slide-out Drawer Panel
+    // Slide-out Drawer Panel (Spacious w-72 layout)
     const panel = document.createElement('div');
     panel.id = 'side-nav-panel';
-    panel.className = 'fixed left-0 top-0 h-full w-64 bg-white shadow-2xl z-50 -translate-x-full transition-transform duration-200 flex flex-col border-r border-gray-100';
+    panel.className = 'fixed left-0 top-0 h-full w-72 bg-white shadow-2xl z-50 -translate-x-full transition-transform duration-200 flex flex-col border-r border-gray-200';
     panel.innerHTML = `
-      <!-- Header with DNSC Green Theme -->
-      <div class="bg-primary-700 text-white px-4 py-4.5 flex items-center justify-between shadow-xs">
-        <div class="flex items-center gap-2.5 min-w-0">
-          <div class="w-9 h-9 rounded-lg bg-white/10 p-1 flex items-center justify-center flex-shrink-0">
-            <img src="/assets/img/aw.webp" alt="Logo" class="w-7 h-7 object-contain">
+      <!-- Brand Header -->
+      <div class="bg-gradient-to-r from-primary-800 to-primary-700 text-white px-5 py-5 flex items-center justify-between border-b border-primary-900/30">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-10 h-10 rounded-xl bg-white p-1.5 flex items-center justify-center flex-shrink-0 shadow-sm">
+            <img src="/assets/img/aw.webp" alt="DNSC Logo" class="w-full h-full object-contain">
           </div>
           <div class="min-w-0">
-            <h2 class="font-bold text-sm text-white tracking-tight truncate leading-tight">ACES Research</h2>
-            <span class="inline-block text-[11px] font-medium text-primary-200 uppercase tracking-wider">${roleTitle} Portal</span>
+            <h2 class="font-bold text-base text-white tracking-tight leading-tight truncate">ACES Research</h2>
+            <p class="text-xs text-primary-200 font-medium tracking-wide truncate">${roleTitle} Portal</p>
           </div>
         </div>
-        <button type="button" id="side-nav-close" aria-label="Close navigation menu" class="p-1 text-primary-200 hover:text-white hover:bg-primary-800 rounded-lg transition-colors cursor-pointer flex-shrink-0">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        <button type="button" id="side-nav-close" aria-label="Close navigation menu" class="p-1.5 text-primary-200 hover:text-white hover:bg-white/15 rounded-xl transition-all cursor-pointer flex-shrink-0 ml-1">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
 
-      <!-- Navigation Links -->
-      <nav class="flex-1 overflow-y-auto p-3 space-y-1 bg-gray-50/40">
-        ${items.map(item => {
-          const active = currentPath === item.href;
-          const icon = NAV_ICONS[item.label] || `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>`;
-          return `
-            <a href="${item.href}" class="group flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${active
-              ? 'bg-primary-700 text-white shadow-sm font-semibold'
-              : 'text-gray-700 hover:bg-primary-50 hover:text-primary-800'}">
-              <span class="${active ? 'text-white' : 'text-gray-400 group-hover:text-primary-600 transition-colors'}">${icon}</span>
-              <span class="truncate">${item.label}</span>
-            </a>
-          `;
-        }).join('')}
-      </nav>
+      <!-- Navigation Section -->
+      <div class="flex-1 overflow-y-auto px-3 py-4 flex flex-col justify-between">
+        <div>
+          <div class="px-3 pb-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+            Menu Navigation
+          </div>
+          <nav class="space-y-1.5">
+            ${items.map(item => {
+              const active = currentPath === item.href || (item.label === 'My Schedules' && currentPath.includes('/evaluate.html'));
+              const icon = NAV_ICONS[item.label] || `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>`;
+              return `
+                <a href="${item.href}" class="flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-sm font-medium transition-all duration-150 ${active
+                  ? 'bg-primary-700 text-white font-semibold shadow-sm'
+                  : 'text-gray-600 hover:bg-primary-50/80 hover:text-primary-800 hover:translate-x-0.5'}">
+                  <span class="${active ? 'text-white' : 'text-gray-400 group-hover:text-primary-600 transition-colors'}">${icon}</span>
+                  <span class="truncate">${item.label}</span>
+                  ${active ? '<span class="ml-auto w-1.5 h-1.5 rounded-full bg-white flex-shrink-0"></span>' : ''}
+                </a>
+              `;
+            }).join('')}
+          </nav>
+        </div>
 
-      <!-- User Footer -->
-      <div class="p-3 border-t border-gray-200 bg-white">
-        <div class="flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-100">
-          <div class="min-w-0 pr-2">
-            <p class="text-xs font-semibold text-gray-800 truncate">${userName}</p>
-            <p class="text-[11px] text-gray-500 capitalize">${user.role || ''}</p>
+        <!-- Info Card for Extra Polish -->
+        <div class="mt-6 mx-1 p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-100/90">
+          <div class="flex items-center gap-2 text-primary-800 font-semibold text-xs mb-1">
+            <svg class="w-4 h-4 text-primary-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span>DNSC ACES System</span>
+          </div>
+          <p class="text-[11px] text-gray-500 leading-relaxed">Thesis & Capstone Archiving, Defense Scheduling, and Evaluation.</p>
+        </div>
+      </div>
+
+      <!-- User Profile Footer -->
+      <div class="p-4 border-t border-gray-100 bg-gray-50/60">
+        <div class="flex items-center justify-between gap-3 p-2.5 bg-white rounded-xl shadow-xs border border-gray-200/70">
+          <div class="w-9 h-9 rounded-full bg-primary-100 text-primary-800 flex items-center justify-center font-bold text-sm flex-shrink-0">
+            ${userInitial}
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="text-xs font-semibold text-gray-900 truncate leading-tight">${userName}</p>
+            <p class="text-[11px] text-gray-500 capitalize leading-tight mt-0.5">${user.role || ''}</p>
           </div>
           <button onclick="logout()" title="Sign out" class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer flex-shrink-0">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+            <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
           </button>
         </div>
       </div>
