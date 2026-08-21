@@ -170,8 +170,30 @@ const NAV_ITEMS = {
   ],
 };
 
-// getUser() only becomes available once requireAuthAsync() (called by the
-// page itself) restores the session, so poll briefly instead of racing it.
+const NAV_ICONS = {
+  'Dashboard': `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>`,
+  'Users': `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>`,
+  'Panelists': `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`,
+  'Venues': `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`,
+  'Schedules': `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>`,
+  'My Schedules': `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>`,
+  'My Schedule': `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>`,
+  'Submissions': `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>`,
+  'Archive': `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>`,
+  'Browse Archive': `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>`,
+  'My Group': `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`,
+  'My Advisees': `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>`,
+  'Group Requests': `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>`,
+  'Create Student Accounts': `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>`,
+  'Upload Adviser List': `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>`,
+  'Upload Templates': `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>`,
+  'Upload Document': `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>`,
+  'My Results': `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>`,
+  'Guidelines': `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>`,
+  'Guidelines & Templates': `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>`,
+  'Account Settings': `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`,
+};
+
 function _waitForNavUser(maxMs = 4000) {
   return new Promise(resolve => {
     const start = Date.now();
@@ -186,8 +208,6 @@ function _waitForNavUser(maxMs = 4000) {
   });
 }
 
-// A hamburger button inserted into the top navbar (left of the logo) opens
-// a full side navbar that overlays the page without reflowing content.
 function initHoverNav() {
   if (document.getElementById('side-nav-tab')) return;
 
@@ -199,60 +219,99 @@ function initHoverNav() {
     if (!items || !items.length) return;
 
     const currentPath = window.location.pathname;
+    const roleTitle = (user.role || 'User').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const userName = user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : (user.email || 'User');
 
+    // Hamburger button in top nav
     const tab = document.createElement('button');
     tab.id = 'side-nav-tab';
     tab.type = 'button';
     tab.setAttribute('aria-label', 'Open navigation menu');
     tab.setAttribute('aria-haspopup', 'true');
     tab.setAttribute('aria-expanded', 'false');
-    tab.className = 'text-primary-200 hover:text-white transition-colors';
-    tab.innerHTML = `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>`;
+    tab.className = 'p-1.5 -ml-1 text-primary-100 hover:text-white hover:bg-primary-600/60 rounded-lg transition-colors cursor-pointer';
+    tab.innerHTML = `<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 6h16M4 12h16M4 18h16"/></svg>`;
 
+    // Backdrop overlay
+    const backdrop = document.createElement('div');
+    backdrop.id = 'side-nav-backdrop';
+    backdrop.className = 'fixed inset-0 bg-gray-900/50 backdrop-blur-[2px] z-40 opacity-0 pointer-events-none transition-opacity duration-200';
+
+    // Slide-out Drawer Panel
     const panel = document.createElement('div');
     panel.id = 'side-nav-panel';
-    panel.className = 'fixed left-0 top-0 h-full w-60 bg-white shadow-2xl border-r border-gray-200 z-40 -translate-x-full transition-transform duration-200 flex flex-col';
+    panel.className = 'fixed left-0 top-0 h-full w-64 bg-white shadow-2xl z-50 -translate-x-full transition-transform duration-200 flex flex-col border-r border-gray-100';
     panel.innerHTML = `
-      <div class="px-4 py-4 border-b border-gray-100 flex items-center gap-2">
-        <img src="/assets/img/aw.webp" alt="School Logo" class="w-8 h-8 object-contain rounded-lg flex-shrink-0">
-        <span class="font-bold text-sm text-gray-800 leading-tight flex-1">ACES Research System</span>
-        <button type="button" id="side-nav-close" aria-label="Close navigation menu" class="text-gray-400 hover:text-gray-600 flex-shrink-0">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      <!-- Header with DNSC Green Theme -->
+      <div class="bg-primary-700 text-white px-4 py-4.5 flex items-center justify-between shadow-xs">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-9 h-9 rounded-lg bg-white/10 p-1 flex items-center justify-center flex-shrink-0">
+            <img src="/assets/img/aw.webp" alt="Logo" class="w-7 h-7 object-contain">
+          </div>
+          <div class="min-w-0">
+            <h2 class="font-bold text-sm text-white tracking-tight truncate leading-tight">ACES Research</h2>
+            <span class="inline-block text-[11px] font-medium text-primary-200 uppercase tracking-wider">${roleTitle} Portal</span>
+          </div>
+        </div>
+        <button type="button" id="side-nav-close" aria-label="Close navigation menu" class="p-1 text-primary-200 hover:text-white hover:bg-primary-800 rounded-lg transition-colors cursor-pointer flex-shrink-0">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
-      <nav class="flex-1 overflow-y-auto py-2">
+
+      <!-- Navigation Links -->
+      <nav class="flex-1 overflow-y-auto p-3 space-y-1 bg-gray-50/40">
         ${items.map(item => {
           const active = currentPath === item.href;
-          return `<a href="${item.href}" class="block px-4 py-2.5 text-sm border-l-4 ${active
-            ? 'font-semibold text-primary-700 bg-primary-50 border-primary-600'
-            : 'text-gray-700 border-transparent hover:bg-gray-50 hover:border-gray-200'}">${item.label}</a>`;
+          const icon = NAV_ICONS[item.label] || `<svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>`;
+          return `
+            <a href="${item.href}" class="group flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${active
+              ? 'bg-primary-700 text-white shadow-sm font-semibold'
+              : 'text-gray-700 hover:bg-primary-50 hover:text-primary-800'}">
+              <span class="${active ? 'text-white' : 'text-gray-400 group-hover:text-primary-600 transition-colors'}">${icon}</span>
+              <span class="truncate">${item.label}</span>
+            </a>
+          `;
         }).join('')}
-      </nav>`;
+      </nav>
 
-    // Closed by clicking the X, pressing Escape, or clicking outside the panel.
+      <!-- User Footer -->
+      <div class="p-3 border-t border-gray-200 bg-white">
+        <div class="flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-100">
+          <div class="min-w-0 pr-2">
+            <p class="text-xs font-semibold text-gray-800 truncate">${userName}</p>
+            <p class="text-[11px] text-gray-500 capitalize">${user.role || ''}</p>
+          </div>
+          <button onclick="logout()" title="Sign out" class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer flex-shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+          </button>
+        </div>
+      </div>
+    `;
+
     function openPanel() {
       panel.classList.remove('-translate-x-full');
-      tab.classList.add('hidden');
+      backdrop.classList.remove('opacity-0', 'pointer-events-none');
+      backdrop.classList.add('opacity-100');
       tab.setAttribute('aria-expanded', 'true');
     }
+
     function closePanel() {
       panel.classList.add('-translate-x-full');
-      tab.classList.remove('hidden');
+      backdrop.classList.remove('opacity-100');
+      backdrop.classList.add('opacity-0', 'pointer-events-none');
       tab.setAttribute('aria-expanded', 'false');
     }
 
     tab.addEventListener('click', openPanel);
     panel.querySelector('#side-nav-close').addEventListener('click', closePanel);
+    backdrop.addEventListener('click', closePanel);
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
-    document.addEventListener('click', e => {
-      if (panel.classList.contains('-translate-x-full')) return;
-      if (panel.contains(e.target) || tab.contains(e.target)) return;
-      closePanel();
-    });
 
     navGroup.insertBefore(tab, navGroup.firstChild);
+    document.body.appendChild(backdrop);
     document.body.appendChild(panel);
   });
 }
 
 document.addEventListener('DOMContentLoaded', initHoverNav);
+
