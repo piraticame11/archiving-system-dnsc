@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "migrate": "node migrations/run_migrations.js",
     "db:push": "node migrations/run_migrations.js",
+    "embeddings:generate": "node scripts/generate_embeddings.js",
     "test": "jest --runInBand"
   },
   "dependencies": {
