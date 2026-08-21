@@ -12,12 +12,15 @@ async function run() {
     process.exit(0);
   }
 
-  console.log('Generating embeddings. This may take a while (model downloads on first run)...');
+  console.log('Generating NLP term-frequency embeddings...');
   let count = 0;
   for (const row of rows) {
-    const combinedText = `${row.title} ${row.abstract || ''} ${row.keywords || ''}`;
     try {
-      const embedding = await NLPService.getEmbedding(combinedText);
+      const embedding = await NLPService.getEmbedding({
+        title: row.title,
+        abstract: row.abstract,
+        keywords: row.keywords,
+      });
       if (embedding) {
         await db.query('UPDATE archive SET embedding = ? WHERE id = ?', [JSON.stringify(embedding), row.id]);
         count++;

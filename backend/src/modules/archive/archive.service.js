@@ -46,7 +46,7 @@ async function listArchive({ search, department_id, school_year, semester, type,
     const queryVector = await NLPService.getEmbedding(search);
 
     // 2. Fetch candidate IDs and embeddings based on filters
-    const [candidates] = await db.query(`SELECT a.id, a.embedding FROM archive a ${filterWhere}`, params);
+    const [candidates] = await db.query(`SELECT a.id, a.title, a.abstract, a.keywords, a.embedding FROM archive a ${filterWhere}`, params);
 
     // 3. Compute similarities and sort
     const scored = candidates.map(c => {
@@ -54,14 +54,21 @@ async function listArchive({ search, department_id, school_year, semester, type,
       if (typeof embedding === 'string') {
         try { embedding = JSON.parse(embedding); } catch (e) { embedding = null; }
       }
-      const score = embedding && queryVector ? NLPService.calculateSimilarity(queryVector, embedding) : 0;
+      let score = 0;
+      if (embedding && queryVector) {
+        score = NLPService.calculateSimilarity(queryVector, embedding);
+      } else {
+        // Fallback keyword matching if document has no pre-computed embedding
+        const text = `${c.title || ''} ${c.abstract || ''} ${c.keywords || ''}`.toLowerCase();
+        if (text.includes(search.toLowerCase())) score = 0.3;
+      }
       return { id: c.id, score };
     });
 
-    // Sort descending by score
-    scored.sort((a, b) => b.score - a.score);
+    // Filter only documents with positive relevance
+    const validScored = scored.filter(s => s.score > 0);
+    validScored.sort((a, b) => b.score - a.score);
 
-    const validScored = scored;
     const total = validScored.length;
 
     // 4. Paginate IDs
