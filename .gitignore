@@ -9,4 +9,3 @@ backend/uploads/minutes/
 *.log
 .DS_Store
 Thumbs.db
-frontend/public/assets/css/app.css
