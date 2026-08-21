@@ -1,0 +1,1 @@
+ALTER TABLE archive ADD COLUMN embedding JSON NULL;

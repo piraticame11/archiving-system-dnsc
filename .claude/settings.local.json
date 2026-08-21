@@ -18,7 +18,11 @@
       "Bash(dir \"c:\\\\Users\\\\Salvatore\\\\Desktop\\\\Projects\\\\archiving-system-dnsc\\\\frontend\\\\public\")",
       "Bash(dir \"c:\\\\Users\\\\Salvatore\\\\Desktop\\\\Projects\\\\archiving-system-dnsc\\\\frontend\\\\public\\\\pages\")",
       "Bash(dir \"c:\\\\Users\\\\Salvatore\\\\Desktop\\\\Projects\\\\archiving-system-dnsc\\\\backend\\\\src\")",
-      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Salvatore\\\\Desktop\\\\Projects\\\\archiving-system-dnsc\\\\backend\\\\src\\\\modules\\\\archive\" -Force)"
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Salvatore\\\\Desktop\\\\Projects\\\\archiving-system-dnsc\\\\backend\\\\src\\\\modules\\\\archive\" -Force)",
+      "Bash(node -c src/modules/adviser/adviser.service.js)",
+      "Bash(node -c src/modules/adviser/adviser.controller.js)",
+      "Bash(node -c src/modules/adviser/adviser.routes.js)",
+      "Bash(node -c src/modules/users/users.service.js)"
     ]
   }
 }

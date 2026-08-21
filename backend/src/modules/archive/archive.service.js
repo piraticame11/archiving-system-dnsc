@@ -1,6 +1,7 @@
 const path = require('path');
 const fs   = require('fs');
 const db   = require('../../config/database');
+const NLPService = require('../../utils/nlp');
 const { getPagination, paginatedResponse } = require('../../utils/pagination');
 
 const MIN_ARCHIVE_YEAR = 2023;
@@ -33,37 +34,89 @@ async function listArchive({ search, department_id, school_year, semester, type,
   const conditions = [];
   const params     = [];
 
-  if (search) {
-    conditions.push('(a.title LIKE ? OR a.authors LIKE ? OR a.keywords LIKE ? OR a.abstract LIKE ?)');
-    const s = `%${search}%`;
-    params.push(s, s, s, s);
-  }
   if (department_id) { conditions.push('a.department_id = ?'); params.push(department_id); }
   if (school_year)   { conditions.push('a.school_year = ?');   params.push(school_year); }
   if (semester)      { conditions.push('a.semester = ?');      params.push(semester); }
   if (type)          { conditions.push('a.type = ?');          params.push(type); }
 
-  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-  const from  = `FROM archive a
-    JOIN departments d ON a.department_id = d.id
-    JOIN users u ON a.archived_by = u.id
-    JOIN submission_documents sd ON a.document_id = sd.id
-    ${where}`;
+  const filterWhere = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  const [[{ total }]] = await db.query(`SELECT COUNT(*) AS total ${from}`, params);
-  const [rows] = await db.query(
-    `SELECT a.id, a.title, a.abstract, a.authors, a.adviser, a.school_year, a.semester,
-            a.type, a.keywords, a.archived_at, a.download_count, a.submission_id,
-            d.name AS department_name, d.code AS department_code,
-            CONCAT(u.first_name, ' ', u.last_name) AS archived_by_name,
-            sd.file_name, sd.file_size, sd.mime_type
-     ${from}
-     ORDER BY a.archived_at DESC
-     LIMIT ? OFFSET ?`,
-    [...params, limit, offset]
-  );
+  if (search) {
+    // 1. Get search embedding
+    const queryVector = await NLPService.getEmbedding(search);
 
-  return paginatedResponse(rows, total, page, limit);
+    // 2. Fetch candidate IDs and embeddings based on filters
+    const [candidates] = await db.query(`SELECT a.id, a.embedding FROM archive a ${filterWhere}`, params);
+
+    // 3. Compute similarities and sort
+    const scored = candidates.map(c => {
+      let embedding = c.embedding;
+      if (typeof embedding === 'string') {
+        try { embedding = JSON.parse(embedding); } catch (e) { embedding = null; }
+      }
+      const score = embedding && queryVector ? NLPService.calculateSimilarity(queryVector, embedding) : 0;
+      return { id: c.id, score };
+    });
+
+    // Sort descending by score
+    scored.sort((a, b) => b.score - a.score);
+
+    const validScored = scored;
+    const total = validScored.length;
+
+    // 4. Paginate IDs
+    const paginatedIds = validScored.slice(offset, offset + limit).map(s => s.id);
+
+    if (paginatedIds.length === 0) {
+      return paginatedResponse([], total, page, limit);
+    }
+
+    // 5. Fetch full data for paginated IDs
+    const idPlaceholders = paginatedIds.map(() => '?').join(',');
+    const [rows] = await db.query(
+      `SELECT a.id, a.title, a.abstract, a.authors, a.adviser, a.school_year, a.semester,
+              a.type, a.keywords, a.archived_at, a.download_count, a.submission_id,
+              d.name AS department_name, d.code AS department_code,
+              CONCAT(u.first_name, ' ', u.last_name) AS archived_by_name,
+              sd.file_name, sd.file_size, sd.mime_type
+       FROM archive a
+       JOIN departments d ON a.department_id = d.id
+       JOIN users u ON a.archived_by = u.id
+       JOIN submission_documents sd ON a.document_id = sd.id
+       WHERE a.id IN (${idPlaceholders})`,
+      paginatedIds
+    );
+
+    // Re-sort the rows to match the semantic score order
+    const rowMap = {};
+    rows.forEach(r => { rowMap[r.id] = r; });
+    const sortedRows = paginatedIds.map(id => rowMap[id]).filter(Boolean);
+
+    return paginatedResponse(sortedRows, total, page, limit);
+
+  } else {
+    // ORIGINAL FLOW (No Search String)
+    const from  = `FROM archive a
+      JOIN departments d ON a.department_id = d.id
+      JOIN users u ON a.archived_by = u.id
+      JOIN submission_documents sd ON a.document_id = sd.id
+      ${filterWhere}`;
+
+    const [[{ total }]] = await db.query(`SELECT COUNT(*) AS total ${from}`, params);
+    const [rows] = await db.query(
+      `SELECT a.id, a.title, a.abstract, a.authors, a.adviser, a.school_year, a.semester,
+              a.type, a.keywords, a.archived_at, a.download_count, a.submission_id,
+              d.name AS department_name, d.code AS department_code,
+              CONCAT(u.first_name, ' ', u.last_name) AS archived_by_name,
+              sd.file_name, sd.file_size, sd.mime_type
+       ${from}
+       ORDER BY a.archived_at DESC
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+
+    return paginatedResponse(rows, total, page, limit);
+  }
 }
 
 /* ── single entry ────────────────────────────────────────────────── */
@@ -156,11 +209,15 @@ async function promoteToArchive({ submission_id, document_id, authors, adviser, 
   );
   if (!doc) throw Object.assign(new Error('Only full documents can be archived'), { statusCode: 400 });
 
+  /* Generate Embedding */
+  const combinedText = `${sub.title} ${sub.abstract || ''} ${keywords || sub.keywords || ''}`;
+  const embedding = await NLPService.getEmbedding(combinedText);
+
   const [result] = await db.query(
     `INSERT INTO archive
        (submission_id, document_id, title, abstract, authors, adviser,
-        department_id, school_year, semester, keywords, type, archived_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        department_id, school_year, semester, keywords, type, archived_by, embedding)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       submission_id, document_id,
       sub.title, sub.abstract || null,
@@ -169,6 +226,7 @@ async function promoteToArchive({ submission_id, document_id, authors, adviser, 
       keywords || sub.keywords || null,
       sub.type,
       archived_by,
+      embedding ? JSON.stringify(embedding) : null
     ]
   );
 
