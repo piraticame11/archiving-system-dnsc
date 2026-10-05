@@ -28,7 +28,7 @@ const EVAL_STATUS = {
   SUBMITTED:   'submitted',
 };
 
-const DOC_TYPES = ['title_proposal', 'partial_document', 'full_document', 'imrad', 'presentation', 'other'];
+const DOC_TYPES = ['title_proposal', 'ch1_2', 'full_document', 'imrad', 'presentation', 'other'];
 
 const ALLOWED_MIME_TYPES = [
   'application/pdf',

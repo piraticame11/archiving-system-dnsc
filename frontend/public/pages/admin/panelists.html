@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -102,7 +102,7 @@
 
   <!-- Add / Edit Modal -->
   <div id="form-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
         <h2 id="form-modal-title" class="text-lg font-bold text-gray-900">Add Panelist</h2>
         <button onclick="closeFormModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
@@ -113,34 +113,34 @@
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">First Name <span class="text-red-500">*</span></label>
-            <input id="f-first-name" type="text" class="form-input" placeholder="Juan">
+            <input id="f-first-name" type="text" class="form-input" placeholder="e.g. Juan">
             <p id="err-first-name" class="text-xs text-red-600 mt-1 hidden"></p>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Last Name <span class="text-red-500">*</span></label>
-            <input id="f-last-name" type="text" class="form-input" placeholder="Dela Cruz">
+            <input id="f-last-name" type="text" class="form-input" placeholder="e.g. Dela Cruz">
             <p id="err-last-name" class="text-xs text-red-600 mt-1 hidden"></p>
           </div>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Email <span class="text-red-500">*</span></label>
-          <input id="f-email" type="email" class="form-input" placeholder="panelist@aces.edu.ph">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Email Address <span class="text-red-500">*</span></label>
+          <input id="f-email" type="email" class="form-input" placeholder="e.g. panelist@aces.edu.ph">
           <p id="err-email" class="text-xs text-red-600 mt-1 hidden"></p>
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
           <select id="f-department-modal" class="form-input">
-            <option value="">— No department —</option>
+            <option value="">— No department assigned —</option>
           </select>
         </div>
         <div id="max-groups-section" class="hidden">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Max Groups</label>
-          <input id="f-max-groups" type="number" min="1" class="form-input" placeholder="Leave blank for no limit">
-          <p class="text-xs text-gray-400 mt-1">Maximum number of groups this panelist can be assigned to at once.</p>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Max Assigned Groups</label>
+          <input id="f-max-groups" type="number" min="1" class="form-input" placeholder="Leave empty for unlimited">
+          <p class="text-xs text-gray-500 mt-1">Maximum number of concurrent thesis groups this panelist can be assigned to.</p>
         </div>
         <div id="password-section">
           <label class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
-          <input id="f-password" type="password" class="form-input" placeholder="Min. 8 characters">
+          <input id="f-password" type="password" class="form-input" placeholder="Minimum 8 characters">
           <p id="err-f-password" class="text-xs text-red-600 mt-1 hidden"></p>
         </div>
       </div>

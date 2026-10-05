@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -820,8 +820,19 @@
     }
 
     function setPanelistRole(id, role) {
-      panelistRoles[id] = role;
-      renderPanelSummary();
+      if (role === 'chairperson') {
+        // Only one chairperson allowed: switch any previously assigned chairperson to member
+        Object.keys(panelistRoles).forEach(pid => {
+          if (String(pid) !== String(id) && panelistRoles[pid] === 'chairperson') {
+            panelistRoles[pid] = 'member';
+          }
+        });
+        panelistRoles[id] = 'chairperson';
+        populatePanelistList();
+      } else {
+        panelistRoles[id] = role;
+        renderPanelSummary();
+      }
     }
 
     function getSelectedPanelists() {

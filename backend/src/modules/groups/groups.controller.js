@@ -35,6 +35,7 @@ async function listInstructors(req, res, next) {
     );
     const withSlots = rows.map(({ max_advisee_groups, current_advisee_groups, ...rest }) => ({
       ...rest,
+      slots_occupied: Number(current_advisee_groups) || 0,
       slots_available: max_advisee_groups == null ? null : Math.max(0, max_advisee_groups - current_advisee_groups),
       slots_max: max_advisee_groups,
     }));

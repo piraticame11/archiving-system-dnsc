@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -104,7 +104,7 @@
       <div class="bg-white border border-gray-200 rounded-xl px-4 py-3 flex flex-wrap items-center gap-3 mb-5 shadow-sm">
         <div class="relative flex-1 min-w-52">
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/></svg>
-          <input id="b-search" type="text" placeholder="Search title, authors, keywords…"
+          <input id="b-search" type="text" placeholder="Search books, keywords, authors, or document content…"
             class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
         </div>
         <select id="b-dept" class="form-input w-auto text-sm py-2">
@@ -475,7 +475,11 @@
               </span>
             </div>
             <h3 class="text-sm font-semibold text-gray-900 leading-snug mb-2 line-clamp-2">${esc(a.title)}</h3>
-            <p class="text-xs text-gray-500 mb-3">${esc(authors)}</p>
+            <p class="text-xs text-gray-500 mb-2">${esc(authors)}</p>
+            ${a.match_snippet ? `
+              <div class="mb-3 p-2 rounded-lg bg-emerald-50/80 border border-emerald-200/60 text-[11px] text-gray-700 leading-snug">
+                <span class="font-semibold text-emerald-800">Match:</span> <span class="italic text-gray-600 font-mono">${esc(a.match_snippet)}</span>
+              </div>` : ''}
             <div class="flex items-center justify-between pt-3 border-t border-gray-100">
               <span class="text-xs font-medium text-gray-500">${esc(a.department_code)}</span>
               <span class="text-xs text-gray-400">${esc(a.school_year)} &middot; ${SEM_LABEL[a.semester] || a.semester}</span>

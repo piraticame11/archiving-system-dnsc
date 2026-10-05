@@ -2,6 +2,7 @@ const path = require('path');
 const fs   = require('fs');
 const db   = require('../../config/database');
 const NLPService = require('../../utils/nlp');
+const DocumentExtractor = require('../../utils/documentExtractor');
 const { getPagination, paginatedResponse } = require('../../utils/pagination');
 
 const MIN_ARCHIVE_YEAR = 2023;
@@ -42,27 +43,28 @@ async function listArchive({ search, department_id, school_year, semester, type,
   const filterWhere = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
   if (search) {
-    // 1. Get search embedding
+    // 1. Get search query embedding
     const queryVector = await NLPService.getEmbedding(search);
 
-    // 2. Fetch candidate IDs and embeddings based on filters
-    const [candidates] = await db.query(`SELECT a.id, a.title, a.abstract, a.keywords, a.embedding FROM archive a ${filterWhere}`, params);
+    // 2. Fetch candidate IDs, metadata, scanned content, and embeddings based on filters
+    const [candidates] = await db.query(
+      `SELECT a.id, a.title, a.abstract, a.keywords, a.authors, a.adviser, a.content_text, a.embedding
+       FROM archive a ${filterWhere}`,
+      params
+    );
 
-    // 3. Compute similarities and sort
+    // 3. Evaluate relevance using hybrid AI semantic & keyword/book matching
     const scored = candidates.map(c => {
-      let embedding = c.embedding;
-      if (typeof embedding === 'string') {
-        try { embedding = JSON.parse(embedding); } catch (e) { embedding = null; }
-      }
-      let score = 0;
-      if (embedding && queryVector) {
-        score = NLPService.calculateSimilarity(queryVector, embedding);
-      } else {
-        // Fallback keyword matching if document has no pre-computed embedding
-        const text = `${c.title || ''} ${c.abstract || ''} ${c.keywords || ''}`.toLowerCase();
-        if (text.includes(search.toLowerCase())) score = 0.3;
-      }
-      return { id: c.id, score };
+      const evaluation = NLPService.evaluateRelevance(search, c, queryVector);
+      return {
+        id: c.id,
+        score: evaluation.score,
+        semanticScore: evaluation.semanticScore,
+        keywordScore: evaluation.keywordScore,
+        matchReason: evaluation.matchReason,
+        // Extract matching snippet from scanned document content or abstract
+        snippet: DocumentExtractor.extractSnippet(c.content_text || c.abstract || '', search, 240)
+      };
     });
 
     // Filter only documents with positive relevance
@@ -72,7 +74,8 @@ async function listArchive({ search, department_id, school_year, semester, type,
     const total = validScored.length;
 
     // 4. Paginate IDs
-    const paginatedIds = validScored.slice(offset, offset + limit).map(s => s.id);
+    const paginatedItems = validScored.slice(offset, offset + limit);
+    const paginatedIds = paginatedItems.map(s => s.id);
 
     if (paginatedIds.length === 0) {
       return paginatedResponse([], total, page, limit);
@@ -94,10 +97,18 @@ async function listArchive({ search, department_id, school_year, semester, type,
       paginatedIds
     );
 
-    // Re-sort the rows to match the semantic score order
+    // Re-sort the rows to match the semantic & keyword score order, and attach snippet
     const rowMap = {};
     rows.forEach(r => { rowMap[r.id] = r; });
-    const sortedRows = paginatedIds.map(id => rowMap[id]).filter(Boolean);
+    const sortedRows = paginatedItems.map(item => {
+      const r = rowMap[item.id];
+      if (!r) return null;
+      return {
+        ...r,
+        match_snippet: item.snippet,
+        relevance_score: Number(item.score.toFixed(3))
+      };
+    }).filter(Boolean);
 
     return paginatedResponse(sortedRows, total, page, limit);
 
@@ -210,21 +221,37 @@ async function promoteToArchive({ submission_id, document_id, authors, adviser, 
 
   /* validate document belongs to submission and is a full document */
   const [[doc]] = await db.query(
-    `SELECT id FROM submission_documents
+    `SELECT id, file_path, mime_type, file_name FROM submission_documents
      WHERE id = ? AND submission_id = ? AND doc_type = 'full_document'`,
     [document_id, submission_id]
   );
   if (!doc) throw Object.assign(new Error('Only full documents can be archived'), { statusCode: 400 });
 
-  /* Generate Embedding */
-  const combinedText = `${sub.title} ${sub.abstract || ''} ${keywords || sub.keywords || ''}`;
-  const embedding = await NLPService.getEmbedding(combinedText);
+  /* Scan whole document content using DocumentExtractor */
+  let documentContent = '';
+  if (doc.file_path) {
+    try {
+      documentContent = await DocumentExtractor.extractTextFromFile(doc.file_path, doc.mime_type);
+    } catch (e) {
+      console.warn('Could not extract text from document during archiving:', e.message);
+    }
+  }
+
+  /* Generate comprehensive AI embedding from title, abstract, keywords, authors, adviser, and scanned document content */
+  const embedding = await NLPService.getEmbedding({
+    title: sub.title,
+    abstract: sub.abstract || '',
+    keywords: keywords || sub.keywords || '',
+    authors: authors || '',
+    adviser: adviser || '',
+    content: documentContent || '',
+  });
 
   const [result] = await db.query(
     `INSERT INTO archive
        (submission_id, document_id, title, abstract, authors, adviser,
-        department_id, school_year, semester, keywords, type, archived_by, embedding)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        department_id, school_year, semester, keywords, type, archived_by, embedding, content_text)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       submission_id, document_id,
       sub.title, sub.abstract || null,
@@ -233,7 +260,8 @@ async function promoteToArchive({ submission_id, document_id, authors, adviser, 
       keywords || sub.keywords || null,
       sub.type,
       archived_by,
-      embedding ? JSON.stringify(embedding) : null
+      embedding ? JSON.stringify(embedding) : null,
+      documentContent || null
     ]
   );
 

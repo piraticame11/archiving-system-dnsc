@@ -77,10 +77,12 @@ function porterStem(w) {
 class NLPService {
   /**
    * Tokenizes, filters stopwords, stems and normalizes input text into a weighted vector map.
-   * @param {string|{title?: string, abstract?: string, keywords?: string}} input 
+   * Supports scanning whole document content alongside title, abstract, keywords, and authors.
+   * @param {string|{title?: string, abstract?: string, keywords?: string, authors?: string, adviser?: string, content?: string}} input 
+   * @param {number} [maxTerms=1500] - Max unique terms to keep in vector for efficiency
    * @returns {Promise<Record<string, number>|null>}
    */
-  static async getEmbedding(input) {
+  static async getEmbedding(input, maxTerms = 1500) {
     if (!input) return null;
 
     let tokensWithWeights = [];
@@ -88,13 +90,23 @@ class NLPService {
     if (typeof input === 'object') {
       // Apply field-based weighting
       if (input.title) {
-        tokensWithWeights.push(...this.extractWeightedTokens(input.title, 3.0));
+        tokensWithWeights.push(...this.extractWeightedTokens(input.title, 4.0));
       }
       if (input.keywords) {
-        tokensWithWeights.push(...this.extractWeightedTokens(input.keywords, 2.5));
+        tokensWithWeights.push(...this.extractWeightedTokens(input.keywords, 3.5));
       }
       if (input.abstract) {
-        tokensWithWeights.push(...this.extractWeightedTokens(input.abstract, 1.0));
+        tokensWithWeights.push(...this.extractWeightedTokens(input.abstract, 2.0));
+      }
+      if (input.authors) {
+        tokensWithWeights.push(...this.extractWeightedTokens(input.authors, 2.0));
+      }
+      if (input.adviser) {
+        tokensWithWeights.push(...this.extractWeightedTokens(input.adviser, 1.5));
+      }
+      if (input.content) {
+        // Scanned document whole content
+        tokensWithWeights.push(...this.extractWeightedTokens(input.content, 1.0));
       }
     } else {
       tokensWithWeights = this.extractWeightedTokens(String(input), 1.0);
@@ -107,19 +119,30 @@ class NLPService {
       tfMap[stem] = (tfMap[stem] || 0) + weight;
     }
 
-    // Sublinear term frequency scaling & L2 unit normalization
+    // Sublinear term frequency scaling
+    let scoredTerms = Object.keys(tfMap).map(k => {
+      const val = 1 + Math.log(tfMap[k]);
+      return { stem: k, val };
+    });
+
+    // Prune to top N terms if larger than maxTerms to keep JSON compact and focused
+    if (scoredTerms.length > maxTerms) {
+      scoredTerms.sort((a, b) => b.val - a.val);
+      scoredTerms = scoredTerms.slice(0, maxTerms);
+    }
+
+    // L2 unit normalization
     let sumSq = 0;
-    for (const k in tfMap) {
-      tfMap[k] = 1 + Math.log(tfMap[k]);
-      sumSq += tfMap[k] * tfMap[k];
+    for (const item of scoredTerms) {
+      sumSq += item.val * item.val;
     }
 
     const norm = Math.sqrt(sumSq);
     if (norm === 0) return null;
 
     const vector = {};
-    for (const k in tfMap) {
-      vector[k] = Number((tfMap[k] / norm).toFixed(4));
+    for (const item of scoredTerms) {
+      vector[item.stem] = Number((item.val / norm).toFixed(4));
     }
 
     return vector;
@@ -158,7 +181,6 @@ class NLPService {
     
     // Support if vec2 was stored as dense array or object
     if (Array.isArray(vec1) && Array.isArray(vec2)) {
-      // fallback for dense vectors if any exist
       let dot = 0, normA = 0, normB = 0;
       for (let i = 0; i < vec1.length; i++) {
         dot += vec1[i] * vec2[i];
@@ -178,6 +200,115 @@ class NLPService {
     }
 
     return Math.min(1, Math.max(0, score));
+  }
+
+  /**
+   * Computes a hybrid relevance score combining semantic AI similarity and exact/partial
+   * keyword matching across title, authors, adviser, keywords, abstract, and scanned content.
+   * @param {string} search - Raw search string
+   * @param {object} candidate - { title, authors, adviser, keywords, abstract, content_text, embedding }
+   * @param {Record<string, number>|null} queryVector 
+   * @returns {{ score: number, semanticScore: number, keywordScore: number, matchReason: string }}
+   */
+  static evaluateRelevance(search, candidate, queryVector) {
+    const rawQuery = (search || '').trim().toLowerCase();
+    if (!rawQuery) {
+      return { score: 1.0, semanticScore: 1.0, keywordScore: 1.0, matchReason: 'all' };
+    }
+
+    let parsedEmbedding = candidate.embedding;
+    if (typeof parsedEmbedding === 'string') {
+      try { parsedEmbedding = JSON.parse(parsedEmbedding); } catch (e) { parsedEmbedding = null; }
+    }
+
+    // 1. Semantic AI Similarity
+    let semanticScore = 0;
+    if (parsedEmbedding && queryVector) {
+      semanticScore = this.calculateSimilarity(queryVector, parsedEmbedding);
+    }
+
+    // 2. Keyword & Book Title Matching
+    const queryTerms = rawQuery
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(t => t.length >= 2);
+
+    const titleLower    = (candidate.title || '').toLowerCase();
+    const authorsLower  = (candidate.authors || '').toLowerCase();
+    const adviserLower  = (candidate.adviser || '').toLowerCase();
+    const keywordsLower = (candidate.keywords || '').toLowerCase();
+    const abstractLower = (candidate.abstract || '').toLowerCase();
+    const contentLower  = (candidate.content_text || '').toLowerCase();
+
+    let keywordScore = 0;
+    let matchReasons = [];
+
+    // Exact title / phrase matches
+    if (titleLower.includes(rawQuery)) {
+      keywordScore += 1.0;
+      matchReasons.push('title_exact');
+    }
+    if (keywordsLower.includes(rawQuery)) {
+      keywordScore += 0.8;
+      matchReasons.push('keywords_exact');
+    }
+    if (authorsLower.includes(rawQuery) || adviserLower.includes(rawQuery)) {
+      keywordScore += 0.8;
+      matchReasons.push('author_exact');
+    }
+    if (abstractLower.includes(rawQuery)) {
+      keywordScore += 0.6;
+      matchReasons.push('abstract_exact');
+    }
+    if (contentLower.includes(rawQuery)) {
+      keywordScore += 0.5;
+      matchReasons.push('content_exact');
+    }
+
+    // Per-term matching across fields
+    let matchedTermsCount = 0;
+    for (const term of queryTerms) {
+      let termMatched = false;
+      if (titleLower.includes(term)) {
+        keywordScore += 0.4;
+        termMatched = true;
+      }
+      if (keywordsLower.includes(term)) {
+        keywordScore += 0.3;
+        termMatched = true;
+      }
+      if (authorsLower.includes(term) || adviserLower.includes(term)) {
+        keywordScore += 0.25;
+        termMatched = true;
+      }
+      if (abstractLower.includes(term)) {
+        keywordScore += 0.2;
+        termMatched = true;
+      }
+      if (contentLower.includes(term)) {
+        keywordScore += 0.15;
+        termMatched = true;
+      }
+      if (termMatched) matchedTermsCount++;
+    }
+
+    // Ratio of matched terms
+    const termCoverageRatio = queryTerms.length > 0 ? (matchedTermsCount / queryTerms.length) : 0;
+    if (termCoverageRatio === 1.0 && queryTerms.length > 1) {
+      keywordScore += 0.5; // Bonus if every single query term appeared somewhere in the study/document
+    }
+
+    // 3. Composite Combined Score
+    // Semantic score provides subtle conceptual correlation (0.0 to 1.0).
+    // Keyword score provides strong factual grounding (0.0 to 2.5+).
+    const score = (semanticScore * 0.4) + (keywordScore * 0.6);
+
+    return {
+      score,
+      semanticScore,
+      keywordScore,
+      matchReason: matchReasons.join(',') || (matchedTermsCount > 0 ? 'terms' : (semanticScore > 0 ? 'semantic' : 'none'))
+    };
   }
 }
 

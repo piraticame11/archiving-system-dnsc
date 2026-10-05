@@ -36,14 +36,15 @@
 
   <!-- Reject Reason Modal -->
   <div id="reject-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-      <h2 class="text-lg font-bold text-gray-900 mb-4">Decline Group Request</h2>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Reason <span class="text-red-500">*</span></label>
-      <textarea id="reject-reason" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Let the group know why…"></textarea>
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+      <h2 class="text-lg font-bold text-gray-900 mb-2">Decline Group Request</h2>
+      <p class="text-sm text-gray-500 mb-4">Please specify a constructive reason so the students know what to improve before reapplying.</p>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Reason for Declining <span class="text-red-500">*</span></label>
+      <textarea id="reject-reason" rows="4" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="e.g. Current research title needs refinement in scope; please revise chapters 1 and 2 and re-submit…"></textarea>
       <p id="reject-error" class="text-sm text-red-600 hidden mt-1"></p>
-      <div class="flex justify-end gap-3 mt-4">
-        <button onclick="closeRejectModal()" class="text-sm border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50">Cancel</button>
-        <button onclick="submitReject()" class="text-sm bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">Decline Request</button>
+      <div class="flex justify-end gap-3 mt-5">
+        <button onclick="closeRejectModal()" class="text-sm font-medium border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+        <button onclick="submitReject()" class="text-sm font-semibold bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">Decline Request</button>
       </div>
     </div>
   </div>

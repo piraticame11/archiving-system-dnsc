@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -36,7 +36,7 @@
       <p class="text-sm text-gray-500 mb-5">Search and explore published theses and capstone projects</p>
       <div class="relative">
         <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/></svg>
-        <input id="f-search" type="text" placeholder="Search by title, author, keyword, or abstract…"
+        <input id="f-search" type="text" placeholder="Search books, keywords, authors, or whole document content…"
           class="w-full pl-12 pr-4 py-3 text-sm border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
       </div>
     </div>
@@ -263,6 +263,14 @@
                 ${item.adviser ? `<p class="text-xs text-gray-500 mt-0.5">Adviser: ${escHtml(item.adviser)}</p>` : ''}
                 ${item.abstract ? `<p class="text-xs text-gray-600 mt-2 abstract-clamp leading-relaxed">${escHtml(item.abstract)}</p>` : ''}
                 ${item.keywords ? `<p class="text-xs text-gray-400 mt-1.5">${escHtml(item.keywords)}</p>` : ''}
+                ${item.match_snippet ? `
+                  <div class="mt-2.5 p-2.5 rounded-lg bg-emerald-50/80 border border-emerald-200/60 text-xs text-gray-700 leading-relaxed">
+                    <div class="flex items-center gap-1.5 text-emerald-800 font-semibold mb-1 text-[11px]">
+                      <svg class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                      <span>AI Document Match:</span>
+                    </div>
+                    <p class="italic text-gray-600 font-mono text-[11px]">${escHtml(item.match_snippet)}</p>
+                  </div>` : ''}
               </div>
               <div class="flex-shrink-0 text-right hidden sm:block">
                 <p class="text-xs text-gray-400">${formatDate(item.archived_at)}</p>
