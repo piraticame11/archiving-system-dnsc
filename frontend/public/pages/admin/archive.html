@@ -124,6 +124,11 @@
           <option value="2nd">2nd Semester</option>
           <option value="summer">Summer</option>
         </select>
+        <select id="b-sort" class="form-input w-auto text-sm py-2 font-medium">
+          <option value="relevance">Sort: Most Relevant</option>
+          <option value="newest">Sort: Newest First</option>
+          <option value="downloads">Sort: Most Downloaded</option>
+        </select>
         <button onclick="resetBrowseFilters()" class="text-sm text-gray-500 hover:text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">Reset</button>
       </div>
 
@@ -419,6 +424,7 @@
       const type     = document.getElementById('b-type').value;
       const year     = document.getElementById('b-year').value;
       const semester = document.getElementById('b-semester').value;
+      const sort     = document.getElementById('b-sort')?.value || 'relevance';
 
       const p = new URLSearchParams({ page, limit: 12 });
       if (search)   p.set('search', search);
@@ -426,6 +432,7 @@
       if (type)     p.set('type', type);
       if (year)     p.set('school_year', year);
       if (semester) p.set('semester', semester);
+      if (sort)     p.set('sort', sort);
 
       const grid = document.getElementById('archive-grid');
       grid.innerHTML = `<div class="col-span-3 py-16 text-center text-gray-400">Loading…</div>`;
@@ -521,13 +528,14 @@
 
     const debouncedBrowse = debounce(() => { browsePage = 1; loadBrowse(1); }, 350);
     document.getElementById('b-search').addEventListener('input', debouncedBrowse);
-    ['b-dept','b-type','b-year','b-semester'].forEach(id =>
+    ['b-dept','b-type','b-year','b-semester','b-sort'].forEach(id =>
       document.getElementById(id).addEventListener('change', () => { browsePage = 1; loadBrowse(1); })
     );
 
     function resetBrowseFilters() {
       ['b-search'].forEach(id => document.getElementById(id).value = '');
       ['b-dept','b-type','b-year','b-semester'].forEach(id => document.getElementById(id).value = '');
+      if (document.getElementById('b-sort')) document.getElementById('b-sort').value = 'relevance';
       browsePage = 1; loadBrowse(1);
     }
 

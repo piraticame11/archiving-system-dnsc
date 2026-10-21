@@ -39,6 +39,9 @@
         <input id="f-search" type="text" placeholder="Search books, keywords, authors, or whole document content…"
           class="w-full pl-12 pr-4 py-3 text-sm border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
       </div>
+      <p class="text-[11px] text-gray-400 mt-2 text-left sm:text-center">
+        ProTip: Use <span class="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded font-mono text-[10px]">"exact phrase"</span>, <span class="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded font-mono text-[10px]">author:name</span>, or <span class="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded font-mono text-[10px]">title:term</span> for targeted scholar search.
+      </p>
     </div>
   </div>
 
@@ -97,8 +100,16 @@
       <div id="alert" class="hidden mb-4 px-4 py-3 rounded-lg text-sm font-medium"></div>
 
       <!-- Result count + sort -->
-      <div class="flex items-center justify-between mb-4">
-        <p id="result-info" class="text-sm text-gray-500"></p>
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <p id="result-info" class="text-sm text-gray-500 font-medium"></p>
+        <div class="flex items-center gap-2">
+          <label for="f-sort" class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Sort by:</label>
+          <select id="f-sort" class="form-input text-xs py-1.5 w-auto">
+            <option value="relevance">Most Relevant</option>
+            <option value="newest">Newest Studies First</option>
+            <option value="downloads">Most Downloaded</option>
+          </select>
+        </div>
       </div>
 
       <!-- Result list -->
@@ -163,7 +174,7 @@
         clearTimeout(searchTimer);
         searchTimer = setTimeout(() => { currentPage = 1; loadArchive(); }, 400);
       });
-      ['f-type','f-dept','f-year','f-semester'].forEach(id =>
+      ['f-type','f-dept','f-year','f-semester','f-sort'].forEach(id =>
         document.getElementById(id).addEventListener('change', () => { currentPage = 1; loadArchive(); }));
     });
 
@@ -212,6 +223,7 @@
       const dept     = document.getElementById('f-dept').value;
       const year     = document.getElementById('f-year').value;
       const semester = document.getElementById('f-semester').value;
+      const sort     = document.getElementById('f-sort')?.value || 'relevance';
 
       const params = new URLSearchParams({ page: currentPage, limit: 10 });
       if (search)   params.set('search', search);
@@ -219,6 +231,7 @@
       if (dept)     params.set('department_id', dept);
       if (year)     params.set('school_year', year);
       if (semester) params.set('semester', semester);
+      if (sort)     params.set('sort', sort);
 
       const resultsEl = document.getElementById('results');
       resultsEl.innerHTML = '<div class="text-center py-16 text-sm text-gray-400">Loading…</div>';
@@ -424,6 +437,7 @@
 
     function resetFilters() {
       ['f-type','f-dept','f-year','f-semester'].forEach(id => document.getElementById(id).value = '');
+      if (document.getElementById('f-sort')) document.getElementById('f-sort').value = 'relevance';
       document.getElementById('f-search').value = '';
       currentPage = 1;
       loadArchive();

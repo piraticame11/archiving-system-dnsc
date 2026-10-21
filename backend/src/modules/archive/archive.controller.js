@@ -11,6 +11,7 @@ async function list(req, res, next) {
       school_year:   req.query.school_year,
       semester:      req.query.semester,
       type:          req.query.type,
+      sort:          req.query.sort,
       page,
       limit,
     });

@@ -15,10 +15,13 @@ const pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit:      0,
   timezone:        '+00:00',
+  charset:         'utf8mb4',
 });
 
-pool.getConnection()
-  .then(conn => { conn.release(); console.log('MySQL connected.'); })
-  .catch(err => { console.error('MySQL connection error:', err.message); process.exit(1); });
+if (process.env.NODE_ENV !== 'test') {
+  pool.getConnection()
+    .then(conn => { conn.release(); console.log('MySQL connected.'); })
+    .catch(err => { console.error('MySQL connection error:', err.message); process.exit(1); });
+}
 
 module.exports = pool;

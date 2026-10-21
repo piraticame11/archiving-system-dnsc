@@ -4,12 +4,28 @@ const path = require('path');
 const mysql = require('mysql2/promise');
 
 async function run() {
+  const dbHost = process.env.DB_HOST || 'localhost';
+  const dbPort = Number(process.env.DB_PORT) || 3306;
+  const dbUser = process.env.DB_USER;
+  const dbPassword = process.env.DB_PASSWORD;
+  const dbName = process.env.DB_NAME || 'archiving_system';
+
+  // Ensure the database exists before connecting to it
+  const serverConn = await mysql.createConnection({
+    host: dbHost,
+    port: dbPort,
+    user: dbUser,
+    password: dbPassword,
+  });
+  await serverConn.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  await serverConn.end();
+
   const conn = await mysql.createConnection({
-    host:     process.env.DB_HOST || 'localhost',
-    port:     Number(process.env.DB_PORT) || 3306,
-    user:     process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
+    host:     dbHost,
+    port:     dbPort,
+    user:     dbUser,
+    password: dbPassword,
+    database: dbName,
     multipleStatements: true,
   });
 

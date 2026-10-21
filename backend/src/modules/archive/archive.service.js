@@ -29,8 +29,68 @@ const FULL_SELECT = `
   JOIN users u                ON a.archived_by   = u.id
   JOIN submission_documents sd ON a.document_id   = sd.id`;
 
-/* ── list (browse) ───────────────────────────────────────────────── */
-async function listArchive({ search, department_id, school_year, semester, type, page, limit }) {
+/* ── Google Scholar-style Query Parser ──────────────────────────── */
+function parseSearchQuery(queryStr) {
+  if (!queryStr || typeof queryStr !== 'string') {
+    return { raw: '', clean: '', phrases: [], terms: [], authorFilter: null, adviserFilter: null, titleFilter: null };
+  }
+
+  const raw = queryStr.trim();
+  let clean = raw;
+  let authorFilter = null;
+  let adviserFilter = null;
+  let titleFilter = null;
+
+  // Extract author:"..." or author:word
+  const authorMatch = clean.match(/\bauthor:(?:"([^"]+)"|(\S+))/i);
+  if (authorMatch) {
+    authorFilter = (authorMatch[1] || authorMatch[2]).trim();
+    clean = clean.replace(authorMatch[0], ' ');
+  }
+
+  // Extract adviser:"..." or adviser:word
+  const adviserMatch = clean.match(/\badviser:(?:"([^"]+)"|(\S+))/i);
+  if (adviserMatch) {
+    adviserFilter = (adviserMatch[1] || adviserMatch[2]).trim();
+    clean = clean.replace(adviserMatch[0], ' ');
+  }
+
+  // Extract title:"..." or title:word
+  const titleMatch = clean.match(/\btitle:(?:"([^"]+)"|(\S+))/i);
+  if (titleMatch) {
+    titleFilter = (titleMatch[1] || titleMatch[2]).trim();
+    clean = clean.replace(titleMatch[0], ' ');
+  }
+
+  // Extract exact phrases in quotes
+  const phrases = [];
+  const phraseRegex = /"([^"]+)"/g;
+  let pMatch;
+  while ((pMatch = phraseRegex.exec(clean)) !== null) {
+    if (pMatch[1].trim()) phrases.push(pMatch[1].trim().toLowerCase());
+  }
+  clean = clean.replace(/"[^"]+"/g, ' ');
+
+  // Extract remaining individual terms
+  const terms = clean
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(t => t.length >= 2);
+
+  return {
+    raw,
+    clean: clean.trim(),
+    phrases,
+    terms,
+    authorFilter,
+    adviserFilter,
+    titleFilter
+  };
+}
+
+/* ── list (browse) with Google Scholar-style Hybrid Indexing ─────── */
+async function listArchive({ search, department_id, school_year, semester, type, sort = 'relevance', page, limit }) {
   const offset     = (page - 1) * limit;
   const conditions = [];
   const params     = [];
@@ -40,52 +100,152 @@ async function listArchive({ search, department_id, school_year, semester, type,
   if (semester)      { conditions.push('a.semester = ?');      params.push(semester); }
   if (type)          { conditions.push('a.type = ?');          params.push(type); }
 
-  const filterWhere = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-
   if (search) {
-    // 1. Get search query embedding
+    const parsed = parseSearchQuery(search);
+
+    if (parsed.authorFilter) {
+      conditions.push('LOWER(a.authors) LIKE ?');
+      params.push(`%${parsed.authorFilter.toLowerCase()}%`);
+    }
+    if (parsed.adviserFilter) {
+      conditions.push('LOWER(a.adviser) LIKE ?');
+      params.push(`%${parsed.adviserFilter.toLowerCase()}%`);
+    }
+    if (parsed.titleFilter) {
+      conditions.push('LOWER(a.title) LIKE ?');
+      params.push(`%${parsed.titleFilter.toLowerCase()}%`);
+    }
+
+    // Build MySQL FULLTEXT boolean search expression & LIKE fallback for high recall
+    const booleanTokens = [];
+    parsed.phrases.forEach(p => booleanTokens.push(`+"${p}"`));
+    parsed.terms.forEach(t => {
+      if (t.length >= 3) booleanTokens.push(`+${t}*`);
+    });
+
+    const booleanQuery = booleanTokens.join(' ');
+    const likePattern  = `%${(parsed.clean || search).toLowerCase()}%`;
+
+    const searchConditions = [];
+    const searchParams     = [];
+
+    if (booleanQuery.length > 0) {
+      searchConditions.push(
+        '(MATCH(a.title) AGAINST(? IN BOOLEAN MODE) OR ' +
+        ' MATCH(a.keywords) AGAINST(? IN BOOLEAN MODE) OR ' +
+        ' MATCH(a.abstract) AGAINST(? IN BOOLEAN MODE) OR ' +
+        ' MATCH(a.content_text) AGAINST(? IN BOOLEAN MODE))'
+      );
+      searchParams.push(booleanQuery, booleanQuery, booleanQuery, booleanQuery);
+    }
+
+    // Substring fallback for acronyms, short words, authors, keywords
+    searchConditions.push(
+      '(LOWER(a.title) LIKE ? OR LOWER(a.keywords) LIKE ? OR LOWER(a.authors) LIKE ? OR LOWER(a.adviser) LIKE ? OR LOWER(a.abstract) LIKE ?)'
+    );
+    searchParams.push(likePattern, likePattern, likePattern, likePattern, likePattern);
+
+    conditions.push(`(${searchConditions.join(' OR ')})`);
+    params.push(...searchParams);
+
+    const filterWhere = `WHERE ${conditions.join(' AND ')}`;
+
+    // 1. Get search query semantic vector (if available)
     const queryVector = await NLPService.getEmbedding(search);
 
-    // 2. Fetch candidate IDs, metadata, scanned content, and embeddings based on filters
+    // 2. Fetch lightweight candidates (Notice: content_text is NOT fetched into memory here)
     const [candidates] = await db.query(
-      `SELECT a.id, a.title, a.abstract, a.keywords, a.authors, a.adviser, a.content_text, a.embedding
+      `SELECT a.id, a.title, a.abstract, a.keywords, a.authors, a.adviser, a.school_year, a.download_count, a.embedding
        FROM archive a ${filterWhere}`,
       params
     );
 
-    // 3. Evaluate relevance using hybrid AI semantic & keyword/book matching
+    if (candidates.length === 0) {
+      return paginatedResponse([], 0, page, limit);
+    }
+
+    // 3. Multi-Signal Google Scholar-style ranking
+    const rawLower = search.trim().toLowerCase();
     const scored = candidates.map(c => {
-      const evaluation = NLPService.evaluateRelevance(search, c, queryVector);
+      const titleLower    = (c.title || '').toLowerCase();
+      const keywordsLower = (c.keywords || '').toLowerCase();
+      const authorsLower  = (c.authors || '').toLowerCase();
+      const adviserLower  = (c.adviser || '').toLowerCase();
+      const abstractLower = (c.abstract || '').toLowerCase();
+
+      let lexicalScore = 0;
+
+      // Exact phrase bonus
+      if (titleLower.includes(rawLower))    lexicalScore += 4.0;
+      if (keywordsLower.includes(rawLower)) lexicalScore += 3.0;
+      if (authorsLower.includes(rawLower) || adviserLower.includes(rawLower)) lexicalScore += 2.5;
+      if (abstractLower.includes(rawLower)) lexicalScore += 1.8;
+
+      // Field weighted per-term scoring
+      let matchedTerms = 0;
+      for (const term of parsed.terms) {
+        let termFound = false;
+        if (titleLower.includes(term))    { lexicalScore += 1.2; termFound = true; }
+        if (keywordsLower.includes(term)) { lexicalScore += 0.8; termFound = true; }
+        if (authorsLower.includes(term) || adviserLower.includes(term)) { lexicalScore += 0.7; termFound = true; }
+        if (abstractLower.includes(term)) { lexicalScore += 0.4; termFound = true; }
+        if (termFound) matchedTerms++;
+      }
+
+      // Bonus if all query terms are present in the paper
+      if (parsed.terms.length > 1 && matchedTerms === parsed.terms.length) {
+        lexicalScore += 1.2;
+      }
+
+      // Semantic Vector Similarity (0.0 to 1.0)
+      let semanticScore = 0;
+      let parsedEmbedding = c.embedding;
+      if (typeof parsedEmbedding === 'string') {
+        try { parsedEmbedding = JSON.parse(parsedEmbedding); } catch (_) { parsedEmbedding = null; }
+      }
+      if (parsedEmbedding && queryVector) {
+        semanticScore = NLPService.calculateSimilarity(queryVector, parsedEmbedding);
+      }
+
+      // Popularity & Recency signals
+      const downloadBonus = Math.log10(1 + (c.download_count || 0)) * 0.25;
+      const startYear = parseInt(String(c.school_year || '').slice(0, 4), 10);
+      const recencyBonus = startYear ? Math.max(0, (startYear - 2020) * 0.05) : 0;
+
+      // Composite final score
+      const finalScore = (lexicalScore * 0.65) + (semanticScore * 2.5 * 0.25) + downloadBonus + recencyBonus;
+
       return {
         id: c.id,
-        score: evaluation.score,
-        semanticScore: evaluation.semanticScore,
-        keywordScore: evaluation.keywordScore,
-        matchReason: evaluation.matchReason,
-        // Extract matching snippet from scanned document content or abstract
-        snippet: DocumentExtractor.extractSnippet(c.content_text || c.abstract || '', search, 240)
+        score: finalScore,
+        downloadCount: c.download_count || 0,
+        schoolYear: startYear || 0,
       };
     });
 
-    // Filter only documents with positive relevance
-    const validScored = scored.filter(s => s.score > 0);
-    validScored.sort((a, b) => b.score - a.score);
+    // 4. Sorting
+    if (sort === 'newest') {
+      scored.sort((a, b) => b.schoolYear - a.schoolYear || b.score - a.score);
+    } else if (sort === 'downloads') {
+      scored.sort((a, b) => b.downloadCount - a.downloadCount || b.score - a.score);
+    } else {
+      // Default: highest relevance
+      scored.sort((a, b) => b.score - a.score || b.downloadCount - a.downloadCount);
+    }
 
-    const total = validScored.length;
-
-    // 4. Paginate IDs
-    const paginatedItems = validScored.slice(offset, offset + limit);
+    const total = scored.length;
+    const paginatedItems = scored.slice(offset, offset + limit);
     const paginatedIds = paginatedItems.map(s => s.id);
 
     if (paginatedIds.length === 0) {
       return paginatedResponse([], total, page, limit);
     }
 
-    // 5. Fetch full data for paginated IDs
+    // 5. Fetch full data & snippets ONLY for the paginated top IDs
     const idPlaceholders = paginatedIds.map(() => '?').join(',');
     const [rows] = await db.query(
       `SELECT a.id, a.title, a.abstract, a.authors, a.adviser, a.school_year, a.semester,
-              a.type, a.keywords, a.archived_at, a.download_count, a.submission_id,
+              a.type, a.keywords, a.archived_at, a.download_count, a.submission_id, a.content_text,
               d.name AS department_name, d.code AS department_code,
               CONCAT(u.first_name, ' ', u.last_name) AS archived_by_name,
               sd.file_name, sd.file_size, sd.mime_type
@@ -97,15 +257,20 @@ async function listArchive({ search, department_id, school_year, semester, type,
       paginatedIds
     );
 
-    // Re-sort the rows to match the semantic & keyword score order, and attach snippet
     const rowMap = {};
     rows.forEach(r => { rowMap[r.id] = r; });
+
     const sortedRows = paginatedItems.map(item => {
       const r = rowMap[item.id];
       if (!r) return null;
+
+      // Generate snippet on the fly only for current page items
+      const snippet = DocumentExtractor.extractSnippet(r.content_text || r.abstract || '', search, 240);
+      delete r.content_text; // Do not send huge text blobs to frontend
+
       return {
         ...r,
-        match_snippet: item.snippet,
+        match_snippet: snippet,
         relevance_score: Number(item.score.toFixed(3))
       };
     }).filter(Boolean);
@@ -113,12 +278,22 @@ async function listArchive({ search, department_id, school_year, semester, type,
     return paginatedResponse(sortedRows, total, page, limit);
 
   } else {
-    // ORIGINAL FLOW (No Search String)
+    // BROWSE WITHOUT SEARCH
+    const filterWhere = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const from  = `FROM archive a
       JOIN departments d ON a.department_id = d.id
       JOIN users u ON a.archived_by = u.id
       JOIN submission_documents sd ON a.document_id = sd.id
       ${filterWhere}`;
+
+    let orderBy = 'ORDER BY a.archived_at DESC';
+    if (sort === 'downloads') {
+      orderBy = 'ORDER BY a.download_count DESC, a.archived_at DESC';
+    } else if (sort === 'title') {
+      orderBy = 'ORDER BY a.title ASC';
+    } else if (sort === 'newest') {
+      orderBy = 'ORDER BY a.school_year DESC, a.archived_at DESC';
+    }
 
     const [[{ total }]] = await db.query(`SELECT COUNT(*) AS total ${from}`, params);
     const [rows] = await db.query(
@@ -128,7 +303,7 @@ async function listArchive({ search, department_id, school_year, semester, type,
               CONCAT(u.first_name, ' ', u.last_name) AS archived_by_name,
               sd.file_name, sd.file_size, sd.mime_type
        ${from}
-       ORDER BY a.archived_at DESC
+       ${orderBy}
        LIMIT ? OFFSET ?`,
       [...params, limit, offset]
     );
@@ -323,4 +498,4 @@ async function getStats() {
   return { ...counts, by_department: byDept, by_year: byYear };
 }
 
-module.exports = { listArchive, getArchiveById, getEligible, promoteToArchive, getDownloadInfo, removeFromArchive, getStats };
+module.exports = { listArchive, getArchiveById, getEligible, promoteToArchive, getDownloadInfo, removeFromArchive, getStats, parseSearchQuery };

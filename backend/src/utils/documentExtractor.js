@@ -69,10 +69,16 @@ class DocumentExtractor {
    * @param {number} [maxLen=220] 
    * @returns {string|null}
    */
-  static extractSnippet(text, query, maxLen = 220) {
+  static extractSnippet(text, query, maxLen = 240) {
     if (!text || !query) return null;
 
-    const normalizedQuery = query.toLowerCase().trim();
+    // Clean operators like author: or quotes
+    const cleanedQuery = String(query)
+      .replace(/\b(author|adviser|title):/gi, '')
+      .replace(/["']/g, ' ')
+      .trim();
+
+    const normalizedQuery = cleanedQuery.toLowerCase();
     const queryTerms = normalizedQuery
       .replace(/[^a-z0-9\s]/g, ' ')
       .split(/\s+/)
@@ -85,12 +91,35 @@ class DocumentExtractor {
     // 1. Try to find the full exact phrase first
     let matchIdx = lowerText.indexOf(normalizedQuery);
 
-    // 2. If not found, find the first occurrence of any query term
+    // 2. If no exact phrase, find the position with the highest concentration of query terms
     if (matchIdx === -1) {
-      for (const term of queryTerms) {
-        const idx = lowerText.indexOf(term);
-        if (idx !== -1 && (matchIdx === -1 || idx < matchIdx)) {
-          matchIdx = idx;
+      const step = 60;
+      let bestScore = -1;
+      let bestIdx = -1;
+
+      // Scan through text in chunks to find maximum term density
+      for (let i = 0; i < lowerText.length; i += step) {
+        const slice = lowerText.substring(i, i + maxLen);
+        let score = 0;
+        for (const term of queryTerms) {
+          if (slice.includes(term)) score += 1;
+        }
+        if (score > bestScore) {
+          bestScore = score;
+          bestIdx = i;
+        }
+        if (score === queryTerms.length) break; // found all terms
+      }
+
+      if (bestScore > 0 && bestIdx !== -1) {
+        matchIdx = bestIdx;
+      } else {
+        // Fallback to first occurrence of any term
+        for (const term of queryTerms) {
+          const idx = lowerText.indexOf(term);
+          if (idx !== -1 && (matchIdx === -1 || idx < matchIdx)) {
+            matchIdx = idx;
+          }
         }
       }
     }
@@ -99,19 +128,19 @@ class DocumentExtractor {
 
     // Center window around match
     const half = Math.floor(maxLen / 2);
-    let start = Math.max(0, matchIdx - half);
-    let end = Math.min(text.length, matchIdx + half);
+    let start = Math.max(0, matchIdx - Math.floor(half * 0.4));
+    let end = Math.min(text.length, start + maxLen);
 
     // Snap to nearest space if possible
     if (start > 0) {
       const spaceIdx = text.indexOf(' ', start);
-      if (spaceIdx !== -1 && spaceIdx < start + 20) {
+      if (spaceIdx !== -1 && spaceIdx < start + 25) {
         start = spaceIdx + 1;
       }
     }
     if (end < text.length) {
       const spaceIdx = text.lastIndexOf(' ', end);
-      if (spaceIdx !== -1 && spaceIdx > end - 20) {
+      if (spaceIdx !== -1 && spaceIdx > end - 25) {
         end = spaceIdx;
       }
     }
