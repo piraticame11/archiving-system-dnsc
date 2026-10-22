@@ -46,9 +46,21 @@ function show(selector) { const el = $(selector); if (el) el.classList.remove('h
 function hide(selector) { const el = $(selector); if (el) el.classList.add('hidden'); }
 
 function stripHtml(str) {
-  const d = document.createElement('div');
-  d.innerHTML = str;
-  return d.textContent || '';
+  if (!str) return '';
+  try {
+    return new DOMParser().parseFromString(str, 'text/html').body.textContent || '';
+  } catch {
+    return String(str).replace(/<[^>]*>/g, '');
+  }
+}
+
+function escHtml(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function statusBadgeClass(status) {

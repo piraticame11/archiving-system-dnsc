@@ -231,11 +231,11 @@ async function checkVenueConflict(venue_id, scheduled_date, time_slots, excludeI
 }
 
 /* ─── sync groups ───────────────────────────────────────────────────── */
-async function syncGroups(scheduleId, group_ids) {
-  await db.query(`DELETE FROM schedule_groups WHERE schedule_id = ?`, [scheduleId]);
+async function syncGroups(scheduleId, group_ids, conn = db) {
+  await conn.query(`DELETE FROM schedule_groups WHERE schedule_id = ?`, [scheduleId]);
   if (group_ids.length) {
     const values = group_ids.map(gid => [scheduleId, gid]);
-    await db.query(`INSERT INTO schedule_groups (schedule_id, group_id) VALUES ?`, [values]);
+    await conn.query(`INSERT INTO schedule_groups (schedule_id, group_id) VALUES ?`, [values]);
   }
 }
 
@@ -297,11 +297,11 @@ function validatePanelComposition(panelists) {
   }
 }
 
-async function syncPanelists(scheduleId, panelists) {
-  await db.query(`DELETE FROM schedule_panelists WHERE schedule_id = ?`, [scheduleId]);
+async function syncPanelists(scheduleId, panelists, conn = db) {
+  await conn.query(`DELETE FROM schedule_panelists WHERE schedule_id = ?`, [scheduleId]);
   if (panelists.length) {
     const vals = panelists.map(p => [scheduleId, p.panelist_id, p.role]);
-    await db.query(`INSERT INTO schedule_panelists (schedule_id, panelist_id, role_label) VALUES ?`, [vals]);
+    await conn.query(`INSERT INTO schedule_panelists (schedule_id, panelist_id, role_label) VALUES ?`, [vals]);
   }
 }
 
@@ -318,21 +318,34 @@ async function createSchedule({ venue_id, defense_type, scheduled_date, time_slo
     throw err;
   }
 
-  const [result] = await db.query(
-    `INSERT INTO defense_schedules
-       (venue_id, defense_type, scheduled_date, time_slots, notes, created_by, panel_size)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [venue_id || null, defense_type, scheduled_date, JSON.stringify(time_slots), notes || null, created_by, panelList.length || 4]
-  );
+  const conn = await db.getConnection();
+  await conn.beginTransaction();
 
-  const scheduleId = result.insertId;
+  let scheduleId;
+  try {
+    const [result] = await conn.query(
+      `INSERT INTO defense_schedules
+         (venue_id, defense_type, scheduled_date, time_slots, notes, created_by, panel_size)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [venue_id || null, defense_type, scheduled_date, JSON.stringify(time_slots), notes || null, created_by, panelList.length || 4]
+    );
 
-  if (panelList.length) {
-    await syncPanelists(scheduleId, panelList);
-  }
+    scheduleId = result.insertId;
 
-  if (Array.isArray(group_ids) && group_ids.length) {
-    await syncGroups(scheduleId, group_ids);
+    if (panelList.length) {
+      await syncPanelists(scheduleId, panelList, conn);
+    }
+
+    if (Array.isArray(group_ids) && group_ids.length) {
+      await syncGroups(scheduleId, group_ids, conn);
+    }
+
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
   }
 
   const schedule = await getById(scheduleId);
@@ -385,23 +398,34 @@ async function updateSchedule(id, { venue_id, defense_type, scheduled_date, time
   if (notes          !== undefined) updates.notes          = notes || null;
   if (Array.isArray(panelists) && panelists.length) updates.panel_size = panelists.length;
 
-  if (Object.keys(updates).length) {
-    const set = Object.keys(updates).map(k => `${k} = ?`).join(', ');
-    await db.query(
-      `UPDATE defense_schedules SET ${set}, updated_at = NOW() WHERE id = ?`,
-      [...Object.values(updates), id]
-    );
-  }
+  const conn = await db.getConnection();
+  await conn.beginTransaction();
 
-  if (Array.isArray(panelists)) {
-    await syncPanelists(id, panelists);
-  }
+  try {
+    if (Object.keys(updates).length) {
+      const set = Object.keys(updates).map(k => `${k} = ?`).join(', ');
+      await conn.query(
+        `UPDATE defense_schedules SET ${set}, updated_at = NOW() WHERE id = ?`,
+        [...Object.values(updates), id]
+      );
+    }
 
-  if (Array.isArray(group_ids)) {
-    await syncGroups(id, group_ids);
-  }
+    if (Array.isArray(panelists)) {
+      await syncPanelists(id, panelists, conn);
+    }
 
-  return getById(id);
+    if (Array.isArray(group_ids)) {
+      await syncGroups(id, group_ids, conn);
+    }
+
+    await conn.commit();
+    return getById(id);
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
 }
 
 /* ─── update status ─────────────────────────────────────────────────── */

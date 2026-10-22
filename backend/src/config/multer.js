@@ -93,11 +93,21 @@ function excelFilter(req, file, cb) {
   cb(null, true);
 }
 
-const uploadDocument  = multer({ storage: documentStorage, fileFilter, limits: { fileSize: maxFileSizeMB() } });
-const uploadCsv       = multer({ storage: csvStorage, fileFilter: csvFilter, limits: { fileSize: 5 * 1024 * 1024 } });
-const uploadImrad     = multer({ storage: imradStorage, fileFilter, limits: { fileSize: maxFileSizeMB() } });
-const uploadExcel     = multer({ storage: excelStorage, fileFilter: excelFilter, limits: { fileSize: 10 * 1024 * 1024 } });
-const uploadGuideline = multer({ storage: guidelineStorage, fileFilter, limits: { fileSize: maxFileSizeMB() } });
-const uploadMinutes   = multer({ storage: minutesStorage, fileFilter: imageFilter, limits: { fileSize: 10 * 1024 * 1024 } });
+const profileStorage = multer.diskStorage({
+  destination(req, file, cb) { cb(null, makeUploadDir('profile-photos')); },
+  filename(req, file, cb) {
+    const ext  = path.extname(file.originalname).toLowerCase();
+    const base = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
+    cb(null, `${Date.now()}_${base}${ext}`);
+  },
+});
 
-module.exports = { uploadDocument, uploadCsv, uploadImrad, uploadExcel, uploadGuideline, uploadMinutes };
+const uploadDocument     = multer({ storage: documentStorage, fileFilter, limits: { fileSize: maxFileSizeMB() } });
+const uploadCsv          = multer({ storage: csvStorage, fileFilter: csvFilter, limits: { fileSize: 5 * 1024 * 1024 } });
+const uploadImrad        = multer({ storage: imradStorage, fileFilter, limits: { fileSize: maxFileSizeMB() } });
+const uploadExcel        = multer({ storage: excelStorage, fileFilter: excelFilter, limits: { fileSize: 10 * 1024 * 1024 } });
+const uploadGuideline    = multer({ storage: guidelineStorage, fileFilter, limits: { fileSize: maxFileSizeMB() } });
+const uploadMinutes      = multer({ storage: minutesStorage, fileFilter: imageFilter, limits: { fileSize: 10 * 1024 * 1024 } });
+const uploadProfilePhoto = multer({ storage: profileStorage, fileFilter: imageFilter, limits: { fileSize: 5 * 1024 * 1024 } });
+
+module.exports = { uploadDocument, uploadCsv, uploadImrad, uploadExcel, uploadGuideline, uploadMinutes, uploadProfilePhoto };

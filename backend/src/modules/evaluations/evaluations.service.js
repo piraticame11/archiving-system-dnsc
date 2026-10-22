@@ -119,41 +119,54 @@ async function getByScheduleAndPanelist(schedule_id, panelist_id) {
 }
 
 /* ─── save this panelist's per-criteria scores, return the two rubric totals ── */
-async function saveScores(evaluationId, scores) {
-  const criteria = await listCriteria();
-  const criteriaMap = new Map(criteria.map(c => [c.id, c]));
+async function saveScores(evaluationId, scores, externalConn = null) {
+  const conn = externalConn || await db.getConnection();
+  const shouldCommit = !externalConn;
+  if (shouldCommit) await conn.beginTransaction();
 
-  const clean = (scores || []).filter(s => criteriaMap.has(s.criteria_id) && s.raw_score != null);
-  for (const s of clean) {
-    const c = criteriaMap.get(s.criteria_id);
-    if (s.raw_score < 0 || s.raw_score > Number(c.max_score)) {
-      throw Object.assign(
-        new Error(`"${c.name}" must be between 0 and ${c.max_score}.`),
-        { statusCode: 400 }
-      );
+  try {
+    const criteria = await listCriteria();
+    const criteriaMap = new Map(criteria.map(c => [c.id, c]));
+
+    const clean = (scores || []).filter(s => criteriaMap.has(s.criteria_id) && s.raw_score != null);
+    for (const s of clean) {
+      const c = criteriaMap.get(s.criteria_id);
+      if (s.raw_score < 0 || s.raw_score > Number(c.max_score)) {
+        throw Object.assign(
+          new Error(`"${c.name}" must be between 0 and ${c.max_score}.`),
+          { statusCode: 400 }
+        );
+      }
     }
-  }
 
-  await db.query('DELETE FROM scores WHERE evaluation_id = ?', [evaluationId]);
-  if (clean.length) {
-    const values = clean.map(s => [evaluationId, s.criteria_id, s.raw_score]);
-    await db.query('INSERT INTO scores (evaluation_id, criteria_id, raw_score) VALUES ?', [values]);
-  }
+    await conn.query('DELETE FROM scores WHERE evaluation_id = ?', [evaluationId]);
+    if (clean.length) {
+      const values = clean.map(s => [evaluationId, s.criteria_id, s.raw_score]);
+      await conn.query('INSERT INTO scores (evaluation_id, criteria_id, raw_score) VALUES ?', [values]);
+    }
 
-  const totals = { research_output: 0, oral_presentation: 0 };
-  const counts = { research_output: 0, oral_presentation: 0 };
-  for (const s of clean) {
-    const c = criteriaMap.get(s.criteria_id);
-    totals[c.rubric_group] += Number(s.raw_score);
-    counts[c.rubric_group] += 1;
-  }
-  const expected = { research_output: 0, oral_presentation: 0 };
-  criteria.forEach(c => { expected[c.rubric_group] += 1; });
+    const totals = { research_output: 0, oral_presentation: 0 };
+    const counts = { research_output: 0, oral_presentation: 0 };
+    for (const s of clean) {
+      const c = criteriaMap.get(s.criteria_id);
+      totals[c.rubric_group] += Number(s.raw_score);
+      counts[c.rubric_group] += 1;
+    }
+    const expected = { research_output: 0, oral_presentation: 0 };
+    criteria.forEach(c => { expected[c.rubric_group] += 1; });
 
-  return {
-    research_output_score:   counts.research_output   === expected.research_output   ? totals.research_output   : null,
-    oral_presentation_score: counts.oral_presentation === expected.oral_presentation ? totals.oral_presentation : null,
-  };
+    if (shouldCommit) await conn.commit();
+
+    return {
+      research_output_score:   counts.research_output   === expected.research_output   ? totals.research_output   : null,
+      oral_presentation_score: counts.oral_presentation === expected.oral_presentation ? totals.oral_presentation : null,
+    };
+  } catch (err) {
+    if (shouldCommit) await conn.rollback();
+    throw err;
+  } finally {
+    if (shouldCommit) conn.release();
+  }
 }
 
 /* ─── upsert (save draft or submit) ────────────────────────────────── */
@@ -161,70 +174,83 @@ async function upsertEvaluation({ schedule_id, panelist_id, group_id, scores, de
   if (decision != null && !DECISIONS.includes(decision)) {
     throw Object.assign(new Error('Invalid decision value'), { statusCode: 400 });
   }
-  /* verify panelist is assigned to this schedule */
-  const [[assigned]] = await db.query(
-    'SELECT 1 FROM schedule_panelists WHERE schedule_id = ? AND panelist_id = ?',
-    [schedule_id, panelist_id]
-  );
-  if (!assigned) throw Object.assign(new Error('You are not assigned to this schedule'), { statusCode: 403 });
 
-  /* if group_id provided, verify the group belongs to this schedule */
-  if (group_id != null) {
-    const [[inSched]] = await db.query(
-      'SELECT 1 FROM schedule_groups WHERE schedule_id = ? AND group_id = ?',
-      [schedule_id, group_id]
+  const conn = await db.getConnection();
+  await conn.beginTransaction();
+
+  try {
+    /* verify panelist is assigned to this schedule */
+    const [[assigned]] = await conn.query(
+      'SELECT 1 FROM schedule_panelists WHERE schedule_id = ? AND panelist_id = ?',
+      [schedule_id, panelist_id]
     );
-    if (!inSched) throw Object.assign(new Error('Group is not part of this schedule'), { statusCode: 400 });
-  }
+    if (!assigned) throw Object.assign(new Error('You are not assigned to this schedule'), { statusCode: 403 });
 
-  /* get submission_id from schedule (may be null for group-based schedules) */
-  const [[sched]] = await db.query(
-    'SELECT submission_id FROM defense_schedules WHERE id = ?', [schedule_id]
-  );
-  if (!sched) throw Object.assign(new Error('Schedule not found'), { statusCode: 404 });
+    /* if group_id provided, verify the group belongs to this schedule */
+    if (group_id != null) {
+      const [[inSched]] = await conn.query(
+        'SELECT 1 FROM schedule_groups WHERE schedule_id = ? AND group_id = ?',
+        [schedule_id, group_id]
+      );
+      if (!inSched) throw Object.assign(new Error('Group is not part of this schedule'), { statusCode: 400 });
+    }
 
-  const newStatus   = submit ? 'submitted' : 'pending';
-  const submittedAt = submit ? new Date() : null;
-  const gid         = group_id ?? null;
-
-  /* NULL-safe equality: <=> matches NULL = NULL */
-  const [[existing]] = await db.query(
-    'SELECT id, status FROM evaluations WHERE schedule_id = ? AND panelist_id = ? AND group_id <=> ?',
-    [schedule_id, panelist_id, gid]
-  );
-
-  let evaluationId;
-  if (existing) {
-    if (existing.status === 'submitted')
-      throw Object.assign(new Error('Evaluation already submitted and cannot be edited'), { statusCode: 400 });
-    evaluationId = existing.id;
-  } else {
-    const [result] = await db.query(
-      `INSERT INTO evaluations (schedule_id, panelist_id, group_id, submission_id, status)
-       VALUES (?, ?, ?, ?, 'pending')`,
-      [schedule_id, panelist_id, gid, sched.submission_id]
+    /* get submission_id from schedule (may be null for group-based schedules) */
+    const [[sched]] = await conn.query(
+      'SELECT submission_id FROM defense_schedules WHERE id = ?', [schedule_id]
     );
-    evaluationId = result.insertId;
-  }
+    if (!sched) throw Object.assign(new Error('Schedule not found'), { statusCode: 404 });
 
-  const totals = await saveScores(evaluationId, scores);
+    const newStatus   = submit ? 'submitted' : 'pending';
+    const submittedAt = submit ? new Date() : null;
+    const gid         = group_id ?? null;
 
-  if (submit && (totals.research_output_score == null || totals.oral_presentation_score == null)) {
-    throw Object.assign(
-      new Error('Please score every criterion in both rubrics before submitting.'),
-      { statusCode: 400 }
+    /* NULL-safe equality: <=> matches NULL = NULL */
+    const [[existing]] = await conn.query(
+      'SELECT id, status FROM evaluations WHERE schedule_id = ? AND panelist_id = ? AND group_id <=> ?',
+      [schedule_id, panelist_id, gid]
     );
-  }
 
-  await db.query(
-    `UPDATE evaluations
-     SET decision = ?, remarks = ?, status = ?, submitted_at = COALESCE(submitted_at, ?),
-         research_output_score = ?, oral_presentation_score = ?
-     WHERE id = ?`,
-    [decision ?? null, remarks ?? null, newStatus, submittedAt,
-     totals.research_output_score, totals.oral_presentation_score, evaluationId]
-  );
-  return getById(evaluationId);
+    let evaluationId;
+    if (existing) {
+      if (existing.status === 'submitted')
+        throw Object.assign(new Error('Evaluation already submitted and cannot be edited'), { statusCode: 400 });
+      evaluationId = existing.id;
+    } else {
+      const [result] = await conn.query(
+        `INSERT INTO evaluations (schedule_id, panelist_id, group_id, submission_id, status)
+         VALUES (?, ?, ?, ?, 'pending')`,
+        [schedule_id, panelist_id, gid, sched.submission_id]
+      );
+      evaluationId = result.insertId;
+    }
+
+    const totals = await saveScores(evaluationId, scores, conn);
+
+    if (submit && (totals.research_output_score == null || totals.oral_presentation_score == null)) {
+      throw Object.assign(
+        new Error('Please score every criterion in both rubrics before submitting.'),
+        { statusCode: 400 }
+      );
+    }
+
+    await conn.query(
+      `UPDATE evaluations
+       SET decision = ?, remarks = ?, status = ?, submitted_at = COALESCE(submitted_at, ?),
+           research_output_score = ?, oral_presentation_score = ?
+       WHERE id = ?`,
+      [decision ?? null, remarks ?? null, newStatus, submittedAt,
+       totals.research_output_score, totals.oral_presentation_score, evaluationId]
+    );
+
+    await conn.commit();
+    return getById(evaluationId);
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
 }
 
 /* ─── the chairperson's decision is the official/overall outcome ────── */

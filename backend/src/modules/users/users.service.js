@@ -191,8 +191,8 @@ async function importStudents(filePath, department_id, adviser_id = null) {
       const password_hash = await bcrypt.hash(password, 10);
       await db.query(
         `INSERT INTO users (role_id, department_id, adviser_id, student_number, first_name, last_name, middle_initial, email,
-                            password_hash, is_active, is_email_verified)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)`,
+                            password_hash, is_active, is_email_verified, must_change_password)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 1)`,
         [studentRole.id, department_id || null, adviser_id || null, id_number, first_name, last_name, middle_initial, email, password_hash]
       );
       results.created++;

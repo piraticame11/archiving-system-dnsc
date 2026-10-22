@@ -1,4 +1,4 @@
-﻿const bcrypt = require('bcryptjs');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const db = require('../../config/database');
@@ -171,8 +171,12 @@ async function forgotPassword(identifier) {
   );
   await db.query(`UPDATE refresh_tokens SET revoked = 1 WHERE user_id = ?`, [user.id]);
 
+  const targetEmail = (user.personal_email && identifier.toLowerCase() === user.personal_email.toLowerCase())
+    ? user.personal_email
+    : user.email;
+
   await sendMail({
-    to:      user.email,
+    to:      targetEmail,
     subject: 'Temporary Password — ACES Research System',
     html:    tempPasswordHtml(`${user.first_name} ${user.last_name}`, tempPassword, TEMP_PASSWORD_VALIDITY_MINUTES),
   });

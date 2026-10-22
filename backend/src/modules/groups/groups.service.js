@@ -133,15 +133,28 @@ async function createGroup({ leader_id, name, adviser_id, school_year, max_membe
   const join_code = await uniqueJoinCode();
   const cap = Math.min(Math.max(parseInt(max_members) || 5, 4), 6);
 
-  const [result] = await db.query(
-    `INSERT INTO thesis_groups (name, join_code, join_code_expires_at, leader_id, adviser_id, adviser_status, department_id, school_year, max_members, type)
-     VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ${JOIN_CODE_VALIDITY_DAYS} DAY), ?, ?, ?, ?, ?, ?, ?)`,
-    [name, join_code, leader_id, adviser_id || null, adviser_id ? 'pending' : null, user.department_id, school_year, cap, type]
-  );
-  const groupId = result.insertId;
+  const conn = await db.getConnection();
+  await conn.beginTransaction();
 
-  /* add leader as first member */
-  await db.query('INSERT INTO group_members (group_id, student_id) VALUES (?, ?)', [groupId, leader_id]);
+  let groupId;
+  try {
+    const [result] = await conn.query(
+      `INSERT INTO thesis_groups (name, join_code, join_code_expires_at, leader_id, adviser_id, adviser_status, department_id, school_year, max_members, type)
+       VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ${JOIN_CODE_VALIDITY_DAYS} DAY), ?, ?, ?, ?, ?, ?, ?)`,
+      [name, join_code, leader_id, adviser_id || null, adviser_id ? 'pending' : null, user.department_id, school_year, cap, type]
+    );
+    groupId = result.insertId;
+
+    /* add leader as first member */
+    await conn.query('INSERT INTO group_members (group_id, student_id) VALUES (?, ?)', [groupId, leader_id]);
+
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
 
   return getGroupById(groupId);
 }
@@ -301,30 +314,42 @@ async function acceptRequest(requestId, groupId, leaderId) {
   );
   if (memberCount >= group.max_members) throw Object.assign(new Error('Group is already full.'), { statusCode: 409 });
 
-  /* remove student from any other group they may belong to */
-  await db.query(
-    'DELETE FROM group_members WHERE student_id = ? AND group_id != ?',
-    [req.student_id, groupId]
-  );
+  const conn = await db.getConnection();
+  await conn.beginTransaction();
 
-  /* also cancel their pending requests to other groups */
-  await db.query(
-    `UPDATE group_join_requests SET status = 'rejected', processed_at = NOW()
-     WHERE student_id = ? AND group_id != ? AND status = 'pending'`,
-    [req.student_id, groupId]
-  );
+  try {
+    /* remove student from any other group they may belong to */
+    await conn.query(
+      'DELETE FROM group_members WHERE student_id = ? AND group_id != ?',
+      [req.student_id, groupId]
+    );
 
-  /* add to group */
-  await db.query(
-    'INSERT IGNORE INTO group_members (group_id, student_id) VALUES (?, ?)',
-    [groupId, req.student_id]
-  );
+    /* also cancel their pending requests to other groups */
+    await conn.query(
+      `UPDATE group_join_requests SET status = 'rejected', processed_at = NOW()
+       WHERE student_id = ? AND group_id != ? AND status = 'pending'`,
+      [req.student_id, groupId]
+    );
 
-  /* mark request as accepted */
-  await db.query(
-    `UPDATE group_join_requests SET status = 'accepted', processed_at = NOW() WHERE id = ?`,
-    [requestId]
-  );
+    /* add to group */
+    await conn.query(
+      'INSERT IGNORE INTO group_members (group_id, student_id) VALUES (?, ?)',
+      [groupId, req.student_id]
+    );
+
+    /* mark request as accepted */
+    await conn.query(
+      `UPDATE group_join_requests SET status = 'accepted', processed_at = NOW() WHERE id = ?`,
+      [requestId]
+    );
+
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
 
   return getGroupById(groupId);
 }
@@ -394,13 +419,25 @@ async function disbandGroup(groupId, leaderId) {
   if (!group) throw Object.assign(new Error('Group not found.'), { statusCode: 404 });
   if (group.leader_id !== leaderId) throw Object.assign(new Error('Only the group leader can disband the group.'), { statusCode: 403 });
 
-  await db.query('DELETE FROM group_members WHERE group_id = ?', [groupId]);
-  await db.query(
-    `UPDATE group_join_requests SET status = 'rejected', processed_at = NOW()
-     WHERE group_id = ? AND status = 'pending'`,
-    [groupId]
-  );
-  await db.query('UPDATE thesis_groups SET deleted_at = NOW() WHERE id = ?', [groupId]);
+  const conn = await db.getConnection();
+  await conn.beginTransaction();
+
+  try {
+    await conn.query('DELETE FROM group_members WHERE group_id = ?', [groupId]);
+    await conn.query(
+      `UPDATE group_join_requests SET status = 'rejected', processed_at = NOW()
+       WHERE group_id = ? AND status = 'pending'`,
+      [groupId]
+    );
+    await conn.query('UPDATE thesis_groups SET deleted_at = NOW() WHERE id = ?', [groupId]);
+
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
 }
 
 /* ─── adviser: list pending group requests ───────────────────────── */
