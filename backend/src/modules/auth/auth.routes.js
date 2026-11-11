@@ -5,6 +5,7 @@ const {
   registerRules, loginRules, forgotPasswordRules,
   changePasswordRules, updateProfileRules,
   bindPersonalEmailRules, verifyOtpRules,
+  studentRegisterRules, studentResendOtpRules, studentVerifyOtpRules,
 } = require('./auth.validators');
 const { handleValidation } = require('../../middleware/validate');
 const { verifyToken } = require('../../middleware/auth');
@@ -18,6 +19,13 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+
+// Public student self-registration with OTP
+router.post('/student-register',            authLimiter, studentRegisterRules,  handleValidation, ctrl.studentRegister);
+router.post('/student-register/send-otp',   authLimiter, studentRegisterRules,  handleValidation, ctrl.studentRegister);
+router.post('/student-register/resend-otp', authLimiter, studentResendOtpRules, handleValidation, ctrl.studentResendOtp);
+router.post('/student-register/verify-otp', authLimiter, studentVerifyOtpRules, handleValidation, ctrl.studentVerifyOtp);
 
 router.post('/register',        authLimiter, registerRules,       handleValidation, ctrl.register);
 router.post('/login',           authLimiter, loginRules,          handleValidation, ctrl.login);

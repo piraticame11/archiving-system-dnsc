@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -105,8 +105,15 @@
     }
     const TIME_SLOTS = {};
     buildSlotLabels(8*60, 12*60, 30, TIME_SLOTS); buildSlotLabels(13*60, 17*60, 30, TIME_SLOTS);
+    buildSlotLabels(8*60, 12*60, 60, TIME_SLOTS); buildSlotLabels(13*60, 17*60, 60, TIME_SLOTS);
     buildSlotLabels(8*60, 12*60, 90, TIME_SLOTS); buildSlotLabels(13*60, 16*60, 90, TIME_SLOTS);
-    const DEFENSE_TYPE_LABEL = { proposal: 'Proposal (30 min)', final: 'Final (1h30)' };
+    const DEFENSE_TYPE_LABEL = {
+      proposal: 'Proposal',
+      outline: 'Outline',
+      'pre-final': 'Pre-Final',
+      pre_final: 'Pre-Final',
+      final: 'Final'
+    };
     function slotLabel(v){ return TIME_SLOTS[v]||v||'–'; }
     function slotsLabel(arr){
       if(!arr||!arr.length) return '–';

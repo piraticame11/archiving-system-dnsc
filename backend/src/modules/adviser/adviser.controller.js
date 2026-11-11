@@ -14,17 +14,6 @@ async function myAdvisees(req, res, next) {
   } catch (err) { next(err); }
 }
 
-async function uploadList(req, res, next) {
-  try {
-    if (!req.file) return send400(res, 'No CSV file uploaded.');
-    const result = await service.bulkAssign(req.file.path, req.user.id);
-    sendCreated(res, result, `Adviser assignment complete. ${result.assigned} student(s) updated.`);
-  } catch (err) {
-    if (err.statusCode === 400) return send400(res, err.message);
-    next(err);
-  }
-}
-
 async function removeGroup(req, res, next) {
   try {
     await service.removeFromGroup(parseInt(req.params.id), req.user.id);
@@ -133,7 +122,7 @@ async function myStudents(req, res, next) {
 }
 
 module.exports = {
-  myAdvisees, uploadList, myGroups, removeGroup, listAdvisers,
+  myAdvisees, myGroups, removeGroup, listAdvisers,
   importStudents, downloadImportTemplate, exportCredentials, myStudents,
   groupRequests, approveGroupRequest, rejectGroupRequest, updateSettings,
 };

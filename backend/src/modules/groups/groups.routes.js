@@ -43,6 +43,9 @@ router.get('/:id/requests', studentOnly, v.idRules, handleValidation, ctrl.getPe
 router.post('/:id/requests/:requestId/accept', studentOnly, v.requestActionRules, handleValidation, ctrl.acceptRequest);
 router.post('/:id/requests/:requestId/reject', studentOnly, v.requestActionRules, handleValidation, ctrl.rejectRequest);
 
+/* add a member by name (leader only) */
+router.post('/:id/members', studentOnly, v.addMemberRules, handleValidation, ctrl.addMember);
+
 /* remove a member (leader only) */
 router.delete('/:id/members/:studentId', studentOnly, v.memberRules, handleValidation, ctrl.removeMember);
 

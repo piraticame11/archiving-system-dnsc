@@ -5,8 +5,8 @@ const { sendSuccess, sendCreated, send400, send403, send404 } = require('../../u
 async function listAll(req, res, next) {
   try {
     const [rows] = await db.query(
-      `SELECT tg.id, tg.name, tg.title, tg.school_year,
-              d.name AS department_name,
+      `SELECT tg.id, tg.name, tg.title, tg.school_year, tg.set_name,
+              d.id AS department_id, d.name AS department_name, d.code AS department_code,
               CONCAT(l.first_name, ' ', l.last_name) AS leader_name
        FROM thesis_groups tg
        JOIN users l        ON tg.leader_id     = l.id
@@ -14,6 +14,30 @@ async function listAll(req, res, next) {
        WHERE tg.deleted_at IS NULL
        ORDER BY tg.school_year DESC, tg.name ASC`
     );
+
+    const groupIds = rows.map(r => r.id);
+    const memberMap = {};
+    if (groupIds.length) {
+      const [members] = await db.query(
+        `SELECT gm.group_id,
+                COALESCE(CONCAT(u.first_name, ' ', u.last_name), gm.name) AS member_name
+         FROM group_members gm
+         LEFT JOIN users u ON gm.student_id = u.id
+         WHERE gm.group_id IN (?)
+         ORDER BY gm.joined_at ASC`,
+        [groupIds]
+      );
+      members.forEach(m => {
+        if (!memberMap[m.group_id]) memberMap[m.group_id] = [];
+        if (m.member_name) memberMap[m.group_id].push(m.member_name);
+      });
+    }
+
+    rows.forEach(r => {
+      r.members = memberMap[r.id] || (r.leader_name ? [r.leader_name] : []);
+      r.member_names = r.members.join(', ');
+    });
+
     sendSuccess(res, rows);
   } catch (err) { next(err); }
 }
@@ -148,6 +172,22 @@ async function rejectRequest(req, res, next) {
   }
 }
 
+async function addMember(req, res, next) {
+  try {
+    const group = await service.addMember(
+      parseInt(req.params.id),
+      req.user.id,
+      req.body.name
+    );
+    sendSuccess(res, group, 'Member added to group');
+  } catch (err) {
+    if (err.statusCode === 404) return send404(res, err.message);
+    if (err.statusCode === 403) return send403(res, err.message);
+    if (err.statusCode === 400) return send400(res, err.message);
+    next(err);
+  }
+}
+
 async function removeMember(req, res, next) {
   try {
     await service.removeMember(
@@ -186,4 +226,4 @@ async function disbandGroup(req, res, next) {
   }
 }
 
-module.exports = { listAll, listInstructors, getMyGroup, create, update, regenerateJoinCode, requestJoin, getPendingRequests, acceptRequest, rejectRequest, removeMember, leaveGroup, disbandGroup };
+module.exports = { listAll, listInstructors, getMyGroup, create, update, addMember, regenerateJoinCode, requestJoin, getPendingRequests, acceptRequest, rejectRequest, removeMember, leaveGroup, disbandGroup };

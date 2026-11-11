@@ -5,7 +5,7 @@ const { sendSuccess, sendCreated, send400, send403, send404 } = require('../../u
 async function list(req, res, next) {
   try {
     const { page, limit } = getPagination(req.query);
-    const panelist_id = req.user.role === 'panelist' ? req.user.id : req.query.panelist_id;
+    const panelist_id = (req.user.role === 'panelist' || req.user.role === 'instructor') ? req.user.id : req.query.panelist_id;
     const result = await service.listEvaluations({
       panelist_id,
       schedule_id: req.query.schedule_id,
@@ -20,7 +20,7 @@ async function getOne(req, res, next) {
   try {
     const ev = await service.getById(req.params.id);
     if (!ev) return send404(res, 'Evaluation not found');
-    if (req.user.role === 'panelist' && ev.panelist_id !== req.user.id)
+    if ((req.user.role === 'panelist' || req.user.role === 'instructor') && ev.panelist_id !== req.user.id)
       return send403(res, 'Forbidden');
     sendSuccess(res, ev);
   } catch (err) { next(err); }

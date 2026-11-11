@@ -8,21 +8,30 @@ async function validSchoolYear(value) {
 }
 
 const createRules = [
-  body('name').trim().notEmpty().withMessage('Group name is required')
-    .isLength({ max: 255 }).withMessage('Name must be 255 characters or fewer'),
-  body('school_year').trim().notEmpty().withMessage('School year is required').custom(validSchoolYear),
-  body('type').isIn(['thesis', 'capstone']).withMessage('Type must be "thesis" or "capstone"'),
+  body('department_id').notEmpty().withMessage('Program is required').isInt({ min: 1 }).withMessage('Valid program is required'),
+  body('set_name').notEmpty().withMessage('Set is required').trim().isLength({ max: 50 }).withMessage('Set must be 50 characters or fewer'),
+  body('instructor_id').notEmpty().withMessage('Instructor is required').isInt({ min: 1 }).withMessage('Valid instructor is required'),
   body('adviser_id').optional({ nullable: true }).isInt({ min: 1 }),
-  body('max_members').optional().isInt({ min: 4, max: 6 }).withMessage('Member capacity must be between 4 and 6'),
+  body('member_names').optional(),
+  body('name').optional({ nullable: true }).trim().isLength({ max: 255 }),
+  body('school_year').optional({ nullable: true }).trim().custom(async (val) => {
+    if (!val) return true;
+    return validSchoolYear(val);
+  }),
+  body('type').optional({ nullable: true }).isIn(['thesis', 'capstone']),
+  body('max_members').optional({ nullable: true }).isInt({ min: 1, max: 20 }),
 ];
 
 const updateRules = [
   param('id').isInt({ min: 1 }),
   body('name').optional().trim().notEmpty().isLength({ max: 255 }),
+  body('department_id').optional().isInt({ min: 1 }),
+  body('set_name').optional({ nullable: true }).trim().isLength({ max: 50 }),
+  body('instructor_id').optional({ nullable: true }).isInt({ min: 1 }),
+  body('adviser_id').optional({ nullable: true }).isInt({ min: 1 }),
   body('school_year').optional().trim().custom(validSchoolYear),
   body('type').optional().isIn(['thesis', 'capstone']).withMessage('Type must be "thesis" or "capstone"'),
-  body('adviser_id').optional({ nullable: true }).isInt({ min: 1 }),
-  body('max_members').optional().isInt({ min: 4, max: 6 }),
+  body('max_members').optional().isInt({ min: 1, max: 20 }),
 ];
 
 const joinRules = [
@@ -42,4 +51,9 @@ const memberRules = [
   param('studentId').isInt({ min: 1 }),
 ];
 
-module.exports = { createRules, updateRules, joinRules, idRules, requestActionRules, memberRules };
+const addMemberRules = [
+  param('id').isInt({ min: 1 }),
+  body('name').trim().notEmpty().withMessage('Member name is required').isLength({ max: 255 }),
+];
+
+module.exports = { createRules, updateRules, joinRules, idRules, requestActionRules, memberRules, addMemberRules };

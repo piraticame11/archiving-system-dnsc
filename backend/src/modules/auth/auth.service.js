@@ -3,11 +3,13 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const db = require('../../config/database');
 const jwtConfig = require('../../config/jwt');
-const { sendMail, otpHtml, tempPasswordHtml } = require('../../config/mailer');
+const { sendMail, otpHtml, tempPasswordHtml, studentRegistrationOtpHtml } = require('../../config/mailer');
 
 const OTP_VALIDITY_MS  = 10 * 60 * 1000; // 10 minutes
 const OTP_MAX_ATTEMPTS = 5;
 const TEMP_PASSWORD_VALIDITY_MINUTES = 30;
+const STUDENT_REG_OTP_EXPIRY_MS = 5 * 60 * 1000;   // 5 minutes
+const STUDENT_REG_OTP_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes
 
 async function findUserByEmail(email) {
   const [rows] = await db.query(
@@ -31,12 +33,30 @@ async function findUserById(id) {
      WHERE u.id = ? AND u.deleted_at IS NULL LIMIT 1`,
     [id]
   );
-  return rows[0] || null;
+  const user = rows[0] || null;
+  if (user && user.role === 'student' && user.is_email_verified && !user.personal_email_verified_at) {
+    await db.query(
+      `UPDATE users SET personal_email = COALESCE(personal_email, email), personal_email_verified_at = NOW() WHERE id = ?`,
+      [user.id]
+    );
+    user.personal_email = user.personal_email || user.email;
+    user.personal_email_verified_at = new Date();
+  }
+  return user;
 }
 
 function signAccessToken(user) {
+  const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email;
   return jwt.sign(
-    { id: user.id, role: user.role, department_id: user.department_id },
+    {
+      id: user.id,
+      role: user.role,
+      department_id: user.department_id,
+      email: user.email,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      full_name: fullName,
+    },
     jwtConfig.secret,
     { expiresIn: jwtConfig.expiresIn }
   );
@@ -87,6 +107,15 @@ async function login(email, password) {
     }
   }
 
+  if (user.role === 'student' && user.is_email_verified && !user.personal_email_verified_at) {
+    await db.query(
+      `UPDATE users SET personal_email = COALESCE(personal_email, email), personal_email_verified_at = NOW() WHERE id = ?`,
+      [user.id]
+    );
+    user.personal_email = user.personal_email || user.email;
+    user.personal_email_verified_at = new Date();
+  }
+
   const accessToken  = signAccessToken(user);
   const refreshToken = signRefreshToken(user);
   await storeRefreshToken(user.id, refreshToken);
@@ -104,7 +133,10 @@ async function refresh(token) {
   }
 
   const [tokenRows] = await db.query(
-    `SELECT * FROM refresh_tokens WHERE user_id = ? AND revoked = 0 AND expires_at > UTC_TIMESTAMP()`,
+    `SELECT * FROM refresh_tokens 
+     WHERE user_id = ? 
+       AND (revoked = 0 OR (revoked = 1 AND revoked_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 60 SECOND)))
+       AND expires_at > UTC_TIMESTAMP()`,
     [payload.id]
   );
 
@@ -114,7 +146,9 @@ async function refresh(token) {
   }
   if (!matched) throw Object.assign(new Error('Refresh token not found or expired.'), { status: 401 });
 
-  await db.query(`UPDATE refresh_tokens SET revoked = 1 WHERE id = ?`, [matched.id]);
+  if (!matched.revoked) {
+    await db.query(`UPDATE refresh_tokens SET revoked = 1, revoked_at = UTC_TIMESTAMP() WHERE id = ?`, [matched.id]);
+  }
 
   const user = await findUserById(payload.id);
   if (!user || !user.is_active) throw Object.assign(new Error('User not found or inactive.'), { status: 401 });
@@ -284,7 +318,202 @@ async function updateProfile(userId, { first_name, last_name, profile_photo }) {
   await db.query(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`, vals);
 }
 
+
+async function initiateStudentRegistration({ first_name, last_name, email, password, department_id, student_number }) {
+  const normEmail = email.toLowerCase().trim();
+  const existingUser = await findUserByEmail(normEmail);
+  if (existingUser) {
+    throw Object.assign(new Error('An account with this email already exists.'), { status: 409 });
+  }
+
+  const [rows] = await db.query(
+    'SELECT * FROM student_registration_otps WHERE email = ? LIMIT 1',
+    [normEmail]
+  );
+  const pending = rows[0];
+
+  if (pending && pending.last_sent_at) {
+    const elapsed = Date.now() - new Date(pending.last_sent_at).getTime();
+    if (elapsed < STUDENT_REG_OTP_COOLDOWN_MS) {
+      const remainingSeconds = Math.ceil((STUDENT_REG_OTP_COOLDOWN_MS - elapsed) / 1000);
+      throw Object.assign(
+        new Error(`Please wait ${remainingSeconds}s before requesting a new code.`),
+        { status: 429, retryAfter: remainingSeconds }
+      );
+    }
+  }
+
+  const code = generateOtpCode();
+  const otpHash = await bcrypt.hash(code, 10);
+  const passwordHash = await bcrypt.hash(password, 12);
+  const expiresAt = new Date(Date.now() + STUDENT_REG_OTP_EXPIRY_MS);
+  const lastSentAt = new Date();
+
+  if (pending) {
+    await db.query(
+      `UPDATE student_registration_otps
+       SET first_name = ?, last_name = ?, student_number = ?, department_id = ?,
+           password_hash = ?, otp_hash = ?, expires_at = ?, last_sent_at = ?, attempts = 0
+       WHERE email = ?`,
+      [
+        first_name.trim(),
+        last_name.trim(),
+        student_number ? student_number.trim() : null,
+        department_id ? Number(department_id) : null,
+        passwordHash,
+        otpHash,
+        expiresAt,
+        lastSentAt,
+        normEmail,
+      ]
+    );
+  } else {
+    await db.query(
+      `INSERT INTO student_registration_otps
+       (email, first_name, last_name, student_number, department_id, password_hash, otp_hash, expires_at, last_sent_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        normEmail,
+        first_name.trim(),
+        last_name.trim(),
+        student_number ? student_number.trim() : null,
+        department_id ? Number(department_id) : null,
+        passwordHash,
+        otpHash,
+        expiresAt,
+        lastSentAt,
+      ]
+    );
+  }
+
+  await sendMail({
+    to: normEmail,
+    subject: 'Your Verification Code — ACES Research System',
+    html: studentRegistrationOtpHtml(`${first_name} ${last_name}`, code, 5),
+  });
+
+  return {
+    email: normEmail,
+    expiresInSeconds: 300,
+    cooldownSeconds: 120,
+  };
+}
+
+async function resendStudentRegistrationOtp(email) {
+  const normEmail = email.toLowerCase().trim();
+  const existingUser = await findUserByEmail(normEmail);
+  if (existingUser) {
+    throw Object.assign(new Error('An account with this email already exists.'), { status: 409 });
+  }
+
+  const [rows] = await db.query(
+    'SELECT * FROM student_registration_otps WHERE email = ? LIMIT 1',
+    [normEmail]
+  );
+  const pending = rows[0];
+  if (!pending) {
+    throw Object.assign(new Error('No pending registration found for this email. Please fill out the registration form.'), { status: 404 });
+  }
+
+  const elapsed = Date.now() - new Date(pending.last_sent_at).getTime();
+  if (elapsed < STUDENT_REG_OTP_COOLDOWN_MS) {
+    const remainingSeconds = Math.ceil((STUDENT_REG_OTP_COOLDOWN_MS - elapsed) / 1000);
+    throw Object.assign(
+      new Error(`Please wait ${remainingSeconds}s before requesting a new code.`),
+      { status: 429, retryAfter: remainingSeconds }
+    );
+  }
+
+  const code = generateOtpCode();
+  const otpHash = await bcrypt.hash(code, 10);
+  const expiresAt = new Date(Date.now() + STUDENT_REG_OTP_EXPIRY_MS);
+  const lastSentAt = new Date();
+
+  await db.query(
+    `UPDATE student_registration_otps
+     SET otp_hash = ?, expires_at = ?, last_sent_at = ?, attempts = 0
+     WHERE email = ?`,
+    [otpHash, expiresAt, lastSentAt, normEmail]
+  );
+
+  await sendMail({
+    to: normEmail,
+    subject: 'Your New Verification Code — ACES Research System',
+    html: studentRegistrationOtpHtml(`${pending.first_name} ${pending.last_name}`, code, 5),
+  });
+
+  return {
+    email: normEmail,
+    expiresInSeconds: 300,
+    cooldownSeconds: 120,
+  };
+}
+
+async function verifyStudentRegistrationOtp({ email, otp }) {
+  const normEmail = email.toLowerCase().trim();
+  const [rows] = await db.query(
+    'SELECT * FROM student_registration_otps WHERE email = ? LIMIT 1',
+    [normEmail]
+  );
+  const pending = rows[0];
+  if (!pending) {
+    throw Object.assign(new Error('No pending registration found for this email.'), { status: 404 });
+  }
+
+  if (new Date(pending.expires_at) < new Date()) {
+    throw Object.assign(new Error('Verification code has expired. Please request a new code.'), { status: 400 });
+  }
+
+  if (pending.attempts >= OTP_MAX_ATTEMPTS) {
+    throw Object.assign(new Error('Too many failed attempts. Please request a new code.'), { status: 429 });
+  }
+
+  const match = await bcrypt.compare(String(otp).trim(), pending.otp_hash);
+  if (!match) {
+    await db.query('UPDATE student_registration_otps SET attempts = attempts + 1 WHERE id = ?', [pending.id]);
+    throw Object.assign(new Error('Incorrect verification code.'), { status: 400 });
+  }
+
+  const existingUser = await findUserByEmail(normEmail);
+  if (existingUser) {
+    await db.query('DELETE FROM student_registration_otps WHERE email = ?', [normEmail]);
+    throw Object.assign(new Error('An account with this email already exists.'), { status: 409 });
+  }
+
+  const [roleRows] = await db.query("SELECT id FROM roles WHERE name = 'student' LIMIT 1");
+  if (!roleRows.length) {
+    throw Object.assign(new Error('Student role definition not found.'), { status: 500 });
+  }
+  const roleId = roleRows[0].id;
+
+  const [insertRes] = await db.query(
+    `INSERT INTO users (role_id, department_id, student_number, first_name, last_name, email, personal_email, personal_email_verified_at, password_hash, is_active, is_email_verified)
+     VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, 1, 1)`,
+    [
+      roleId,
+      pending.department_id || null,
+      pending.student_number || null,
+      pending.first_name,
+      pending.last_name,
+      pending.email,
+      pending.email,
+      pending.password_hash,
+    ]
+  );
+
+  await db.query('DELETE FROM student_registration_otps WHERE email = ?', [normEmail]);
+
+  const newUser = await findUserById(insertRes.insertId);
+  const accessToken = signAccessToken(newUser);
+  const refreshToken = signRefreshToken(newUser);
+  await storeRefreshToken(newUser.id, refreshToken);
+
+  const { password_hash, ...safeUser } = newUser;
+  return { accessToken, refreshToken, user: safeUser };
+}
+
 module.exports = {
   register, login, refresh, logout, forgotPassword, changePassword, updateProfile, findUserById,
   bindPersonalEmail, resendPersonalEmailOtp, verifyPersonalEmailOtp,
+  initiateStudentRegistration, resendStudentRegistrationOtp, verifyStudentRegistrationOtp,
 };

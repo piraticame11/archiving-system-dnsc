@@ -7,7 +7,10 @@ const listRules = [
   query('page').optional().isInt({ min: 1 }),
   query('limit').optional().isInt({ min: 1, max: 100 }),
   query('search').optional().isString().trim(),
-  query('role').optional().isIn(allRoles),
+  query('role').optional().custom(val => {
+    const parts = val.split(',').map(s => s.trim()).filter(Boolean);
+    return parts.every(p => allRoles.includes(p));
+  }).withMessage('Invalid role filter'),
   query('status').optional().isIn(['active', 'inactive']),
 ];
 

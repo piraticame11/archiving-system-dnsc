@@ -43,6 +43,28 @@ const verifyOtpRules = [
   body('code').trim().isLength({ min: 6, max: 6 }).isNumeric().withMessage('A valid 6-digit code is required.'),
 ];
 
+
+const studentRegisterRules = [
+  body('first_name').trim().notEmpty().withMessage('First name is required.'),
+  body('last_name').trim().notEmpty().withMessage('Last name is required.'),
+  body('email').isEmail().normalizeEmail().withMessage('Valid email is required.'),
+  body('password')
+    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters.')
+    .matches(/[A-Z]/).withMessage('Password must contain an uppercase letter.')
+    .matches(/[0-9]/).withMessage('Password must contain a number.'),
+  body('department_id').optional({ nullable: true }).isInt({ min: 1 }).withMessage('Invalid department.'),
+  body('student_number').optional({ nullable: true }).trim(),
+];
+
+const studentResendOtpRules = [
+  body('email').isEmail().normalizeEmail().withMessage('Valid email is required.'),
+];
+
+const studentVerifyOtpRules = [
+  body('email').isEmail().normalizeEmail().withMessage('Valid email is required.'),
+  body('otp').trim().isLength({ min: 6, max: 6 }).isNumeric().withMessage('A valid 6-digit verification code is required.'),
+];
+
 module.exports = {
   registerRules,
   loginRules,
@@ -51,4 +73,7 @@ module.exports = {
   updateProfileRules,
   bindPersonalEmailRules,
   verifyOtpRules,
+  studentRegisterRules,
+  studentResendOtpRules,
+  studentVerifyOtpRules,
 };

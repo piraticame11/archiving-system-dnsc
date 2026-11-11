@@ -5,8 +5,8 @@ const { requireRole }      = require('../../middleware/rbac');
 const { handleValidation } = require('../../middleware/validate');
 const v = require('./evaluations.validators');
 
-const panelistOnly     = [verifyToken, requireRole('panelist')];
-const adminOrPanelist  = [verifyToken, requireRole('admin', 'superadmin', 'panelist')];
+const panelistOnly     = [verifyToken, requireRole('panelist', 'instructor')];
+const adminOrPanelist  = [verifyToken, requireRole('admin', 'superadmin', 'panelist', 'instructor')];
 
 /* list — panelist sees own; admin sees all (filtered via controller) */
 router.get('/', adminOrPanelist, v.listRules, handleValidation, ctrl.list);

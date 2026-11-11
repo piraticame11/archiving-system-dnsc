@@ -16,17 +16,27 @@ function getUser() {
 
 function isAuthenticated() { return !!getUser(); }
 
+let _refreshPromise = null;
+
 async function refreshAccessToken() {
-  try {
-    const res = await fetch('/api/v1/auth/refresh', { method: 'POST', credentials: 'include' });
-    if (!res.ok) throw new Error('Refresh failed');
-    const data = await res.json();
-    setAccessToken(data.data.accessToken);
-    return data.data.accessToken;
-  } catch {
-    clearAccessToken();
-    return null;
-  }
+  if (_refreshPromise) return _refreshPromise;
+
+  _refreshPromise = (async () => {
+    try {
+      const res = await fetch('/api/v1/auth/refresh', { method: 'POST', credentials: 'include' });
+      if (!res.ok) throw new Error('Refresh failed');
+      const data = await res.json();
+      setAccessToken(data.data.accessToken);
+      return data.data.accessToken;
+    } catch {
+      clearAccessToken();
+      return null;
+    } finally {
+      _refreshPromise = null;
+    }
+  })();
+
+  return _refreshPromise;
 }
 
 async function logout() {
@@ -84,7 +94,7 @@ async function requireVerifiedStudent() {
     });
     const json = await res.json();
     const me   = json.data;
-    if (me && me.role === 'student' && !me.personal_email_verified_at) {
+    if (me && me.role === 'student' && !me.personal_email_verified_at && !me.is_email_verified) {
       window.location.href = '/pages/student/verify-email.html';
       return false;
     }

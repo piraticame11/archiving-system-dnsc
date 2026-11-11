@@ -41,8 +41,16 @@ async function apiDelete(path) {
 }
 
 async function apiPostForm(path, formData) {
-  const token = getAccessToken();
+  let token = getAccessToken();
   const headers = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  return fetch(path, { method: 'POST', headers, body: formData, credentials: 'include' });
+  let res = await fetch(path, { method: 'POST', headers, body: formData, credentials: 'include' });
+  if (res.status === 401) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      headers['Authorization'] = `Bearer ${newToken}`;
+      res = await fetch(path, { method: 'POST', headers, body: formData, credentials: 'include' });
+    }
+  }
+  return res;
 }

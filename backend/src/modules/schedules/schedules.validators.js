@@ -2,9 +2,14 @@ const { body, query, param } = require('express-validator');
 const { SLOTS_BY_TYPE } = require('./schedules.service');
 
 const STATUSES      = ['scheduled', 'completed', 'cancelled', 'rescheduled'];
-const DEFENSE_TYPES = ['proposal', 'final'];
+const DEFENSE_TYPES = ['proposal', 'outline', 'pre-final', 'final'];
 const PANEL_ROLES    = ['chairperson', 'member'];
-const ALL_SLOTS      = [...new Set([...SLOTS_BY_TYPE.proposal, ...SLOTS_BY_TYPE.final])];
+const ALL_SLOTS      = [...new Set([
+  ...SLOTS_BY_TYPE.proposal,
+  ...(SLOTS_BY_TYPE.outline || []),
+  ...(SLOTS_BY_TYPE['pre-final'] || []),
+  ...SLOTS_BY_TYPE.final,
+])];
 
 const listRules = [
   query('page').optional().isInt({ min: 1 }),
@@ -22,7 +27,7 @@ const calendarRules = [
 
 const createRules = [
   body('venue_id').optional({ nullable: true }).isInt({ min: 1 }),
-  body('defense_type').isIn(DEFENSE_TYPES).withMessage('defense_type must be "proposal" or "final"'),
+  body('defense_type').isIn(DEFENSE_TYPES).withMessage('defense_type must be "proposal", "outline", "pre-final", or "final"'),
   body('scheduled_date').isDate().withMessage('Valid date (YYYY-MM-DD) is required'),
   body('time_slots').isArray({ min: 1, max: 1 }).withMessage('Exactly one timeslot is required'),
   body('time_slots.*').isIn(ALL_SLOTS).withMessage('Invalid timeslot value'),
@@ -65,7 +70,7 @@ const eligibleGroupsRules = [
 ];
 
 const autoScheduleRules = [
-  body('defense_type').isIn(DEFENSE_TYPES).withMessage('defense_type must be "proposal" or "final"'),
+  body('defense_type').isIn(DEFENSE_TYPES).withMessage('defense_type must be "proposal", "outline", "pre-final", or "final"'),
   body('group_ids').isArray({ min: 1 }).withMessage('Select at least one group'),
   body('group_ids.*').isInt({ min: 1 }),
   body('start_date').isDate().withMessage('Valid start_date (YYYY-MM-DD) is required'),

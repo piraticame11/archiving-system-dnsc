@@ -12,6 +12,20 @@ const SLOTS_BY_TYPE = {
     '13:00-13:30', '13:30-14:00', '14:00-14:30', '14:30-15:00',
     '15:00-15:30', '15:30-16:00', '16:00-16:30', '16:30-17:00',
   ],
+  outline: [
+    '8:00-9:00', '9:00-10:00', '10:00-11:00', '11:00-12:00',
+    '13:00-14:00', '14:00-15:00', '15:00-16:00', '16:00-17:00',
+    '8:00-8:30', '8:30-9:00', '9:00-9:30', '9:30-10:00',
+    '10:00-10:30', '10:30-11:00', '11:00-11:30', '11:30-12:00',
+    '13:00-13:30', '13:30-14:00', '14:00-14:30', '14:30-15:00',
+    '15:00-15:30', '15:30-16:00', '16:00-16:30', '16:30-17:00',
+  ],
+  'pre-final': [
+    '8:00-9:00', '9:00-10:00', '10:00-11:00', '11:00-12:00',
+    '13:00-14:00', '14:00-15:00', '15:00-16:00', '16:00-17:00',
+    '8:00-9:30', '9:30-11:00', '11:00-12:30',
+    '13:00-14:30', '14:30-16:00',
+  ],
   final: [
     '8:00-9:30', '9:30-11:00', '11:00-12:30',
     '13:00-14:30', '14:30-16:00',
@@ -23,8 +37,10 @@ function parseSlots(raw) {
 }
 
 /* ─── list ──────────────────────────────────────────────────────────── */
-async function listSchedules({ search, status, from_date, to_date, page, limit, panelist_id, group_id }) {
-  const offset     = (page - 1) * limit;
+async function listSchedules({ search, status, from_date, to_date, page = 1, limit = 20, panelist_id, group_id } = {}) {
+  const p          = Math.max(1, parseInt(page) || 1);
+  const l          = Math.max(1, parseInt(limit) || 20);
+  const offset     = (p - 1) * l;
   const conditions = [];
   const params     = [];
 
@@ -88,15 +104,24 @@ async function listSchedules({ search, status, from_date, to_date, page, limit, 
              WHERE sg.schedule_id = ds.id) AS group_names,
             (SELECT GROUP_CONCAT(tg.title ORDER BY tg.name SEPARATOR ' / ')
              FROM schedule_groups sg JOIN thesis_groups tg ON sg.group_id = tg.id
-             WHERE sg.schedule_id = ds.id) AS group_titles
+             WHERE sg.schedule_id = ds.id) AS group_titles,
+            (SELECT GROUP_CONCAT(DISTINCT d.code ORDER BY d.code SEPARATOR ', ')
+             FROM schedule_groups sg JOIN thesis_groups tg ON sg.group_id = tg.id JOIN departments d ON tg.department_id = d.id
+             WHERE sg.schedule_id = ds.id) AS department_codes,
+            (SELECT GROUP_CONCAT(DISTINCT tg.set_name ORDER BY tg.set_name SEPARATOR ', ')
+             FROM schedule_groups sg JOIN thesis_groups tg ON sg.group_id = tg.id
+             WHERE sg.schedule_id = ds.id AND tg.set_name IS NOT NULL) AS set_names,
+            (SELECT GROUP_CONCAT(DISTINCT tg.school_year ORDER BY tg.school_year SEPARATOR ', ')
+             FROM schedule_groups sg JOIN thesis_groups tg ON sg.group_id = tg.id
+             WHERE sg.schedule_id = ds.id AND tg.school_year IS NOT NULL) AS group_school_years
      ${from}
      ORDER BY ds.scheduled_date ASC, ds.time_slots ASC
      LIMIT ? OFFSET ?`,
-    [...params, limit, offset]
+    [...params, l, offset]
   );
 
   rows.forEach(r => { r.time_slots = parseSlots(r.time_slots); });
-  return paginatedResponse(rows, total, page, limit);
+  return paginatedResponse(rows, total, p, l);
 }
 
 /* ─── calendar view (expanded: one row per schedule+slot) ───────────── */
@@ -179,9 +204,11 @@ async function getById(id) {
   row.panelists = panelists;
 
   const [groups] = await db.query(
-    `SELECT tg.id, tg.name, tg.title AS group_title, tg.school_year
+    `SELECT tg.id, tg.name, tg.title AS group_title, tg.school_year, tg.set_name,
+            d.code AS department_code, d.name AS department_name
      FROM schedule_groups sg
      JOIN thesis_groups tg ON sg.group_id = tg.id
+     LEFT JOIN departments d ON tg.department_id = d.id
      WHERE sg.schedule_id = ?`,
     [id]
   );
@@ -191,6 +218,19 @@ async function getById(id) {
       [g.id]
     );
     g.titles = titles;
+
+    const [members] = await db.query(
+      `SELECT gm.id, gm.student_id,
+              COALESCE(CONCAT(u.first_name, ' ', u.last_name), gm.name) AS name,
+              u.email, u.student_number
+       FROM group_members gm
+       LEFT JOIN users u ON gm.student_id = u.id
+       WHERE gm.group_id = ?
+       ORDER BY gm.joined_at ASC`,
+      [g.id]
+    );
+    g.members = members;
+    g.member_names = members.map(m => m.name).filter(Boolean).join(', ');
   }
   row.groups = groups;
 
@@ -241,15 +281,15 @@ async function syncGroups(scheduleId, group_ids, conn = db) {
 
 /* ─── validate that the chosen slot(s) match the defense type's duration ── */
 function validateSlotsForType(defense_type, time_slots) {
-  const allowed = SLOTS_BY_TYPE[defense_type];
+  const normType = defense_type === 'pre_final' ? 'pre-final' : defense_type;
+  const allowed = SLOTS_BY_TYPE[normType];
   if (!allowed) {
     const err = new Error('Invalid defense type.');
     err.status = 400;
     throw err;
   }
   if (!Array.isArray(time_slots) || time_slots.length !== 1 || !allowed.includes(time_slots[0])) {
-    const label = defense_type === 'proposal' ? '30-minute' : '1 hour 30-minute';
-    const err = new Error(`A ${defense_type} defense requires exactly one valid ${label} timeslot.`);
+    const err = new Error(`A ${normType} defense requires exactly one valid timeslot.`);
     err.status = 400;
     throw err;
   }
@@ -506,9 +546,10 @@ async function setAutoSchedulingEnabled(enabled) {
 
 /* ─── groups eligible for a given defense type ───────────────────────── */
 async function getEligibleGroupsForAutoSchedule(defense_type) {
-  if (defense_type === 'proposal') {
+  const normType = defense_type === 'pre_final' ? 'pre-final' : defense_type;
+  if (normType === 'proposal') {
     const [rows] = await db.query(
-      `SELECT tg.id, tg.name, tg.title, tg.school_year,
+      `SELECT tg.id, tg.name, tg.title, tg.school_year, tg.set_name,
               d.name AS department_name, d.code AS department_code,
               tg.created_at
        FROM thesis_groups tg
@@ -524,15 +565,34 @@ async function getEligibleGroupsForAutoSchedule(defense_type) {
     return rows;
   }
 
-  if (defense_type === 'final') {
+  if (normType === 'outline' || normType === 'pre-final') {
     const [rows] = await db.query(
-      `SELECT tg.id, tg.name, tg.title, tg.school_year,
+      `SELECT tg.id, tg.name, tg.title, tg.school_year, tg.set_name,
+              d.name AS department_name, d.code AS department_code,
+              tg.created_at
+       FROM thesis_groups tg
+       JOIN departments d ON tg.department_id = d.id
+       WHERE tg.deleted_at IS NULL
+         AND NOT EXISTS (
+           SELECT 1 FROM schedule_groups sg
+           JOIN defense_schedules ds ON sg.schedule_id = ds.id
+           WHERE sg.group_id = tg.id AND ds.defense_type = ? AND ds.status != 'cancelled'
+         )
+       ORDER BY tg.created_at ASC`,
+      [normType]
+    );
+    return rows;
+  }
+
+  if (normType === 'final') {
+    const [rows] = await db.query(
+      `SELECT tg.id, tg.name, tg.title, tg.school_year, tg.set_name,
               d.name AS department_name, d.code AS department_code,
               MIN(ds.scheduled_date) AS proposal_completed_date
        FROM thesis_groups tg
        JOIN departments d ON tg.department_id = d.id
        JOIN schedule_groups sg   ON sg.group_id = tg.id
-       JOIN defense_schedules ds ON sg.schedule_id = ds.id AND ds.defense_type = 'proposal' AND ds.status = 'completed'
+       JOIN defense_schedules ds ON sg.schedule_id = ds.id AND ds.status = 'completed'
        WHERE tg.deleted_at IS NULL
          AND NOT EXISTS (
            SELECT 1 FROM schedule_groups sg2

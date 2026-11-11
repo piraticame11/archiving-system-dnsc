@@ -22,11 +22,6 @@ const documentStorage = multer.diskStorage({
   },
 });
 
-const csvStorage = multer.diskStorage({
-  destination(req, file, cb) { cb(null, makeUploadDir('adviser-lists')); },
-  filename(req, file, cb) { cb(null, `${Date.now()}_${file.originalname.replace(/\s/g, '_')}`); },
-});
-
 const imradStorage = multer.diskStorage({
   destination(req, file, cb) { cb(null, makeUploadDir('imrad')); },
   filename(req, file, cb) { cb(null, `${Date.now()}_${file.originalname.replace(/\s/g, '_')}`); },
@@ -45,13 +40,6 @@ function fileFilter(req, file, cb) {
   const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
   if (!ALLOWED_MIME_TYPES.includes(file.mimetype) || !ALLOWED_EXTENSIONS.includes(ext)) {
     return cb(new Error('Only PDF and DOCX files are allowed.'), false);
-  }
-  cb(null, true);
-}
-
-function csvFilter(req, file, cb) {
-  if (!['text/csv', 'application/vnd.ms-excel'].includes(file.mimetype)) {
-    return cb(new Error('Only CSV files are allowed.'), false);
   }
   cb(null, true);
 }
@@ -103,11 +91,10 @@ const profileStorage = multer.diskStorage({
 });
 
 const uploadDocument     = multer({ storage: documentStorage, fileFilter, limits: { fileSize: maxFileSizeMB() } });
-const uploadCsv          = multer({ storage: csvStorage, fileFilter: csvFilter, limits: { fileSize: 5 * 1024 * 1024 } });
 const uploadImrad        = multer({ storage: imradStorage, fileFilter, limits: { fileSize: maxFileSizeMB() } });
 const uploadExcel        = multer({ storage: excelStorage, fileFilter: excelFilter, limits: { fileSize: 10 * 1024 * 1024 } });
 const uploadGuideline    = multer({ storage: guidelineStorage, fileFilter, limits: { fileSize: maxFileSizeMB() } });
 const uploadMinutes      = multer({ storage: minutesStorage, fileFilter: imageFilter, limits: { fileSize: 10 * 1024 * 1024 } });
 const uploadProfilePhoto = multer({ storage: profileStorage, fileFilter: imageFilter, limits: { fileSize: 5 * 1024 * 1024 } });
 
-module.exports = { uploadDocument, uploadCsv, uploadImrad, uploadExcel, uploadGuideline, uploadMinutes, uploadProfilePhoto };
+module.exports = { uploadDocument, uploadImrad, uploadExcel, uploadGuideline, uploadMinutes, uploadProfilePhoto };

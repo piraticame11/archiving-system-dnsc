@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Class Activities — ACES Research System</title>
+  <link rel="icon" type="image/webp" href="/assets/img/aw.webp">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 font-sans min-h-screen">
+
+  <nav class="bg-primary-700 text-white px-6 py-4 flex items-center justify-between shadow sticky top-0 z-40">
+    <div class="flex items-center gap-3">
+      <img src="/assets/img/aw.webp" alt="School Logo" class="w-9 h-9 object-contain rounded-lg">
+      <span class="font-bold text-lg">ACES Research System</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <span id="user-name" class="text-sm text-primary-100"></span>
+      <button onclick="logout()" class="text-sm bg-primary-800 hover:bg-primary-900 px-3 py-1.5 rounded-lg transition-colors">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="max-w-5xl mx-auto px-6 py-8">
+    <div class="flex items-center justify-between gap-4 mb-6 flex-wrap">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">Class Activities &amp; Deadlines</h1>
+        <p class="text-sm text-gray-500 mt-0.5">Submit your group deliverables and track activity deadlines</p>
+      </div>
+      <div>
+        <a href="/pages/student/dashboard.html" class="inline-flex items-center gap-1.5 text-sm bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-3.5 py-2 rounded-lg font-medium shadow-sm transition-colors">
+          &larr; Back to Dashboard
+        </a>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading-state" class="flex justify-center py-20">
+      <svg class="w-8 h-8 animate-spin text-primary-600" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+      </svg>
+    </div>
+
+    <!-- No Group Notice -->
+    <div id="no-group-notice" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center max-w-lg mx-auto">
+      <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center mx-auto mb-3">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+      </div>
+      <h3 class="text-lg font-bold text-gray-900 mb-1">Group required</h3>
+      <p class="text-sm text-gray-500 mb-5">You must belong to a thesis or capstone group to submit activity deliverables.</p>
+      <a href="/pages/student/my-group.html" class="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm px-4 py-2.5 rounded-xl shadow-sm transition-colors">
+        Go to My Group
+      </a>
+    </div>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="hidden bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center max-w-lg mx-auto">
+      <div class="w-12 h-12 bg-gray-50 text-gray-400 rounded-xl flex items-center justify-center mx-auto mb-3">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      </div>
+      <h3 class="text-base font-bold text-gray-800 mb-1">No activities assigned</h3>
+      <p class="text-xs text-gray-500">There are no pending activity deliverables assigned to your set at this time.</p>
+    </div>
+
+    <!-- Activities List -->
+    <div id="activities-container" class="hidden space-y-4"></div>
+  </div>
+
+  <!-- Submit Modal -->
+  <div id="submit-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+      <div class="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
+        <div>
+          <h2 id="submit-modal-title" class="text-lg font-bold text-gray-900">Submit Activity</h2>
+          <p id="submit-modal-deadline" class="text-xs text-gray-500 mt-0.5"></p>
+        </div>
+        <button type="button" onclick="hideSubmitModal()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+      </div>
+
+      <form id="submit-form" class="space-y-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Deliverable File <span class="text-red-500">*</span></label>
+          <div class="border-2 border-dashed border-gray-300 rounded-xl p-5 text-center cursor-pointer hover:border-primary-500 hover:bg-primary-50/20 transition-all" onclick="document.getElementById('sub-file-input').click()">
+            <svg class="w-8 h-8 text-gray-400 mx-auto mb-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            <p id="file-label" class="text-xs font-semibold text-gray-700">Click to select PDF or DOCX file</p>
+            <p class="text-[11px] text-gray-400 mt-0.5">Maximum file size: 50MB</p>
+          </div>
+          <input id="sub-file-input" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden" required onchange="handleFileSelect(this)">
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Notes / Remarks <span class="text-gray-400 font-normal">(optional)</span></label>
+          <textarea id="sub-comments" rows="2" placeholder="Any additional notes for your instructor…" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"></textarea>
+        </div>
+
+        <p id="submit-error" class="text-xs text-red-600 hidden"></p>
+
+        <div class="flex justify-end gap-3 pt-3 border-t border-gray-100">
+          <button type="button" onclick="hideSubmitModal()" class="text-sm border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+          <button type="submit" id="submit-btn" class="text-sm bg-primary-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-primary-700 transition-colors">Submit Deliverable</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/utils.js"></script>
+  <script>
+    let activities = [];
+    let currentActivityId = null;
+
+    requireAuthAsync('student').then(async user => {
+      if (!user) return;
+      if (!(await requireVerifiedStudent())) return;
+      document.getElementById('user-name').textContent = `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Student';
+      await loadActivities();
+    });
+
+    async function loadActivities() {
+      document.getElementById('loading-state').classList.remove('hidden');
+      document.getElementById('no-group-notice').classList.add('hidden');
+      document.getElementById('empty-state').classList.add('hidden');
+      document.getElementById('activities-container').classList.add('hidden');
+
+      try {
+        const res = await apiGet('/api/v1/activities').then(r => r.json());
+        document.getElementById('loading-state').classList.add('hidden');
+
+        if (res.data?.has_group === false) {
+          document.getElementById('no-group-notice').classList.remove('hidden');
+          return;
+        }
+
+        activities = res.data?.activities || [];
+        if (!activities.length) {
+          document.getElementById('empty-state').classList.remove('hidden');
+          return;
+        }
+
+        renderActivities(activities);
+        document.getElementById('activities-container').classList.remove('hidden');
+      } catch (err) {
+        document.getElementById('loading-state').classList.add('hidden');
+        document.getElementById('empty-state').classList.remove('hidden');
+      }
+    }
+
+    function renderActivities(list) {
+      const container = document.getElementById('activities-container');
+      container.innerHTML = list.map(a => {
+        const deadlineDate = new Date(a.deadline);
+        const isPast = deadlineDate < new Date();
+        const formattedDeadline = deadlineDate.toLocaleDateString('en-PH', {
+          month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+
+        let submissionBadge = '';
+        let actionBtnText = 'Submit Deliverable';
+
+        if (a.is_submitted) {
+          const lateText = a.is_late ? ' (Submitted Late)' : ' (On Time)';
+          const colorClass = a.is_late ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-green-50 text-green-700 border-green-200';
+          submissionBadge = `
+            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${colorClass}">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              Submitted${lateText}
+            </span>
+          `;
+          actionBtnText = 'Re-upload / Update';
+        } else {
+          submissionBadge = isPast
+            ? `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">Missing / Past Due</span>`
+            : `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">Pending Submission</span>`;
+        }
+
+        return `
+          <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+            <div class="flex items-start justify-between gap-3 mb-2 flex-wrap">
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-xs font-semibold px-2 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100">${escHtml(a.set_name || 'All Sets')}</span>
+                  <span class="text-xs text-gray-400">Instructor: ${escHtml(a.instructor_name)}</span>
+                </div>
+                <h3 class="text-lg font-bold text-gray-900">${escHtml(a.title)}</h3>
+              </div>
+              <div>${submissionBadge}</div>
+            </div>
+
+            ${a.description ? `<p class="text-sm text-gray-600 mb-4 whitespace-pre-line">${escHtml(a.description)}</p>` : ''}
+
+            <div class="bg-gray-50 rounded-lg p-3 text-xs flex items-center justify-between gap-2 flex-wrap mb-4">
+              <div class="flex items-center gap-2">
+                <span class="text-gray-400">Deadline:</span>
+                <span class="font-bold ${isPast ? 'text-red-600' : 'text-gray-800'}">${formattedDeadline}</span>
+              </div>
+              ${a.is_submitted && a.file_name ? `<div class="text-gray-500 font-medium">Submitted file: <span class="text-primary-700 font-semibold">${escHtml(a.file_name)}</span></div>` : ''}
+            </div>
+
+            <div class="flex items-center justify-end">
+              <button onclick="openSubmitModal(${a.id})" class="inline-flex items-center gap-1.5 text-xs font-semibold bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                ${actionBtnText}
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openSubmitModal(activityId) {
+      currentActivityId = activityId;
+      const act = activities.find(a => a.id === activityId);
+      document.getElementById('submit-modal-title').textContent = act ? `Submit: ${act.title}` : 'Submit Deliverable';
+      const formattedDeadline = act ? new Date(act.deadline).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+      document.getElementById('submit-modal-deadline').textContent = `Deadline: ${formattedDeadline}`;
+
+      document.getElementById('submit-form').reset();
+      document.getElementById('file-label').textContent = 'Click to select PDF or DOCX file';
+      document.getElementById('submit-error').classList.add('hidden');
+      document.getElementById('submit-modal').classList.remove('hidden');
+    }
+
+    function hideSubmitModal() {
+      document.getElementById('submit-modal').classList.add('hidden');
+      currentActivityId = null;
+    }
+
+    function handleFileSelect(input) {
+      if (input.files && input.files[0]) {
+        document.getElementById('file-label').textContent = input.files[0].name;
+      }
+    }
+
+    document.getElementById('submit-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      if (!currentActivityId) return;
+
+      const fileInput = document.getElementById('sub-file-input');
+      if (!fileInput.files || !fileInput.files[0]) {
+        alert('Please select a file to submit.');
+        return;
+      }
+
+      const btn = document.getElementById('submit-btn');
+      const errEl = document.getElementById('submit-error');
+      errEl.classList.add('hidden');
+      btn.disabled = true;
+      btn.textContent = 'Uploading…';
+
+      try {
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        const comments = document.getElementById('sub-comments').value.trim();
+        if (comments) formData.append('comments', comments);
+
+        const res = await apiPostForm(`/api/v1/activities/${currentActivityId}/submit`, formData).then(r => r.json());
+        if (!res.success) throw new Error(res.message);
+
+        hideSubmitModal();
+        await loadActivities();
+      } catch (err) {
+        errEl.textContent = err.message || 'Failed to submit deliverable.';
+        errEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Submit Deliverable';
+      }
+    });
+
+    function escHtml(str) {
+      return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+  </script>
+</body>
+</html>

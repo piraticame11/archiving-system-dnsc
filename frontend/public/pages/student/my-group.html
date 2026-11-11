@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/assets/css/app.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body class="bg-gray-50 font-sans">
+<body class="bg-gray-50 font-sans min-h-screen">
 
   <nav class="bg-primary-700 text-white px-6 py-4 flex items-center justify-between shadow">
     <div class="flex items-center gap-3">
@@ -22,11 +22,9 @@
   </nav>
 
   <div class="max-w-4xl mx-auto px-6 py-10">
-    <div class="flex items-center gap-3 mb-8">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900">My Group</h1>
-        <p class="text-gray-500 text-sm mt-0.5">Create or join a thesis/capstone group</p>
-      </div>
+    <div class="mb-8">
+      <h1 class="text-2xl font-bold text-gray-900">My Group</h1>
+      <p class="text-gray-500 text-sm mt-0.5">Manage your thesis or capstone group and members</p>
     </div>
 
     <!-- Loading -->
@@ -37,31 +35,18 @@
       </svg>
     </div>
 
-    <!-- No Group: Create or Join -->
+    <!-- No Group State -->
     <div id="no-group-panel" class="hidden">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
-        <!-- Create Group Card -->
-        <button onclick="showCreateModal()" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow text-left w-full">
-          <div class="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center mb-3">
-            <svg class="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-          </div>
-          <p class="font-semibold text-gray-800">Create a Group</p>
-          <p class="text-xs text-gray-500 mt-1">Start a new group and become the leader. Share the code with your groupmates.</p>
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center max-w-lg mx-auto">
+        <div class="w-14 h-14 bg-primary-50 text-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </div>
+        <h2 class="text-xl font-bold text-gray-900 mb-2">You don't have a group yet</h2>
+        <p class="text-sm text-gray-500 mb-6">Create a new group as project leader. You can specify your program, set/section, and member names directly without them needing accounts.</p>
+        <button onclick="showCreateModal()" class="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm px-5 py-2.5 rounded-xl shadow-sm transition-colors">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Create a Group
         </button>
-
-        <!-- Join Group Card -->
-        <button onclick="showJoinModal()" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow text-left w-full">
-          <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mb-3">
-            <svg class="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
-          </div>
-          <p class="font-semibold text-gray-800">Join a Group</p>
-          <p class="text-xs text-gray-500 mt-1">Enter a 6-digit code from your group leader to send a join request.</p>
-        </button>
-      </div>
-
-      <div id="pending-notice" class="hidden bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800">
-        <p class="font-medium">Join request pending</p>
-        <p class="mt-0.5" id="pending-notice-text"></p>
       </div>
     </div>
 
@@ -72,163 +57,128 @@
       <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         <div class="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <div class="flex items-center gap-2 flex-wrap">
-              <h2 id="group-name" class="text-lg font-bold text-gray-900"></h2>
-              <span id="leader-badge" class="hidden text-xs bg-primary-100 text-primary-700 font-semibold px-2 py-0.5 rounded-full">Leader</span>
-              <span id="member-badge" class="hidden text-xs bg-gray-100 text-gray-600 font-semibold px-2 py-0.5 rounded-full">Member</span>
+            <div class="flex items-center gap-2 flex-wrap mb-1">
+              <h2 id="group-name" class="text-xl font-bold text-gray-900"></h2>
+              <span id="leader-badge" class="hidden text-xs bg-primary-100 text-primary-700 font-semibold px-2.5 py-0.5 rounded-full">Project Leader</span>
+              <span id="member-badge" class="hidden text-xs bg-gray-100 text-gray-600 font-semibold px-2.5 py-0.5 rounded-full">Member</span>
             </div>
-            <p id="group-school-year" class="text-sm text-gray-500 mt-0.5"></p>
-            <p id="group-adviser" class="text-sm text-gray-500 mt-1"></p>
-            <p id="group-adviser-status" class="text-xs mt-1"></p>
+            <div class="flex flex-wrap items-center gap-2 text-sm text-gray-600 mt-2">
+              <span id="group-program-badge" class="px-2.5 py-0.5 bg-blue-50 text-blue-700 font-medium rounded-md border border-blue-100 text-xs"></span>
+              <span id="group-set-badge" class="px-2.5 py-0.5 bg-purple-50 text-purple-700 font-medium rounded-md border border-purple-100 text-xs"></span>
+              <span id="group-sy-badge" class="px-2.5 py-0.5 bg-gray-100 text-gray-700 font-medium rounded-md text-xs"></span>
+            </div>
           </div>
-          <div class="flex gap-2">
-            <button id="edit-group-btn" onclick="showEditModal()" class="hidden text-sm border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors">Edit</button>
-            <button id="disband-btn" onclick="confirmDisband()" class="hidden text-sm bg-red-50 border border-red-200 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors">Disband</button>
+          <div class="flex items-center gap-2 flex-wrap">
+            <a href="/pages/student/activities.html" class="text-sm bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-colors font-medium">Activities</a>
+            <a href="/pages/student/upload-document.html" class="text-sm bg-primary-50 text-primary-700 border border-primary-200 px-3 py-1.5 rounded-lg hover:bg-primary-100 transition-colors font-medium">Upload Document</a>
+            <button id="disband-btn" onclick="confirmDisband()" class="hidden text-sm bg-red-50 border border-red-200 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors">Disband Group</button>
             <button id="leave-btn" onclick="confirmLeave()" class="hidden text-sm bg-red-50 border border-red-200 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors">Leave Group</button>
           </div>
         </div>
 
-        <!-- Join Code (leader only) -->
-        <div id="join-code-section" class="hidden mt-4 pt-4 border-t border-gray-100">
-          <p class="text-xs text-gray-500 mb-1 font-medium uppercase tracking-wide">Group Join Code</p>
-          <div class="flex items-center gap-3">
-            <span id="join-code-display" class="font-mono text-3xl font-bold tracking-widest text-primary-700 bg-primary-50 px-4 py-2 rounded-lg"></span>
-            <button onclick="copyJoinCode()" class="text-sm text-gray-500 hover:text-gray-700 border border-gray-200 px-3 py-2 rounded-lg transition-colors">Copy</button>
-            <button onclick="confirmRegenerateCode()" class="text-sm text-gray-500 hover:text-gray-700 border border-gray-200 px-3 py-2 rounded-lg transition-colors">Regenerate</button>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 pt-6 border-t border-gray-100">
+          <div>
+            <p class="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-1">Instructor</p>
+            <p id="group-instructor" class="text-sm font-medium text-gray-800">Not assigned</p>
           </div>
-          <p id="join-code-expiry" class="text-xs text-gray-400 mt-1"></p>
-        </div>
-
-        <!-- Capacity -->
-        <div class="mt-4 pt-4 border-t border-gray-100 flex items-center gap-2 text-sm text-gray-500">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-          <span id="member-capacity-text"></span>
+          <div>
+            <p class="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-1">Adviser</p>
+            <p id="group-adviser" class="text-sm font-medium text-gray-800">None</p>
+            <p id="group-adviser-status" class="text-xs mt-0.5"></p>
+          </div>
         </div>
       </div>
 
-      <!-- Pending Requests (leader only) -->
-      <div id="requests-section" class="hidden bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h3 class="font-semibold text-gray-800 mb-4">Join Requests</h3>
-        <div id="requests-list" class="space-y-3">
-          <p class="text-sm text-gray-400">No pending requests.</p>
-        </div>
-      </div>
-
-      <!-- Members List -->
+      <!-- Members Section -->
       <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h3 class="font-semibold text-gray-800 mb-4">Members</h3>
-        <div id="members-list" class="space-y-3"></div>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-bold text-gray-800">Group Members</h3>
+          <span id="member-count-badge" class="text-xs font-semibold px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full"></span>
+        </div>
+
+        <div id="members-list" class="divide-y divide-gray-100 mb-6"></div>
+
+        <!-- Add Member Input (Leader Only) -->
+        <div id="add-member-section" class="hidden pt-4 border-t border-gray-100">
+          <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Add Member</p>
+          <form id="add-member-form" class="flex items-center gap-2">
+            <input id="add-member-name" type="text" placeholder="Enter member's full name (e.g. Maria Santos)" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" required>
+            <button type="submit" class="bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors whitespace-nowrap">
+              + Add Member
+            </button>
+          </form>
+          <p id="add-member-error" class="text-xs text-red-600 mt-1 hidden"></p>
+        </div>
       </div>
+
     </div>
   </div>
 
-  <!-- Create Group Modal -->
+  <!-- Create Group Modal (Project Leader Group Creation) -->
+  <!-- Strict fields: Program, Set, Members, Instructor, Adviser (optional) -->
   <div id="create-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
-      <h2 class="text-lg font-bold text-gray-900 mb-5">Create a Group</h2>
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-lg font-bold text-gray-900">Create a Group</h2>
+          <p class="text-xs text-gray-500 mt-0.5">As leader, configure your group and list your members</p>
+        </div>
+        <button type="button" onclick="hideCreateModal()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+      </div>
+
       <form id="create-form" class="space-y-4">
+        <!-- 1. Program -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Group Name <span class="text-red-500">*</span></label>
-          <input id="c-name" type="text" maxlength="255" placeholder="e.g. Group Alpha" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">School Year <span class="text-red-500">*</span></label>
-          <select id="c-school-year" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-            <option value="">Select school year…</option>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Program <span class="text-red-500">*</span></label>
+          <select id="c-program" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white" required>
+            <option value="">Select program…</option>
           </select>
         </div>
+
+        <!-- 2. Set (Section) -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Type <span class="text-red-500">*</span></label>
-          <select id="c-type" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-            <option value="thesis">Thesis</option>
-            <option value="capstone">Capstone</option>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Set / Section <span class="text-red-500">*</span></label>
+          <input id="c-set" type="text" maxlength="50" placeholder="e.g. Set A, Set B, or A" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" required>
+          <p class="text-xs text-gray-400 mt-1">Specify your class section or set.</p>
+        </div>
+
+        <!-- 3. Members -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-sm font-semibold text-gray-700">Members <span class="text-gray-400 font-normal">(Leader is added automatically)</span></label>
+            <button type="button" onclick="addMemberInputRow()" class="text-xs font-semibold text-primary-600 hover:text-primary-800">+ Add member row</button>
+          </div>
+          <p class="text-xs text-gray-400 mb-2">Enter the full names of your group members. No accounts required for them.</p>
+          <div id="c-members-inputs" class="space-y-2">
+            <!-- Initial row -->
+            <div class="flex items-center gap-2 member-row">
+              <input type="text" placeholder="Member full name (e.g. Juan Dela Cruz)" class="c-member-input flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+              <button type="button" onclick="removeMemberInputRow(this)" class="text-gray-400 hover:text-red-500 px-2 py-1 text-sm font-bold">&times;</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Instructor -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Instructor <span class="text-red-500">*</span></label>
+          <select id="c-instructor" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white" required>
+            <option value="">Select instructor…</option>
           </select>
         </div>
+
+        <!-- 5. Adviser (optional) -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Member Capacity <span class="text-red-500">*</span></label>
-          <select id="c-max-members" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-            <option value="4">4</option>
-            <option value="5" selected>5</option>
-            <option value="6">6</option>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Adviser <span class="text-gray-400 font-normal">(optional)</span></label>
+          <select id="c-adviser" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white">
+            <option value="">None / To be assigned later</option>
           </select>
-          <p class="text-xs text-gray-400 mt-1">Groups must have between 4 and 6 members.</p>
         </div>
-        <div class="relative">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Adviser <span class="text-gray-400 font-normal">(optional)</span></label>
-          <input id="c-adviser-input" type="text" autocomplete="off" placeholder="Type instructor name…" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-          <input type="hidden" id="c-adviser-id">
-          <ul id="c-adviser-list" class="hidden absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto text-sm"></ul>
-        </div>
+
         <p id="create-error" class="text-sm text-red-600 hidden"></p>
-        <div class="flex justify-end gap-3 pt-2">
-          <button type="button" onclick="hideCreateModal()" class="text-sm border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50">Cancel</button>
-          <button type="submit" class="text-sm bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors">Create Group</button>
-        </div>
-      </form>
-    </div>
-  </div>
 
-  <!-- Join Group Modal -->
-  <div id="join-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-      <h2 class="text-lg font-bold text-gray-900 mb-2">Join a Group</h2>
-      <p class="text-sm text-gray-500 mb-4">Enter the 6-digit code provided by your group leader to submit a membership request.</p>
-      <form id="join-form" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">6-Digit Join Code <span class="text-red-500">*</span></label>
-          <input id="j-code" type="text" maxlength="6" inputmode="numeric" pattern="\d{6}" placeholder="000000" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-base font-mono tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-green-500">
-          <p class="text-xs text-gray-500 mt-1">Ask your group leader to locate this code on their Group page.</p>
-        </div>
-        <p id="join-error" class="text-sm text-red-600 hidden"></p>
-        <div class="flex justify-end gap-3 pt-2">
-          <button type="button" onclick="hideJoinModal()" class="text-sm font-medium border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
-          <button type="submit" class="text-sm font-semibold bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">Send Request</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Edit Group Modal -->
-  <div id="edit-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
-      <h2 class="text-lg font-bold text-gray-900 mb-5">Edit Group</h2>
-      <form id="edit-form" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Group Name</label>
-          <input id="e-name" type="text" maxlength="255" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">School Year</label>
-          <select id="e-school-year" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-            <option value="">Select school year…</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
-          <select id="e-type" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-            <option value="thesis">Thesis</option>
-            <option value="capstone">Capstone</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Member Capacity</label>
-          <select id="e-max-members" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-            <option value="4">4</option>
-            <option value="5">5</option>
-            <option value="6">6</option>
-          </select>
-          <p class="text-xs text-gray-400 mt-1">Groups must have between 4 and 6 members.</p>
-        </div>
-        <div class="relative">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Adviser</label>
-          <input id="e-adviser-input" type="text" autocomplete="off" placeholder="Type instructor name…" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-          <input type="hidden" id="e-adviser-id">
-          <ul id="e-adviser-list" class="hidden absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto text-sm"></ul>
-        </div>
-        <p id="edit-error" class="text-sm text-red-600 hidden"></p>
-        <div class="flex justify-end gap-3 pt-2">
-          <button type="button" onclick="hideEditModal()" class="text-sm border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50">Cancel</button>
-          <button type="submit" class="text-sm bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors">Save Changes</button>
+        <div class="flex justify-end gap-3 pt-3 border-t border-gray-100">
+          <button type="button" onclick="hideCreateModal()" class="text-sm border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+          <button type="submit" id="create-submit-btn" class="text-sm bg-primary-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-primary-700 transition-colors">Create Group</button>
         </div>
       </form>
     </div>
@@ -240,102 +190,49 @@
   <script>
     let currentUser = null;
     let currentGroup = null;
+    let departments = [];
     let instructors = [];
-    let deptColors = {};
-
-    const DEPT_COLOR_CLASSES = [
-      'bg-blue-500', 'bg-cyan-500', 'bg-teal-500', 'bg-lime-500',
-      'bg-purple-500', 'bg-orange-500', 'bg-pink-500', 'bg-indigo-500',
-    ];
 
     requireAuthAsync('student').then(async user => {
       if (!user) return;
       if (!(await requireVerifiedStudent())) return;
       currentUser = user;
       document.getElementById('user-name').textContent = `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Student';
-      await loadInstructors();
-      await loadSchoolYears();
+      await Promise.all([loadDepartments(), loadInstructors()]);
       await loadGroup();
     });
 
-    async function loadSchoolYears() {
+    async function loadDepartments() {
       try {
-        const res = await apiGet('/api/v1/school-years').then(r => r.json());
-        const years = res.data || [];
-        ['c-school-year', 'e-school-year'].forEach(id => {
-          const sel = document.getElementById(id);
-          years.forEach(y => {
-            const o = document.createElement('option');
-            o.value = y.label; o.textContent = y.label;
-            sel.appendChild(o);
-          });
-        });
-      } catch (_) {}
+        const res = await apiGet('/api/v1/departments').then(r => r.json());
+        departments = res.data || [];
+        const sel = document.getElementById('c-program');
+        sel.innerHTML = '<option value="">Select program…</option>' +
+          departments.map(d => `<option value="${d.id}">${escHtml(d.code)} - ${escHtml(d.name)}</option>`).join('');
+      } catch (err) {
+        console.error('Failed to load departments', err);
+      }
     }
 
     async function loadInstructors() {
       try {
         const res = await apiGet('/api/v1/groups/instructors').then(r => r.json());
-        if (res.success) instructors = res.data || [];
-        const depts = [...new Set(instructors.map(i => i.department_name || 'Other'))].sort();
-        deptColors = {};
-        depts.forEach((d, idx) => { deptColors[d] = DEPT_COLOR_CLASSES[idx % DEPT_COLOR_CLASSES.length]; });
-        bindAdviserAutocomplete('c-adviser-input', 'c-adviser-id', 'c-adviser-list');
-        bindAdviserAutocomplete('e-adviser-input', 'e-adviser-id', 'e-adviser-list');
-      } catch (_) {}
-    }
+        instructors = res.data || [];
 
-    function bindAdviserAutocomplete(inputId, hiddenId, listId) {
-      const input  = document.getElementById(inputId);
-      const hidden = document.getElementById(hiddenId);
-      const list   = document.getElementById(listId);
+        const instSel = document.getElementById('c-instructor');
+        instSel.innerHTML = '<option value="">Select instructor…</option>' +
+          instructors.map(i => `<option value="${i.id}">${escHtml(i.first_name + ' ' + i.last_name)} (${escHtml(i.department_name || 'Faculty')})</option>`).join('');
 
-      input.addEventListener('input', () => {
-        const q = input.value.trim().toLowerCase();
-        hidden.value = '';
-        if (!q) { list.classList.add('hidden'); list.innerHTML = ''; return; }
-        const matches = instructors.filter(i =>
-          `${i.first_name} ${i.last_name}`.toLowerCase().includes(q)
-        ).slice(0, 30);
-        if (!matches.length) { list.classList.add('hidden'); list.innerHTML = ''; return; }
-
-        const groups = new Map();
-        matches.forEach(i => {
-          const dept = i.department_name || 'Other';
-          if (!groups.has(dept)) groups.set(dept, []);
-          groups.get(dept).push(i);
-        });
-
-        list.innerHTML = [...groups.entries()].map(([dept, advisers]) => {
-          const header = `<li class="px-3 py-1.5 text-xs font-bold text-white uppercase tracking-wide ${deptColors[dept] || 'bg-gray-500'}">${escHtml(dept)}</li>`;
-          const rows = advisers.map(i => {
+        const advSel = document.getElementById('c-adviser');
+        advSel.innerHTML = '<option value="">None / To be assigned later</option>' +
+          instructors.map(i => {
             const occupied = i.slots_occupied ?? (i.slots_max != null && i.slots_available != null ? Math.max(0, i.slots_max - i.slots_available) : 0);
-            const full = i.slots_available === 0;
-            const slotLabel = i.slots_max == null
-              ? ''
-              : `<span class="text-xs ml-auto font-medium ${full ? 'text-gray-400' : 'text-green-600'}">${occupied}/${i.slots_max} slot${i.slots_max === 1 ? '' : 's'}</span>`;
-            return `<li data-id="${i.id}" data-name="${escHtml(i.first_name + ' ' + i.last_name)}" data-full="${full}"
-                 class="px-3 py-2 flex items-center gap-2 ${full ? 'cursor-not-allowed bg-gray-100 text-gray-400' : 'cursor-pointer hover:bg-gray-100'}">
-               <span>${escHtml(i.first_name + ' ' + i.last_name)}</span>
-               ${slotLabel}
-             </li>`;
+            const slotText = i.slots_max != null ? ` [${occupied}/${i.slots_max} advisees]` : '';
+            return `<option value="${i.id}">${escHtml(i.first_name + ' ' + i.last_name)} (${escHtml(i.department_name || 'Faculty')})${slotText}</option>`;
           }).join('');
-          return header + rows;
-        }).join('');
-        list.classList.remove('hidden');
-      });
-
-      list.addEventListener('mousedown', e => {
-        const li = e.target.closest('li[data-id]');
-        if (!li || li.dataset.full === 'true') return;
-        input.value  = li.dataset.name;
-        hidden.value = li.dataset.id;
-        list.classList.add('hidden');
-      });
-
-      input.addEventListener('blur', () => {
-        setTimeout(() => list.classList.add('hidden'), 150);
-      });
+      } catch (err) {
+        console.error('Failed to load instructors', err);
+      }
     }
 
     async function loadGroup() {
@@ -347,14 +244,13 @@
         const res = await apiGet('/api/v1/groups/my').then(r => r.json());
         currentGroup = res.data;
 
+        document.getElementById('loading-state').classList.add('hidden');
         if (!currentGroup) {
-          document.getElementById('loading-state').classList.add('hidden');
           document.getElementById('no-group-panel').classList.remove('hidden');
           return;
         }
 
         renderGroup(currentGroup);
-        document.getElementById('loading-state').classList.add('hidden');
         document.getElementById('has-group-panel').classList.remove('hidden');
       } catch (err) {
         document.getElementById('loading-state').classList.add('hidden');
@@ -366,211 +262,212 @@
       const isLeader = group.leader_id === currentUser.id;
 
       document.getElementById('group-name').textContent = group.name;
-      document.getElementById('group-school-year').textContent = `School Year: ${group.school_year} · ${group.type === 'capstone' ? 'Capstone' : 'Thesis'}`;
+      document.getElementById('leader-badge').classList.toggle('hidden', !isLeader);
+      document.getElementById('member-badge').classList.toggle('hidden', isLeader);
+      document.getElementById('disband-btn').classList.toggle('hidden', !isLeader);
+      document.getElementById('leave-btn').classList.toggle('hidden', isLeader);
+      document.getElementById('add-member-section').classList.toggle('hidden', !isLeader);
 
-      document.getElementById('group-adviser').textContent = group.adviser_name ? `Adviser: ${group.adviser_name}` : '';
+      const progText = group.department_code ? `${group.department_code}` : 'No Program';
+      document.getElementById('group-program-badge').textContent = progText;
+
+      const setText = group.set_name ? (group.set_name.toLowerCase().startsWith('set') ? group.set_name : 'Set ' + group.set_name) : 'No Set';
+      document.getElementById('group-set-badge').textContent = setText;
+
+      const syText = `S.Y. ${group.school_year || 'Current'}`;
+      document.getElementById('group-sy-badge').textContent = syText;
+
+      document.getElementById('group-instructor').textContent = group.instructor_name || 'Not assigned';
+
+      const advEl = document.getElementById('group-adviser');
+      advEl.textContent = group.adviser_name || 'None';
 
       const statusEl = document.getElementById('group-adviser-status');
       if (group.adviser_name && group.adviser_status === 'pending') {
-        statusEl.innerHTML = '<span class="text-yellow-600 font-medium">Pending your adviser\'s approval</span>';
+        statusEl.innerHTML = '<span class="text-yellow-600 font-medium">Pending adviser approval</span>';
       } else if (group.adviser_status === 'rejected') {
-        statusEl.innerHTML = `<span class="text-red-600 font-medium">Adviser request declined${group.adviser_status_reason ? ': ' + escHtml(group.adviser_status_reason) : ''}</span>`;
+        statusEl.innerHTML = `<span class="text-red-600 font-medium">Adviser declined${group.adviser_status_reason ? ': ' + escHtml(group.adviser_status_reason) : ''}</span>`;
+      } else if (group.adviser_status === 'approved') {
+        statusEl.innerHTML = '<span class="text-green-600 font-medium">Adviser approved</span>';
       } else {
         statusEl.innerHTML = '';
       }
 
-      document.getElementById('member-capacity-text').textContent = `${group.member_count} / ${group.max_members} members`;
-
-      document.getElementById('leader-badge').classList.toggle('hidden', !isLeader);
-      document.getElementById('member-badge').classList.toggle('hidden', isLeader);
-      document.getElementById('edit-group-btn').classList.toggle('hidden', !isLeader);
-      document.getElementById('disband-btn').classList.toggle('hidden', !isLeader);
-      document.getElementById('leave-btn').classList.toggle('hidden', isLeader);
-
-      if (isLeader) {
-        document.getElementById('join-code-section').classList.remove('hidden');
-        document.getElementById('join-code-display').textContent = group.join_code;
-
-        const expiryEl = document.getElementById('join-code-expiry');
-        if (group.join_code_expires_at) {
-          const expires = new Date(group.join_code_expires_at);
-          const expired = expires < new Date();
-          expiryEl.textContent = expired
-            ? 'This code has expired. Regenerate to invite new members.'
-            : `Expires ${expires.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })}. Share this code with students you want to invite.`;
-          expiryEl.className = expired ? 'text-xs text-red-500 mt-1 font-medium' : 'text-xs text-gray-400 mt-1';
-        } else {
-          expiryEl.textContent = 'Share this code with students you want to invite.';
-        }
-
-        document.getElementById('requests-section').classList.remove('hidden');
-        loadRequests(group.id);
-      }
-
-      renderMembers(group.members, group.leader_id, isLeader, group.id);
+      renderMembers(group.members || [], group.leader_id, isLeader, group.id);
     }
 
     function renderMembers(members, leaderId, viewerIsLeader, groupId) {
       const list = document.getElementById('members-list');
+      document.getElementById('member-count-badge').textContent = `${members.length} member${members.length === 1 ? '' : 's'}`;
+
+      if (!members.length) {
+        list.innerHTML = '<p class="text-sm text-gray-400 py-3">No members found.</p>';
+        return;
+      }
+
       list.innerHTML = members.map(m => {
         const isL = m.student_id === leaderId;
         const canRemove = viewerIsLeader && !isL;
+        const memberId = m.id || m.student_id;
         return `
-          <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="text-sm font-medium text-gray-800">${escHtml(m.name)}</span>
-                ${isL ? '<span class="text-xs bg-primary-100 text-primary-700 font-semibold px-1.5 py-0.5 rounded">Leader</span>' : ''}
+          <div class="flex items-center justify-between py-3">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-xs uppercase">
+                ${escHtml((m.name || 'M').charAt(0))}
               </div>
-              <p class="text-xs text-gray-400">${escHtml(m.student_number || '')} • ${escHtml(m.email || '')}</p>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-semibold text-gray-800">${escHtml(m.name)}</span>
+                  ${isL ? '<span class="text-xs bg-primary-100 text-primary-700 font-semibold px-2 py-0.5 rounded-full">Leader</span>' : ''}
+                </div>
+                ${m.email || m.student_number ? `<p class="text-xs text-gray-400">${escHtml([m.student_number, m.email].filter(Boolean).join(' • '))}</p>` : ''}
+              </div>
             </div>
-            ${canRemove ? `<button onclick="removeMember(${groupId}, ${m.student_id}, '${escHtml(m.name)}')" class="text-xs text-red-500 hover:text-red-700 border border-red-100 px-2 py-1 rounded-lg">Remove</button>` : ''}
-          </div>`;
-      }).join('') || '<p class="text-sm text-gray-400">No members yet.</p>';
+            ${canRemove ? `<button type="button" onclick="removeMember(${groupId}, ${memberId}, '${escHtml(m.name.replace(/'/g, "\\'"))}')" class="text-xs text-red-500 hover:text-red-700 border border-red-200 hover:bg-red-50 px-2.5 py-1 rounded-lg transition-colors font-medium">Remove</button>` : ''}
+          </div>
+        `;
+      }).join('');
     }
 
-    async function loadRequests(groupId) {
-      const list = document.getElementById('requests-list');
+    /* ── Add Member ─────────────────────────────────────────────────── */
+    document.getElementById('add-member-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const errEl = document.getElementById('add-member-error');
+      errEl.classList.add('hidden');
+      const input = document.getElementById('add-member-name');
+      const name = input.value.trim();
+      if (!name) return;
+
       try {
-        const res = await apiGet(`/api/v1/groups/${groupId}/requests`).then(r => r.json());
-        const requests = res.data || [];
-        if (!requests.length) {
-          list.innerHTML = '<p class="text-sm text-gray-400">No pending requests.</p>';
-          return;
-        }
-        list.innerHTML = requests.map(r => `
-          <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-            <div>
-              <p class="text-sm font-medium text-gray-800">${escHtml(r.student_name)}</p>
-              <p class="text-xs text-gray-400">${escHtml(r.student_number || '')} • ${escHtml(r.email || '')}</p>
-            </div>
-            <div class="flex gap-2">
-              <button onclick="acceptRequest(${groupId}, ${r.id})" class="text-xs bg-green-600 text-white px-2 py-1 rounded-lg hover:bg-green-700">Accept</button>
-              <button onclick="rejectRequest(${groupId}, ${r.id})" class="text-xs bg-red-50 text-red-600 border border-red-100 px-2 py-1 rounded-lg hover:bg-red-100">Reject</button>
-            </div>
-          </div>`).join('');
-      } catch (_) {
-        list.innerHTML = '<p class="text-sm text-gray-400">Could not load requests.</p>';
+        const res = await apiPost(`/api/v1/groups/${currentGroup.id}/members`, { name }).then(r => r.json());
+        if (!res.success) throw new Error(res.message);
+        input.value = '';
+        currentGroup = res.data;
+        renderGroup(currentGroup);
+      } catch (err) {
+        errEl.textContent = err.message || 'Failed to add member.';
+        errEl.classList.remove('hidden');
+      }
+    });
+
+    /* ── Remove Member ──────────────────────────────────────────────── */
+    async function removeMember(groupId, memberId, name) {
+      if (!confirm(`Are you sure you want to remove ${name} from the group?`)) return;
+      try {
+        const res = await apiDelete(`/api/v1/groups/${groupId}/members/${memberId}`).then(r => r.json());
+        if (!res.success) throw new Error(res.message);
+        await loadGroup();
+      } catch (err) {
+        alert(err.message || 'Failed to remove member.');
       }
     }
 
-    /* ── Create Group ────────────────────────────────────────────────── */
-    function showCreateModal() { document.getElementById('create-modal').classList.remove('hidden'); }
+    /* ── Create Modal Helpers ────────────────────────────────────────── */
+    function showCreateModal() {
+      document.getElementById('create-modal').classList.remove('hidden');
+      // If student has a department, default to it
+      if (currentUser?.department_id) {
+        document.getElementById('c-program').value = currentUser.department_id;
+      }
+    }
+
     function hideCreateModal() {
       document.getElementById('create-modal').classList.add('hidden');
       document.getElementById('create-error').classList.add('hidden');
-      document.getElementById('c-adviser-input').value = '';
-      document.getElementById('c-adviser-id').value = '';
     }
 
+    function addMemberInputRow() {
+      const container = document.getElementById('c-members-inputs');
+      const row = document.createElement('div');
+      row.className = 'flex items-center gap-2 member-row';
+      row.innerHTML = `
+        <input type="text" placeholder="Member full name" class="c-member-input flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+        <button type="button" onclick="removeMemberInputRow(this)" class="text-gray-400 hover:text-red-500 px-2 py-1 text-sm font-bold">&times;</button>
+      `;
+      container.appendChild(row);
+      row.querySelector('input').focus();
+    }
+
+    function removeMemberInputRow(btn) {
+      const rows = document.querySelectorAll('.member-row');
+      if (rows.length > 1) {
+        btn.closest('.member-row').remove();
+      } else {
+        btn.closest('.member-row').querySelector('input').value = '';
+      }
+    }
+
+    /* ── Submit Create Form ─────────────────────────────────────────── */
     document.getElementById('create-form').addEventListener('submit', async e => {
       e.preventDefault();
       const errEl = document.getElementById('create-error');
       errEl.classList.add('hidden');
-      const name = document.getElementById('c-name').value.trim();
-      const school_year = document.getElementById('c-school-year').value;
-      const type = document.getElementById('c-type').value;
-      const max_members = document.getElementById('c-max-members').value;
-      const adviser_id = document.getElementById('c-adviser-id').value || null;
 
-      if (!name || !school_year) { errEl.textContent = 'Group name and school year are required.'; errEl.classList.remove('hidden'); return; }
+      const department_id = parseInt(document.getElementById('c-program').value);
+      const set_name = document.getElementById('c-set').value.trim();
+      const instructor_id = parseInt(document.getElementById('c-instructor').value);
+      const adviserVal = document.getElementById('c-adviser').value;
+      const adviser_id = adviserVal ? parseInt(adviserVal) : null;
+
+      if (!department_id) {
+        errEl.textContent = 'Please select a program.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if (!set_name) {
+        errEl.textContent = 'Please specify a set or section.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if (!instructor_id) {
+        errEl.textContent = 'Please select your instructor.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      const memberInputs = document.querySelectorAll('.c-member-input');
+      const member_names = Array.from(memberInputs)
+        .map(input => input.value.trim())
+        .filter(Boolean);
+
+      const btn = document.getElementById('create-submit-btn');
+      btn.disabled = true;
+      btn.textContent = 'Creating…';
 
       try {
-        const res = await apiPost('/api/v1/groups', { name, school_year, type, max_members: parseInt(max_members), adviser_id: adviser_id ? parseInt(adviser_id) : null }).then(r => r.json());
+        const body = {
+          department_id,
+          set_name,
+          instructor_id,
+          adviser_id,
+          member_names
+        };
+        const res = await apiPost('/api/v1/groups', body).then(r => r.json());
         if (!res.success) throw new Error(res.message);
+
         hideCreateModal();
         await loadGroup();
       } catch (err) {
         errEl.textContent = err.message || 'Failed to create group.';
         errEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create Group';
       }
     });
 
-    /* ── Join Group ─────────────────────────────────────────────────── */
-    function showJoinModal() { document.getElementById('join-modal').classList.remove('hidden'); }
-    function hideJoinModal() { document.getElementById('join-modal').classList.add('hidden'); document.getElementById('join-error').classList.add('hidden'); }
-
-    document.getElementById('join-form').addEventListener('submit', async e => {
-      e.preventDefault();
-      const errEl = document.getElementById('join-error');
-      errEl.classList.add('hidden');
-      const code = document.getElementById('j-code').value.trim();
-      if (!/^\d{6}$/.test(code)) { errEl.textContent = 'Enter a valid 6-digit code.'; errEl.classList.remove('hidden'); return; }
-
-      try {
-        const res = await apiPost('/api/v1/groups/request-join', { join_code: code }).then(r => r.json());
-        if (!res.success) throw new Error(res.message);
-        hideJoinModal();
-        document.getElementById('pending-notice').classList.remove('hidden');
-        document.getElementById('pending-notice-text').textContent = `Your request to join "${res.data.group_name}" has been sent. Wait for the leader to accept.`;
-      } catch (err) {
-        errEl.textContent = err.message || 'Failed to send join request.';
-        errEl.classList.remove('hidden');
-      }
-    });
-
-    /* ── Edit Group ─────────────────────────────────────────────────── */
-    function showEditModal() {
-      if (!currentGroup) return;
-      document.getElementById('e-name').value = currentGroup.name || '';
-      document.getElementById('e-school-year').value = currentGroup.school_year || '';
-      document.getElementById('e-type').value = currentGroup.type || 'thesis';
-      document.getElementById('e-max-members').value = currentGroup.max_members || 5;
-      document.getElementById('e-adviser-input').value = currentGroup.adviser_name || '';
-      document.getElementById('e-adviser-id').value = currentGroup.adviser_id || '';
-      document.getElementById('edit-modal').classList.remove('hidden');
+    /* ── Disband Group ──────────────────────────────────────────────── */
+    function confirmDisband() {
+      if (!confirm('Are you sure you want to disband this group? This cannot be undone.')) return;
+      disbandGroup();
     }
-    function hideEditModal() { document.getElementById('edit-modal').classList.add('hidden'); document.getElementById('edit-error').classList.add('hidden'); }
-
-    document.getElementById('edit-form').addEventListener('submit', async e => {
-      e.preventDefault();
-      const errEl = document.getElementById('edit-error');
-      errEl.classList.add('hidden');
-      const school_year = document.getElementById('e-school-year').value;
-      const body = {
-        name: document.getElementById('e-name').value.trim() || undefined,
-        school_year: school_year || undefined,
-        type: document.getElementById('e-type').value,
-        max_members: parseInt(document.getElementById('e-max-members').value),
-        adviser_id: document.getElementById('e-adviser-id').value ? parseInt(document.getElementById('e-adviser-id').value) : null,
-      };
+    async function disbandGroup() {
       try {
-        const res = await apiPatch(`/api/v1/groups/${currentGroup.id}`, body).then(r => r.json());
+        const res = await apiDelete(`/api/v1/groups/${currentGroup.id}`).then(r => r.json());
         if (!res.success) throw new Error(res.message);
-        currentGroup = res.data;
-        hideEditModal();
+        currentGroup = null;
         await loadGroup();
-      } catch (err) {
-        errEl.textContent = err.message || 'Failed to update group.';
-        errEl.classList.remove('hidden');
-      }
-    });
-
-    /* ── Accept / Reject Requests ───────────────────────────────────── */
-    async function acceptRequest(groupId, requestId) {
-      try {
-        const res = await apiPost(`/api/v1/groups/${groupId}/requests/${requestId}/accept`, {}).then(r => r.json());
-        if (!res.success) throw new Error(res.message);
-        await loadGroup();
-      } catch (err) { alert(err.message || 'Failed to accept request.'); }
-    }
-
-    async function rejectRequest(groupId, requestId) {
-      try {
-        const res = await apiPost(`/api/v1/groups/${groupId}/requests/${requestId}/reject`, {}).then(r => r.json());
-        if (!res.success) throw new Error(res.message);
-        loadRequests(groupId);
-      } catch (err) { alert(err.message || 'Failed to reject request.'); }
-    }
-
-    /* ── Remove Member ──────────────────────────────────────────────── */
-    async function removeMember(groupId, studentId, name) {
-      if (!confirm(`Remove ${name} from the group?`)) return;
-      try {
-        const res = await apiDelete(`/api/v1/groups/${groupId}/members/${studentId}`).then(r => r.json());
-        if (!res.success) throw new Error(res.message);
-        await loadGroup();
-      } catch (err) { alert(err.message || 'Failed to remove member.'); }
+      } catch (err) { alert(err.message || 'Failed to disband group.'); }
     }
 
     /* ── Leave Group ────────────────────────────────────────────────── */
@@ -587,47 +484,8 @@
       } catch (err) { alert(err.message || 'Failed to leave group.'); }
     }
 
-    /* ── Disband Group ──────────────────────────────────────────────── */
-    function confirmDisband() {
-      if (!confirm('Are you sure you want to disband the group? This will remove all members and cannot be undone.')) return;
-      disbandGroup();
-    }
-    async function disbandGroup() {
-      try {
-        const res = await apiDelete(`/api/v1/groups/${currentGroup.id}`).then(r => r.json());
-        if (!res.success) throw new Error(res.message);
-        currentGroup = null;
-        await loadGroup();
-      } catch (err) { alert(err.message || 'Failed to disband group.'); }
-    }
-
-    /* ── Copy Join Code ─────────────────────────────────────────────── */
-    function copyJoinCode() {
-      const code = document.getElementById('join-code-display').textContent;
-      navigator.clipboard.writeText(code).then(() => {
-        const btn = event.target;
-        const orig = btn.textContent;
-        btn.textContent = 'Copied!';
-        setTimeout(() => btn.textContent = orig, 2000);
-      });
-    }
-
-    /* ── Regenerate Join Code ───────────────────────────────────────── */
-    function confirmRegenerateCode() {
-      if (!confirm('Generate a new join code? The old code will stop working immediately.')) return;
-      regenerateJoinCode();
-    }
-    async function regenerateJoinCode() {
-      try {
-        const res = await apiPost(`/api/v1/groups/${currentGroup.id}/regenerate-code`, {}).then(r => r.json());
-        if (!res.success) throw new Error(res.message);
-        currentGroup = res.data;
-        renderGroup(currentGroup);
-      } catch (err) { alert(err.message || 'Failed to regenerate join code.'); }
-    }
-
     function escHtml(str) {
-      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
   </script>
 </body>

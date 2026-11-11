@@ -18,6 +18,7 @@ const panelistRoutes      = require('./modules/panelists/panelists.routes');
 const evaluationRoutes    = require('./modules/evaluations/evaluations.routes');
 const adviserRoutes            = require('./modules/adviser/adviser.routes');
 const groupRoutes              = require('./modules/groups/groups.routes');
+const activityRoutes           = require('./modules/activities/activities.routes');
 const instructorGuidelineRoutes = require('./modules/instructor_guidelines/instructor_guidelines.routes');
 const schoolYearRoutes          = require('./modules/school_years/school_years.routes');
 const { errorHandler }  = require('./middleware/errorHandler');
@@ -57,7 +58,8 @@ app.use('/api/v1/imrad-templates', imradTemplateRoutes);
 app.use('/api/v1/panelists',       panelistRoutes);
 app.use('/api/v1/evaluations',     evaluationRoutes);
 app.use('/api/v1/adviser',              adviserRoutes);
-app.use('/api/v1/groups',              groupRoutes);
+app.use('/api/v1/groups',               groupRoutes);
+app.use('/api/v1/activities',           activityRoutes);
 app.use('/api/v1/instructor-guidelines', instructorGuidelineRoutes);
 app.use('/api/v1/school-years',          schoolYearRoutes);
 

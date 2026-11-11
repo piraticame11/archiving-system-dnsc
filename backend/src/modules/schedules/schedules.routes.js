@@ -7,7 +7,7 @@ const { uploadMinutes }    = require('../../config/multer');
 const v = require('./schedules.validators');
 
 const adminOnly       = [verifyToken, requireRole('admin', 'superadmin')];
-const adminOrPanelist = [verifyToken, requireRole('admin', 'superadmin', 'panelist')];
+const adminOrPanelist = [verifyToken, requireRole('admin', 'superadmin', 'panelist', 'instructor')];
 const studentOnly     = [verifyToken, requireRole('student')];
 const authenticated   = [verifyToken];
 

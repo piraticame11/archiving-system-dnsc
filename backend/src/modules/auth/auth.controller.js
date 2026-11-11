@@ -15,6 +15,7 @@ async function login(req, res, next) {
   try {
     const { accessToken, refreshToken, user } = await authService.login(req.body.email, req.body.password);
     res.cookie('refresh_token', refreshToken, {
+      path:     '/',
       httpOnly: true,
       secure:   process.env.NODE_ENV === 'production',
       sameSite: 'Strict',
@@ -34,6 +35,7 @@ async function refresh(req, res, next) {
 
     const { accessToken, refreshToken } = await authService.refresh(token);
     res.cookie('refresh_token', refreshToken, {
+      path:     '/',
       httpOnly: true,
       secure:   process.env.NODE_ENV === 'production',
       sameSite: 'Strict',
@@ -127,7 +129,46 @@ async function verifyPersonalEmailOtp(req, res, next) {
   }
 }
 
+
+async function studentRegister(req, res, next) {
+  try {
+    const data = await authService.initiateStudentRegistration(req.body);
+    sendSuccess(res, data, 'Verification code sent to your email.');
+  } catch (err) {
+    if (err.status) return sendError(res, err.status, err.message);
+    next(err);
+  }
+}
+
+async function studentResendOtp(req, res, next) {
+  try {
+    const data = await authService.resendStudentRegistrationOtp(req.body.email);
+    sendSuccess(res, data, 'A new verification code has been sent to your email.');
+  } catch (err) {
+    if (err.status) return sendError(res, err.status, err.message);
+    next(err);
+  }
+}
+
+async function studentVerifyOtp(req, res, next) {
+  try {
+    const { accessToken, refreshToken, user } = await authService.verifyStudentRegistrationOtp(req.body);
+    res.cookie('refresh_token', refreshToken, {
+      path:     '/',
+      httpOnly: true,
+      secure:   process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      maxAge:   7 * 24 * 60 * 60 * 1000,
+    });
+    sendSuccess(res, { accessToken, user }, 'Account successfully created and verified.');
+  } catch (err) {
+    if (err.status) return sendError(res, err.status, err.message);
+    next(err);
+  }
+}
+
 module.exports = {
   register, login, refresh, logout, forgotPassword, getMe, updateMe, changePassword,
   bindPersonalEmail, resendPersonalEmailOtp, verifyPersonalEmailOtp,
+  studentRegister, studentResendOtp, studentVerifyOtp,
 };

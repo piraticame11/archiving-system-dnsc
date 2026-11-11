@@ -1,8 +1,8 @@
-﻿const nodemailer = require('nodemailer');
+const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
-  host:   process.env.MAIL_HOST,
-  port:   Number(process.env.MAIL_PORT) || 587,
+  host: process.env.MAIL_HOST,
+  port: Number(process.env.MAIL_PORT) || 587,
   secure: process.env.MAIL_SECURE === 'true',
   auth: {
     user: process.env.MAIL_USER,
@@ -47,6 +47,24 @@ function tempPasswordHtml(name, tempPassword, minutesValid) {
 <p>If you did not request this, ignore this email.</p>`;
 }
 
+function studentRegistrationOtpHtml(name, code, minutesValid = 5) {
+  return `<div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
+    <h2 style="color: #15803d; margin-top: 0;">Student Account Verification</h2>
+    <p style="font-size: 15px; color: #374151;">Hello <strong>${name}</strong>,</p>
+    <p style="font-size: 14px; color: #4b5563;">Thank you for registering with the <strong>ACES Research Archiving System</strong>. Please use the verification code below to complete your account registration:</p>
+    <div style="background-color: #f0fdf4; border: 1px dashed #22c55e; border-radius: 8px; text-align: center; padding: 18px; margin: 20px 0;">
+      <span style="font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #15803d;">${code}</span>
+    </div>
+    <p style="font-size: 13px; color: #6b7280; line-height: 1.5;">
+      • This code is valid for <strong>${minutesValid} minutes</strong>.<br>
+      • If you request a new code, any previous code will immediately expire.<br>
+      • If you did not request this verification, please safely ignore this email.
+    </p>
+    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+    <p style="font-size: 12px; color: #9ca3af; text-align: center; margin: 0;">ACES Polytechnic College, Inc. — Research Office</p>
+  </div>`;
+}
+
 function adviserRequestHtml(adviserName, groupName, leaderName) {
   return `<p>Hello ${adviserName},</p>
 <p><strong>${leaderName}</strong> has selected you as the adviser for their group <strong>${groupName}</strong>.</p>
@@ -62,5 +80,5 @@ ${reason ? `<p>Reason: ${reason}</p>` : ''}`;
 
 module.exports = {
   sendMail, scheduleAssignedHtml, statusChangedHtml, otpHtml, tempPasswordHtml,
-  adviserRequestHtml, adviserDecisionHtml,
+  studentRegistrationOtpHtml, adviserRequestHtml, adviserDecisionHtml,
 };

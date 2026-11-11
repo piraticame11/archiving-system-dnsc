@@ -62,14 +62,16 @@ async function getMyGroup(studentId) {
 async function getGroupById(id) {
   const [[group]] = await db.query(
     `SELECT tg.id, tg.name, tg.join_code, tg.join_code_expires_at, tg.title, tg.type, tg.school_year, tg.max_members,
-            tg.leader_id, tg.adviser_id, tg.department_id, tg.created_at,
+            tg.leader_id, tg.adviser_id, tg.instructor_id, tg.department_id, tg.set_name, tg.created_at,
             tg.adviser_status, tg.adviser_status_reason, tg.adviser_responded_at,
             CONCAT(l.first_name, ' ', l.last_name) AS leader_name,
             CONCAT(a.first_name, ' ', a.last_name) AS adviser_name,
+            CONCAT(inst.first_name, ' ', inst.last_name) AS instructor_name,
             d.name AS department_name, d.code AS department_code
      FROM thesis_groups tg
      JOIN users l        ON tg.leader_id     = l.id
      LEFT JOIN users a   ON tg.adviser_id    = a.id
+     LEFT JOIN users inst ON tg.instructor_id = inst.id
      JOIN departments d  ON tg.department_id = d.id
      WHERE tg.id = ? AND tg.deleted_at IS NULL`,
     [id]
@@ -77,11 +79,11 @@ async function getGroupById(id) {
   if (!group) return null;
 
   const [members] = await db.query(
-    `SELECT gm.student_id, gm.joined_at,
-            CONCAT(u.first_name, ' ', u.last_name) AS name,
+    `SELECT gm.id, gm.student_id, gm.joined_at,
+            COALESCE(gm.name, CONCAT(u.first_name, ' ', u.last_name)) AS name,
             u.student_number, u.email
      FROM group_members gm
-     JOIN users u ON gm.student_id = u.id
+     LEFT JOIN users u ON gm.student_id = u.id
      WHERE gm.group_id = ?
      ORDER BY gm.joined_at ASC`,
     [id]
@@ -113,7 +115,7 @@ async function validateAdviserAndNotify(adviserId, groupName, leaderId) {
 }
 
 /* ─── create group ────────────────────────────────────────────────── */
-async function createGroup({ leader_id, name, adviser_id, school_year, max_members, type }) {
+async function createGroup({ leader_id, department_id, set_name, instructor_id, adviser_id, member_names, name, school_year, max_members, type }) {
   /* leader must not already be in a group */
   const [[existing]] = await db.query(
     'SELECT group_id FROM group_members WHERE student_id = ?', [leader_id]
@@ -122,16 +124,40 @@ async function createGroup({ leader_id, name, adviser_id, school_year, max_membe
     new Error('You are already in a group. Leave your current group first.'), { statusCode: 409 }
   );
 
-  /* get leader's department */
-  const [[user]] = await db.query('SELECT department_id FROM users WHERE id = ?', [leader_id]);
-  if (!user?.department_id) throw Object.assign(
-    new Error('Your account does not have a department assigned.'), { statusCode: 400 }
+  /* get leader's details */
+  const [[leader]] = await db.query('SELECT first_name, last_name, email, department_id FROM users WHERE id = ?', [leader_id]);
+  const deptId = department_id || leader?.department_id;
+  if (!deptId) throw Object.assign(
+    new Error('Please select a program/department for your group.'), { statusCode: 400 }
   );
 
-  if (adviser_id) await validateAdviserAndNotify(adviser_id, name, leader_id);
+  const [[dept]] = await db.query('SELECT id, code, name FROM departments WHERE id = ?', [deptId]);
 
+  let sy = school_year;
+  if (!sy) {
+    const [[activeSy]] = await db.query('SELECT label FROM school_years WHERE is_active = 1 ORDER BY id DESC LIMIT 1');
+    sy = activeSy ? activeSy.label : '2026-2027';
+  }
+
+  const cleanSet = set_name ? set_name.trim() : null;
+  const setSuffix = cleanSet ? (cleanSet.toLowerCase().startsWith('set') ? cleanSet : 'Set ' + cleanSet) : '';
+  const groupName = name && name.trim()
+    ? name.trim()
+    : `${dept?.code || 'Group'} ${setSuffix} - ${leader.last_name} et al.`.trim();
+
+  if (adviser_id) await validateAdviserAndNotify(adviser_id, groupName, leader_id);
+
+  const rawMembers = Array.isArray(member_names)
+    ? member_names
+    : typeof member_names === 'string'
+      ? member_names.split(',').map(s => s.trim()).filter(Boolean)
+      : [];
+
+  const cleanMemberNames = rawMembers.map(n => String(n).trim()).filter(Boolean);
+  const totalCount = cleanMemberNames.length + 1;
+  const cap = Math.max(parseInt(max_members) || 5, totalCount, 4);
+  const groupType = type || 'capstone';
   const join_code = await uniqueJoinCode();
-  const cap = Math.min(Math.max(parseInt(max_members) || 5, 4), 6);
 
   const conn = await db.getConnection();
   await conn.beginTransaction();
@@ -139,14 +165,25 @@ async function createGroup({ leader_id, name, adviser_id, school_year, max_membe
   let groupId;
   try {
     const [result] = await conn.query(
-      `INSERT INTO thesis_groups (name, join_code, join_code_expires_at, leader_id, adviser_id, adviser_status, department_id, school_year, max_members, type)
-       VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ${JOIN_CODE_VALIDITY_DAYS} DAY), ?, ?, ?, ?, ?, ?, ?)`,
-      [name, join_code, leader_id, adviser_id || null, adviser_id ? 'pending' : null, user.department_id, school_year, cap, type]
+      `INSERT INTO thesis_groups (name, join_code, join_code_expires_at, leader_id, adviser_id, instructor_id, adviser_status, department_id, set_name, school_year, max_members, type)
+       VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ${JOIN_CODE_VALIDITY_DAYS} DAY), ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [groupName, join_code, leader_id, adviser_id || null, instructor_id || null, adviser_id ? 'pending' : null, deptId, cleanSet, sy, cap, groupType]
     );
     groupId = result.insertId;
 
-    /* add leader as first member */
-    await conn.query('INSERT INTO group_members (group_id, student_id) VALUES (?, ?)', [groupId, leader_id]);
+    /* add leader as first member with their name */
+    await conn.query(
+      'INSERT INTO group_members (group_id, student_id, name) VALUES (?, ?, ?)',
+      [groupId, leader_id, `${leader.first_name} ${leader.last_name}`.trim()]
+    );
+
+    /* add non-account member names */
+    for (const memberName of cleanMemberNames) {
+      await conn.query(
+        'INSERT INTO group_members (group_id, student_id, name) VALUES (?, NULL, ?)',
+        [groupId, memberName]
+      );
+    }
 
     await conn.commit();
   } catch (err) {
@@ -160,7 +197,7 @@ async function createGroup({ leader_id, name, adviser_id, school_year, max_membe
 }
 
 /* ─── update group info (leader only) ────────────────────────────── */
-async function updateGroup(groupId, leaderId, { name, adviser_id, school_year, max_members, type }) {
+async function updateGroup(groupId, leaderId, { name, adviser_id, instructor_id, department_id, set_name, school_year, max_members, type }) {
   const group = await getGroupById(groupId);
   if (!group) throw Object.assign(new Error('Group not found.'), { statusCode: 404 });
   if (group.leader_id !== leaderId) throw Object.assign(new Error('Only the group leader can update group info.'), { statusCode: 403 });
@@ -171,31 +208,50 @@ async function updateGroup(groupId, leaderId, { name, adviser_id, school_year, m
   }
 
   const fields = {};
-  if (name        !== undefined) fields.name        = name;
-  if (school_year !== undefined) fields.school_year = school_year;
-  if (type        !== undefined) fields.type        = type;
-  if (max_members !== undefined) fields.max_members = Math.min(Math.max(parseInt(max_members) || 5, 4), 6);
+  if (name          !== undefined) fields.name          = name;
+  if (set_name      !== undefined) fields.set_name      = set_name ? set_name.trim() : null;
+  if (instructor_id !== undefined) fields.instructor_id = instructor_id || null;
+  if (department_id !== undefined) fields.department_id = department_id;
+  if (school_year   !== undefined) fields.school_year   = school_year;
+  if (type          !== undefined) fields.type          = type;
+  if (max_members   !== undefined) fields.max_members   = Math.max(parseInt(max_members) || 5, 4);
   if (adviserChanged) {
-    fields.adviser_id            = adviser_id || null;
+    fields.adviser_id            = adviser_id;
     fields.adviser_status        = adviser_id ? 'pending' : null;
     fields.adviser_status_reason = null;
     fields.adviser_responded_at  = null;
   }
 
   if (Object.keys(fields).length) {
-    const set = Object.keys(fields).map(k => `${k} = ?`).join(', ');
-    await db.query(`UPDATE thesis_groups SET ${set} WHERE id = ?`, [...Object.values(fields), groupId]);
+    const sets = Object.keys(fields).map(f => `${f} = ?`).join(', ');
+    await db.query(`UPDATE thesis_groups SET ${sets} WHERE id = ?`, [...Object.values(fields), groupId]);
   }
 
-  /* the group's submission (if already created) snapshots type at creation
-     time — see getOrCreateGroupSubmission — so keep it in sync here too. */
-  if (type !== undefined && type !== group.type) {
-    await db.query(
-      `UPDATE thesis_submissions SET type = ? WHERE group_id = ? AND deleted_at IS NULL`,
-      [type, groupId]
-    );
+  return getGroupById(groupId);
+}
+
+/* ─── add member by name (leader only) ───────────────────────────── */
+async function addMember(groupId, leaderId, memberName) {
+  const [[group]] = await db.query(
+    'SELECT id, leader_id, max_members FROM thesis_groups WHERE id = ? AND deleted_at IS NULL', [groupId]
+  );
+  if (!group) throw Object.assign(new Error('Group not found.'), { statusCode: 404 });
+  if (group.leader_id !== leaderId) throw Object.assign(new Error('Only the group leader can add members.'), { statusCode: 403 });
+
+  const name = String(memberName || '').trim();
+  if (!name) throw Object.assign(new Error('Member name is required.'), { statusCode: 400 });
+
+  const [[{ memberCount }]] = await db.query(
+    'SELECT COUNT(*) AS memberCount FROM group_members WHERE group_id = ?', [groupId]
+  );
+  if (group.max_members && memberCount >= group.max_members) {
+    await db.query('UPDATE thesis_groups SET max_members = max_members + 1 WHERE id = ?', [groupId]);
   }
 
+  await db.query(
+    'INSERT INTO group_members (group_id, student_id, name) VALUES (?, NULL, ?)',
+    [groupId, name]
+  );
   return getGroupById(groupId);
 }
 
@@ -377,21 +433,21 @@ async function rejectRequest(requestId, groupId, leaderId) {
 }
 
 /* ─── remove member (leader) ──────────────────────────────────────── */
-async function removeMember(groupId, targetStudentId, leaderId) {
+async function removeMember(groupId, targetId, leaderId) {
   const [[group]] = await db.query(
     'SELECT id, leader_id FROM thesis_groups WHERE id = ? AND deleted_at IS NULL', [groupId]
   );
   if (!group) throw Object.assign(new Error('Group not found.'), { statusCode: 404 });
   if (group.leader_id !== leaderId) throw Object.assign(new Error('Only the group leader can remove members.'), { statusCode: 403 });
-  if (targetStudentId === leaderId) throw Object.assign(new Error('The leader cannot remove themselves. Disband the group instead.'), { statusCode: 400 });
 
   const [[member]] = await db.query(
-    'SELECT id FROM group_members WHERE group_id = ? AND student_id = ?',
-    [groupId, targetStudentId]
+    'SELECT id, student_id FROM group_members WHERE group_id = ? AND (id = ? OR student_id = ?)',
+    [groupId, targetId, targetId]
   );
-  if (!member) throw Object.assign(new Error('This student is not a member of your group.'), { statusCode: 404 });
+  if (!member) throw Object.assign(new Error('Member not found in your group.'), { statusCode: 404 });
+  if (member.student_id === leaderId) throw Object.assign(new Error('The leader cannot remove themselves. Disband the group instead.'), { statusCode: 400 });
 
-  await db.query('DELETE FROM group_members WHERE group_id = ? AND student_id = ?', [groupId, targetStudentId]);
+  await db.query('DELETE FROM group_members WHERE id = ?', [member.id]);
 }
 
 /* ─── leave group (non-leader member) ────────────────────────────── */
@@ -519,6 +575,7 @@ module.exports = {
   getGroupById,
   createGroup,
   updateGroup,
+  addMember,
   regenerateJoinCode,
   requestJoin,
   getPendingRequests,

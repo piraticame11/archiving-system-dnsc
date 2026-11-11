@@ -1,94 +1,184 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Register — ACES Research System</title>
+  <title>Student Registration — ACES Research System</title>
   <link rel="icon" type="image/webp" href="/assets/img/aw.webp">
   <link rel="stylesheet" href="/assets/css/app.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body class="bg-gray-50 min-h-screen flex items-center justify-center font-sans py-10">
+<body class="min-h-screen flex items-center justify-center font-sans relative overflow-hidden py-8">
 
-  <div class="w-full max-w-lg px-4">
-    <div class="bg-white rounded-2xl shadow-lg p-8">
+  <!-- Background image layer -->
+  <div style="position:fixed;inset:0;background:url('/assets/img/481469516_2456516118028403_399389140719261991_n.jpg') center/cover no-repeat;filter:blur(6px);transform:scale(1.08);z-index:0;"></div>
+  <!-- Light green overlay -->
+  <div style="position:fixed;inset:0;background:rgba(34,197,94,0.18);z-index:1;"></div>
 
-      <div class="text-center mb-8">
-        <h1 class="text-2xl font-bold text-gray-900">Create an Account</h1>
-        <p class="text-sm text-gray-500 mt-1">Registration requires approval from the Research Office.</p>
+  <div class="w-full max-w-lg px-4 relative" style="z-index:2;">
+    <div class="rounded-2xl shadow-2xl p-8" style="background:rgba(255,255,255,0.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);">
+
+      <!-- Logo / Header -->
+      <div class="text-center mb-6">
+        <img src="/assets/img/aw.webp" alt="School Logo" class="w-16 h-16 object-contain mx-auto mb-3">
+        <h1 class="text-2xl font-bold text-gray-900" id="page-title">Create Student Account</h1>
+        <p class="text-sm text-gray-500 mt-1" id="page-subtitle">ACES Polytechnic College, Inc.</p>
       </div>
 
+      <!-- Step Indicator -->
+      <div class="flex items-center justify-center mb-6 space-x-3 text-xs font-semibold">
+        <div id="step-pill-1" class="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-primary-700 text-white transition-colors">
+          <span class="w-4 h-4 rounded-full bg-white text-primary-700 flex items-center justify-center text-[10px] font-bold">1</span>
+          <span>Account Info</span>
+        </div>
+        <div class="w-6 h-0.5 bg-gray-300" id="step-divider"></div>
+        <div id="step-pill-2" class="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-gray-100 text-gray-400 transition-colors">
+          <span class="w-4 h-4 rounded-full bg-gray-300 text-white flex items-center justify-center text-[10px] font-bold">2</span>
+          <span>Verify OTP</span>
+        </div>
+      </div>
+
+      <!-- Alerts -->
+      <div id="error-msg" class="hidden bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg mb-4"></div>
+      <div id="info-msg" class="hidden bg-blue-50 border border-blue-200 text-blue-700 text-sm px-4 py-3 rounded-lg mb-4"></div>
       <div id="success-msg" class="hidden bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3 rounded-lg mb-4"></div>
-      <div id="error-msg"   class="hidden bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg mb-4"></div>
 
-      <form id="register-form" novalidate>
-        <div class="grid grid-cols-2 gap-4">
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-            <input id="first_name" name="first_name" type="text" required
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-            <input id="last_name" name="last_name" type="text" required
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-          </div>
-
-          <div class="col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-            <input id="email" name="email" type="email" required
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+      <!-- ================= STEP 1: REGISTRATION FORM ================= -->
+      <form id="step-register-form" novalidate>
+        <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1" for="first_name">First Name *</label>
+              <input id="first_name" name="first_name" type="text" required autocomplete="given-name"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                placeholder="Juan">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1" for="last_name">Last Name *</label>
+              <input id="last_name" name="last_name" type="text" required autocomplete="family-name"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                placeholder="Dela Cruz">
+            </div>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input id="password" name="password" type="password" required
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-            <p class="text-xs text-gray-400 mt-1">Min 8 chars, 1 uppercase, 1 number</p>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-            <input id="confirm_password" name="confirm_password" type="password" required
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+            <label class="block text-xs font-medium text-gray-700 mb-1" for="email">School / Student Email Address *</label>
+            <input id="email" name="email" type="email" required autocomplete="email"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              placeholder="student@aces.edu.ph">
+            <p class="text-[11px] text-gray-400 mt-1">We will send a 6-digit verification code to this email.</p>
           </div>
 
-          <div class="col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
-            <select id="role" name="role" required
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-              <option value="">Select your role</option>
-              <option value="student">Student</option>
-              <option value="instructor">Instructor / Adviser</option>
-              <option value="panelist">Panelist</option>
-            </select>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1" for="department_id">Program / Department</label>
+              <select id="department_id" name="department_id"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white">
+                <option value="">Select program</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1" for="student_number">Student ID (Optional)</label>
+              <input id="student_number" name="student_number" type="text"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                placeholder="e.g. 2021-00001">
+            </div>
           </div>
 
-          <div class="col-span-2" id="dept-row">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
-            <select id="department_id" name="department_id"
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-              <option value="">Select department</option>
-            </select>
-          </div>
-
-          <div class="col-span-2 hidden" id="student-number-row">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Student Number</label>
-            <input id="student_number" name="student_number" type="text"
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="e.g. 2021-00001">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1" for="password">Password *</label>
+              <input id="password" name="password" type="password" required autocomplete="new-password"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                placeholder="••••••••">
+              <p class="text-[11px] text-gray-400 mt-1">Min 8 chars, 1 uppercase, 1 number</p>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1" for="confirm_password">Confirm Password *</label>
+              <input id="confirm_password" name="confirm_password" type="password" required autocomplete="new-password"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                placeholder="••••••••">
+            </div>
           </div>
         </div>
 
-        <button type="submit" id="submit-btn"
+        <button type="submit" id="btn-send-code"
           class="mt-6 w-full bg-primary-700 hover:bg-primary-800 text-white font-semibold py-2.5 px-4 rounded-lg text-sm transition-colors disabled:opacity-60">
-          Create Account
+          Send Verification Code
         </button>
       </form>
 
-      <p class="text-center text-sm text-gray-500 mt-6">
-        Already have an account? <a href="/pages/login.html" class="text-primary-600 hover:underline font-medium">Sign in</a>
-      </p>
+      <!-- ================= STEP 2: OTP VERIFICATION ================= -->
+      <div id="step-otp-container" class="hidden">
+        <div class="text-center mb-6">
+          <div class="w-12 h-12 bg-primary-50 text-primary-700 rounded-full flex items-center justify-center mx-auto mb-3 border border-primary-200">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+            </svg>
+          </div>
+          <p class="text-sm text-gray-600">
+            A 6-digit code was sent to:
+          </p>
+          <p class="text-base font-semibold text-gray-900 mt-0.5" id="otp-target-email"></p>
+          <div class="mt-2 text-xs font-medium text-gray-500 flex items-center justify-center space-x-1">
+            <svg class="w-4 h-4 text-amber-500 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span>Code expires in:</span>
+            <span id="otp-expiry-timer" class="font-bold text-amber-600">05:00</span>
+          </div>
+        </div>
+
+        <form id="step-otp-form" novalidate>
+          <div class="mb-4">
+            <label class="block text-center text-xs font-medium text-gray-700 mb-2">Enter 6-Digit Code</label>
+            <input id="otp-input" type="text" maxlength="6" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" required
+              class="w-full text-center text-2xl font-bold tracking-[0.5em] border-2 border-gray-300 rounded-xl py-3 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all text-gray-800"
+              placeholder="••••••">
+          </div>
+
+          <button type="submit" id="btn-verify-otp"
+            class="w-full bg-primary-700 hover:bg-primary-800 text-white font-semibold py-2.5 px-4 rounded-lg text-sm transition-colors disabled:opacity-60">
+            Verify & Create Account
+          </button>
+        </form>
+
+        <!-- Resend Section with 2-minute Cooldown -->
+        <div class="mt-6 pt-5 border-t border-gray-200 text-center space-y-3">
+          <p class="text-xs text-gray-500">
+            Didn't receive the code or code expired?
+          </p>
+          <div>
+            <button type="button" id="btn-resend-otp" disabled
+              class="inline-flex items-center text-xs font-semibold text-primary-700 hover:text-primary-800 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 disabled:bg-gray-50">
+              <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+              </svg>
+              <span id="btn-resend-text">Resend code in 02:00</span>
+            </button>
+          </div>
+          <p class="text-[11px] text-gray-400">
+            Requesting a new code immediately expires your previous code.
+          </p>
+          <div class="pt-2">
+            <button type="button" id="btn-back-to-step1" class="text-xs text-gray-500 hover:text-gray-700 underline">
+              ← Wrong email or details? Edit registration info
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Link back to login -->
+      <div class="mt-6 pt-5 border-t border-gray-200 text-center">
+        <p class="text-sm text-gray-600">
+          Already have an account?
+          <a href="/pages/login.html" class="text-primary-700 hover:text-primary-800 font-semibold hover:underline ml-1">
+            Sign in
+          </a>
+        </p>
+      </div>
+
     </div>
   </div>
 
@@ -96,69 +186,309 @@
   <script src="/assets/js/api.js"></script>
   <script src="/assets/js/utils.js"></script>
   <script>
-    // Load departments
-    fetch('/api/v1/departments').then(r => r.json()).then(data => {
-      const sel = document.getElementById('department_id');
-      (data.data || []).forEach(d => {
-        const o = document.createElement('option');
-        o.value = d.id; o.textContent = d.name;
-        sel.appendChild(o);
-      });
-    }).catch(() => {});
+    // State variables
+    let currentEmail = '';
+    let cooldownTimerInterval = null;
+    let expiryTimerInterval = null;
+    let cooldownSecondsLeft = 0;
+    let expirySecondsLeft = 0;
 
-    // Show student number field for students
-    document.getElementById('role').addEventListener('change', (e) => {
-      const snRow = document.getElementById('student-number-row');
-      snRow.classList.toggle('hidden', e.target.value !== 'student');
+    // Load academic departments
+    fetch('/api/v1/departments')
+      .then(r => r.json())
+      .then(res => {
+        const sel = document.getElementById('department_id');
+        (res.data || []).forEach(d => {
+          const opt = document.createElement('option');
+          opt.value = d.id;
+          opt.textContent = d.code ? `${d.code} — ${d.name}` : d.name;
+          sel.appendChild(opt);
+        });
+      })
+      .catch(() => {});
+
+    // Elements
+    const errEl = document.getElementById('error-msg');
+    const infoEl = document.getElementById('info-msg');
+    const succEl = document.getElementById('success-msg');
+
+    const step1Form = document.getElementById('step-register-form');
+    const step2Container = document.getElementById('step-otp-container');
+    const step1Pill = document.getElementById('step-pill-1');
+    const step2Pill = document.getElementById('step-pill-2');
+
+    const btnSendCode = document.getElementById('btn-send-code');
+    const btnVerifyOtp = document.getElementById('btn-verify-otp');
+    const btnResendOtp = document.getElementById('btn-resend-otp');
+    const btnResendText = document.getElementById('btn-resend-text');
+    const otpExpiryTimerEl = document.getElementById('otp-expiry-timer');
+    const otpInput = document.getElementById('otp-input');
+    const otpTargetEmailEl = document.getElementById('otp-target-email');
+    const btnBackToStep1 = document.getElementById('btn-back-to-step1');
+
+    function clearAlerts() {
+      errEl.classList.add('hidden');
+      infoEl.classList.add('hidden');
+      succEl.classList.add('hidden');
+    }
+
+    function showError(msg) {
+      clearAlerts();
+      errEl.textContent = msg;
+      errEl.classList.remove('hidden');
+    }
+
+    function showInfo(msg) {
+      clearAlerts();
+      infoEl.textContent = msg;
+      infoEl.classList.remove('hidden');
+    }
+
+    function showSuccess(msg) {
+      clearAlerts();
+      succEl.textContent = msg;
+      succEl.classList.remove('hidden');
+    }
+
+    function formatTime(totalSec) {
+      const m = Math.floor(totalSec / 60);
+      const s = totalSec % 60;
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function startCooldownTimer(seconds = 120) {
+      if (cooldownTimerInterval) clearInterval(cooldownTimerInterval);
+      cooldownSecondsLeft = seconds;
+      btnResendOtp.disabled = true;
+      btnResendText.textContent = `Resend code in ${formatTime(cooldownSecondsLeft)}`;
+
+      cooldownTimerInterval = setInterval(() => {
+        cooldownSecondsLeft--;
+        if (cooldownSecondsLeft <= 0) {
+          clearInterval(cooldownTimerInterval);
+          cooldownTimerInterval = null;
+          btnResendOtp.disabled = false;
+          btnResendText.textContent = 'Send a new code';
+        } else {
+          btnResendText.textContent = `Resend code in ${formatTime(cooldownSecondsLeft)}`;
+        }
+      }, 1000);
+    }
+
+    function startExpiryTimer(seconds = 300) {
+      if (expiryTimerInterval) clearInterval(expiryTimerInterval);
+      expirySecondsLeft = seconds;
+      otpExpiryTimerEl.textContent = formatTime(expirySecondsLeft);
+      otpExpiryTimerEl.classList.remove('text-red-600');
+      otpExpiryTimerEl.classList.add('text-amber-600');
+
+      expiryTimerInterval = setInterval(() => {
+        expirySecondsLeft--;
+        if (expirySecondsLeft <= 0) {
+          clearInterval(expiryTimerInterval);
+          expiryTimerInterval = null;
+          otpExpiryTimerEl.textContent = 'Expired';
+          otpExpiryTimerEl.classList.remove('text-amber-600');
+          otpExpiryTimerEl.classList.add('text-red-600');
+          showError('Your verification code has expired. Please click "Send a new code" below.');
+        } else {
+          otpExpiryTimerEl.textContent = formatTime(expirySecondsLeft);
+        }
+      }, 1000);
+    }
+
+    function showStep2(email) {
+      currentEmail = email;
+      otpTargetEmailEl.textContent = email;
+      step1Form.classList.add('hidden');
+      step2Container.classList.remove('hidden');
+
+      // Update pills
+      step1Pill.classList.remove('bg-primary-700', 'text-white');
+      step1Pill.classList.add('bg-green-100', 'text-green-800');
+      step2Pill.classList.remove('bg-gray-100', 'text-gray-400');
+      step2Pill.classList.add('bg-primary-700', 'text-white');
+
+      // Start 2-minute cooldown (120s) and 5-minute expiry (300s)
+      startCooldownTimer(120);
+      startExpiryTimer(300);
+
+      otpInput.value = '';
+      otpInput.focus();
+    }
+
+    function showStep1() {
+      step2Container.classList.add('hidden');
+      step1Form.classList.remove('hidden');
+
+      // Update pills
+      step1Pill.classList.add('bg-primary-700', 'text-white');
+      step1Pill.classList.remove('bg-green-100', 'text-green-800');
+      step2Pill.classList.add('bg-gray-100', 'text-gray-400');
+      step2Pill.classList.remove('bg-primary-700', 'text-white');
+
+      clearAlerts();
+    }
+
+    btnBackToStep1.addEventListener('click', showStep1);
+
+    // Only allow numbers in OTP input
+    otpInput.addEventListener('input', (e) => {
+      e.target.value = e.target.value.replace(/\D/g, '');
     });
 
-    document.getElementById('register-form').addEventListener('submit', async (e) => {
+    // ================= STEP 1 SUBMIT: INITIATE REGISTRATION =================
+    step1Form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const btn     = document.getElementById('submit-btn');
-      const errEl   = document.getElementById('error-msg');
-      const succEl  = document.getElementById('success-msg');
-      errEl.classList.add('hidden');
-      succEl.classList.add('hidden');
+      clearAlerts();
 
-      const pw  = document.getElementById('password').value;
+      const firstName = document.getElementById('first_name').value.trim();
+      const lastName = document.getElementById('last_name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const departmentId = document.getElementById('department_id').value || null;
+      const studentNumber = document.getElementById('student_number').value.trim() || null;
+      const pw = document.getElementById('password').value;
       const cpw = document.getElementById('confirm_password').value;
-      if (pw !== cpw) {
-        errEl.textContent = 'Passwords do not match.';
-        errEl.classList.remove('hidden');
+
+      if (!firstName || !lastName || !email || !pw) {
+        showError('Please fill in all required fields.');
         return;
       }
 
-      btn.disabled = true; btn.textContent = 'Creating…';
+      if (pw !== cpw) {
+        showError('Passwords do not match.');
+        return;
+      }
 
-      const payload = {
-        first_name:    document.getElementById('first_name').value.trim(),
-        last_name:     document.getElementById('last_name').value.trim(),
-        email:         document.getElementById('email').value.trim(),
-        password:      pw,
-        role:          document.getElementById('role').value,
-        department_id: document.getElementById('department_id').value || null,
-        student_number: document.getElementById('student_number').value.trim() || null,
-      };
+      if (pw.length < 8 || !/[A-Z]/.test(pw) || !/[0-9]/.test(pw)) {
+        showError('Password must be at least 8 characters and contain at least one uppercase letter and one number.');
+        return;
+      }
+
+      btnSendCode.disabled = true;
+      btnSendCode.textContent = 'Sending Code…';
 
       try {
-        const res  = await apiPost('/api/v1/auth/register', payload);
+        const payload = {
+          first_name: firstName,
+          last_name: lastName,
+          email,
+          password: pw,
+          department_id: departmentId ? Number(departmentId) : null,
+          student_number: studentNumber,
+        };
+
+        const res = await apiPost('/api/v1/auth/student-register/send-otp', payload);
         const data = await res.json();
+
         if (!res.ok) {
-          const msgs = Array.isArray(data.errors)
-            ? data.errors.map(e => e.msg).join(' ')
-            : (data.message || 'Registration failed.');
-          errEl.textContent = msgs;
-          errEl.classList.remove('hidden');
+          const msg = Array.isArray(data.errors)
+            ? data.errors.map(err => err.msg).join(' ')
+            : (data.message || 'Failed to send verification code.');
+          showError(msg);
           return;
         }
-        succEl.textContent = data.message;
-        succEl.classList.remove('hidden');
-        document.getElementById('register-form').reset();
-      } catch {
-        errEl.textContent = 'Network error. Please try again.';
-        errEl.classList.remove('hidden');
+
+        showInfo('A 6-digit verification code has been sent to your email. The code expires in 5 minutes.');
+        showStep2(email);
+
+      } catch (err) {
+        showError('Network error. Please try again.');
       } finally {
-        btn.disabled = false; btn.textContent = 'Create Account';
+        btnSendCode.disabled = false;
+        btnSendCode.textContent = 'Send Verification Code';
+      }
+    });
+
+    // ================= RESEND OTP BUTTON =================
+    btnResendOtp.addEventListener('click', async () => {
+      if (btnResendOtp.disabled || !currentEmail) return;
+      clearAlerts();
+
+      btnResendOtp.disabled = true;
+      btnResendText.textContent = 'Sending…';
+
+      try {
+        const res = await apiPost('/api/v1/auth/student-register/resend-otp', { email: currentEmail });
+        const data = await res.json();
+
+        if (!res.ok) {
+          const msg = Array.isArray(data.errors)
+            ? data.errors.map(err => err.msg).join(' ')
+            : (data.message || 'Failed to resend verification code.');
+          showError(msg);
+          // If server reports cooldown retryAfter, honor it
+          if (res.status === 429 && data.retryAfter) {
+            startCooldownTimer(data.retryAfter);
+          } else {
+            btnResendOtp.disabled = false;
+            btnResendText.textContent = 'Send a new code';
+          }
+          return;
+        }
+
+        showInfo('A new verification code has been sent. Your previous code has expired.');
+        // Restart 2-minute cooldown and 5-minute expiry
+        startCooldownTimer(120);
+        startExpiryTimer(300);
+        otpInput.value = '';
+        otpInput.focus();
+
+      } catch {
+        showError('Network error while resending code.');
+        btnResendOtp.disabled = false;
+        btnResendText.textContent = 'Send a new code';
+      }
+    });
+
+    // ================= STEP 2 SUBMIT: VERIFY OTP & CREATE ACCOUNT =================
+    document.getElementById('step-otp-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAlerts();
+
+      const otp = otpInput.value.trim();
+      if (!otp || otp.length !== 6) {
+        showError('Please enter a valid 6-digit verification code.');
+        return;
+      }
+
+      btnVerifyOtp.disabled = true;
+      btnVerifyOtp.textContent = 'Verifying…';
+
+      try {
+        const res = await apiPost('/api/v1/auth/student-register/verify-otp', {
+          email: currentEmail,
+          otp,
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          const msg = Array.isArray(data.errors)
+            ? data.errors.map(err => err.msg).join(' ')
+            : (data.message || 'Verification failed.');
+          showError(msg);
+          return;
+        }
+
+        // Successfully created and verified!
+        if (cooldownTimerInterval) clearInterval(cooldownTimerInterval);
+        if (expiryTimerInterval) clearInterval(expiryTimerInterval);
+
+        showSuccess('Account successfully verified! Redirecting to student dashboard…');
+
+        if (data.data?.accessToken) {
+          setAccessToken(data.data.accessToken);
+        }
+
+        setTimeout(() => {
+          window.location.href = '/pages/student/dashboard.html';
+        }, 1200);
+
+      } catch {
+        showError('Network error. Please try again.');
+      } finally {
+        btnVerifyOtp.disabled = false;
+        btnVerifyOtp.textContent = 'Verify & Create Account';
       }
     });
   </script>

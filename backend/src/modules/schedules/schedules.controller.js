@@ -6,7 +6,7 @@ const { getPagination } = require('../../utils/pagination');
 async function list(req, res, next) {
   try {
     const { page, limit } = getPagination(req.query);
-    const panelist_id = req.user.role === 'panelist' ? req.user.id : undefined;
+    const panelist_id = (req.user.role === 'panelist' || req.user.role === 'instructor') ? req.user.id : undefined;
     const result = await service.listSchedules({
       search:    req.query.search,
       status:    req.query.status,
@@ -56,7 +56,7 @@ async function getOne(req, res, next) {
     const schedule = await service.getById(req.params.id);
     if (!schedule) return send404(res, 'Schedule not found');
 
-    if (req.user.role === 'panelist') {
+    if (req.user.role === 'panelist' || req.user.role === 'instructor') {
       const assigned = schedule.panelists?.some(p => p.id === req.user.id);
       if (!assigned) return send404(res, 'Schedule not found');
     }
@@ -132,7 +132,7 @@ async function getMinutes(req, res, next) {
   try {
     const schedule = await service.getById(req.params.id);
     if (!schedule) return send404(res, 'Schedule not found');
-    if (req.user.role === 'panelist') {
+    if (req.user.role === 'panelist' || req.user.role === 'instructor') {
       const assigned = schedule.panelists?.some(p => p.id === req.user.id);
       if (!assigned) return send404(res, 'Schedule not found');
     }

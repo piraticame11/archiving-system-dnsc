@@ -5,8 +5,10 @@ const fs       = require('fs');
 const XLSX     = require('xlsx');
 const { paginatedResponse } = require('../../utils/pagination');
 
-async function listUsers({ search, role, status, page, limit, requesterRole }) {
-  const offset = (page - 1) * limit;
+async function listUsers({ search, role, status, page = 1, limit = 20, requesterRole }) {
+  const p = Math.max(1, parseInt(page) || 1);
+  const l = Math.max(1, parseInt(limit) || 20);
+  const offset = (p - 1) * l;
   const conditions = ['u.deleted_at IS NULL'];
   const params = [];
 
@@ -19,7 +21,16 @@ async function listUsers({ search, role, status, page, limit, requesterRole }) {
     const s = `%${search}%`;
     params.push(s, s, s, s);
   }
-  if (role)              { conditions.push('r.name = ?');      params.push(role); }
+  if (role) {
+    if (role.includes(',')) {
+      const roles = role.split(',').map(r => r.trim()).filter(Boolean);
+      conditions.push(`r.name IN (${roles.map(() => '?').join(',')})`);
+      params.push(...roles);
+    } else {
+      conditions.push('r.name = ?');
+      params.push(role);
+    }
+  }
   if (status === 'active')   conditions.push('u.is_active = 1');
   if (status === 'inactive') conditions.push('u.is_active = 0');
 
@@ -35,10 +46,10 @@ async function listUsers({ search, role, status, page, limit, requesterRole }) {
      ${base}
      ORDER BY u.created_at DESC
      LIMIT ? OFFSET ?`,
-    [...params, limit, offset]
+    [...params, l, offset]
   );
 
-  return paginatedResponse(rows, total, page, limit);
+  return paginatedResponse(rows, total, p, l);
 }
 
 async function getUserById(id, requesterRole = 'superadmin') {

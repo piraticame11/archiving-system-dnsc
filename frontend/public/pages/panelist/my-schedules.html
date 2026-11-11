@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Schedules "” ACES Research System</title>
+  <title>My Schedules — ACES Research System</title>
   <link rel="icon" type="image/webp" href="/assets/img/aw.webp">
   <link rel="stylesheet" href="/assets/css/app.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -29,9 +29,14 @@
 
   <div class="max-w-6xl mx-auto px-6 py-8">
 
-    <div class="mb-6">
-      <h1 class="text-2xl font-bold text-gray-900">My Schedules</h1>
-      <p class="text-sm text-gray-500 mt-0.5">Defense schedules you are assigned to as a panelist</p>
+    <div class="flex items-center justify-between gap-4 mb-6 flex-wrap">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">My Schedules</h1>
+        <p class="text-sm text-gray-500 mt-0.5">Defense schedules you are assigned to as a panelist</p>
+      </div>
+      <a id="back-dashboard-btn" href="/pages/panelist/dashboard.html" class="inline-flex items-center gap-1.5 text-sm bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-3.5 py-2 rounded-lg font-medium shadow-sm transition-colors">
+        &larr; Back to Dashboard
+      </a>
     </div>
 
     <!-- Stats -->
@@ -125,9 +130,16 @@
     }
     const TIME_SLOTS = {};
     buildSlotLabels(8*60, 12*60, 30, TIME_SLOTS); buildSlotLabels(13*60, 17*60, 30, TIME_SLOTS);
+    buildSlotLabels(8*60, 12*60, 60, TIME_SLOTS); buildSlotLabels(13*60, 17*60, 60, TIME_SLOTS);
     buildSlotLabels(8*60, 12*60, 90, TIME_SLOTS); buildSlotLabels(13*60, 16*60, 90, TIME_SLOTS);
 
-    const DEFENSE_TYPE_LABEL = { proposal: 'Proposal (30 min)', final: 'Final (1h30)' };
+    const DEFENSE_TYPE_LABEL = {
+      proposal: 'Proposal',
+      outline: 'Outline',
+      'pre-final': 'Pre-Final',
+      pre_final: 'Pre-Final',
+      final: 'Final',
+    };
     const PANEL_ROLE_LABEL = { chairperson: 'Chairperson', industry_panelist: 'Industry Panelist', member: 'Member' };
     function slotLabel(v) { return TIME_SLOTS[v] || v || '–'; }
     function slotsLabel(arr) {
@@ -142,9 +154,13 @@
       return new Date(+y, +m-1, +day).toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric' });
     }
 
-    requireAuthAsync('panelist').then(user => {
+    requireAuthAsync('panelist', 'instructor').then(user => {
       if (!user) return;
       document.getElementById('user-name').textContent = user.full_name || user.email;
+      const dashBtn = document.getElementById('back-dashboard-btn');
+      if (dashBtn && user.role === 'instructor') {
+        dashBtn.href = '/pages/instructor/dashboard.html';
+      }
       loadSchedules();
 
       document.getElementById('f-status').addEventListener('change', () => { currentPage = 1; loadSchedules(); });
@@ -152,6 +168,10 @@
         clearTimeout(searchTimer);
         searchTimer = setTimeout(() => { currentPage = 1; loadSchedules(); }, 350);
       });
+    }).catch(err => {
+      console.error('Failed to load user:', err);
+      const grid = document.getElementById('cards-grid');
+      if (grid) grid.innerHTML = `<div class="col-span-full text-center text-sm text-red-500 py-10">${escHtml(err?.message || 'Authentication error')}</div>`;
     });
 
     let schedulesReqSeq = 0;
@@ -164,7 +184,7 @@
       if (status) params.set('status', status);
 
       const grid = document.getElementById('cards-grid');
-      grid.innerHTML = '<div class="col-span-full text-center text-sm text-gray-400 py-10">Loading…</div>';
+      grid.innerHTML = '<div class="col-span-full text-center text-sm text-gray-400 py-10">Loading schedules…</div>';
 
       try {
         const res   = await get(`/api/v1/schedules?${params}`);
@@ -184,15 +204,24 @@
         grid.innerHTML = items.map(s => {
           const dateStr  = s.scheduled_date ? String(s.scheduled_date).split('T')[0] : '';
           const upcoming = dateStr >= new Date().toISOString().slice(0,10) && s.status === 'scheduled';
-          const cardTitle = s.submission_title || s.group_names || `Schedule #${s.id}`;
-          const cardSub   = !s.submission_title && s.group_titles
-            ? `<p class="text-xs text-gray-400 mt-0.5 line-clamp-1">${escHtml(s.group_titles)}</p>` : '';
+          const cardTitle = s.group_names || s.submission_title || `Schedule #${s.id}`;
+          const dept = s.department_codes || '';
+          const year = s.group_school_years || s.school_year || '';
+          const set  = s.set_names || '';
+          const defType = DEFENSE_TYPE_LABEL[s.defense_type] || s.defense_type || 'Defense';
+
           return `
           <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-5 hover:shadow-md transition-shadow">
             <div class="flex items-start justify-between gap-2 mb-3">
-              <div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-1.5 flex-wrap mb-2">
+                  <span class="inline-flex px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide bg-primary-100 text-primary-800">${escHtml(defType)}</span>
+                  ${dept ? `<span class="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-700">${escHtml(dept)}</span>` : ''}
+                  ${set ? `<span class="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700">${escHtml(String(set).toLowerCase().startsWith('set') ? set : 'Set ' + set)}</span>` : ''}
+                  ${year ? `<span class="text-xs text-gray-500 font-medium">${escHtml(year)}</span>` : ''}
+                </div>
                 <h3 class="font-semibold text-gray-900 text-sm leading-snug line-clamp-2">${escHtml(cardTitle)}</h3>
-                ${cardSub}
+                ${s.submission_title && s.submission_title !== cardTitle ? `<p class="text-xs text-primary-700 font-medium italic mt-0.5 line-clamp-1">${escHtml(s.submission_title)}</p>` : ''}
               </div>
               ${badge(s.status)}
             </div>
@@ -250,7 +279,7 @@
 
     async function openDetail(id) {
       document.getElementById('detail-title').textContent = 'Loading…';
-      document.getElementById('detail-body').innerHTML    = '<p class="text-sm text-gray-400">Loading…</p>';
+      document.getElementById('detail-body').innerHTML    = '<p class="text-sm text-gray-400 text-center py-6">Loading schedule details…</p>';
       document.getElementById('detail-footer').innerHTML  = '';
       document.getElementById('detail-modal').classList.remove('hidden');
 
@@ -259,45 +288,101 @@
         const s   = res.data;
 
         const panelHtml = s.panelists?.length
-          ? s.panelists.map(p => `<span class=”inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary-50 text-primary-700”><strong>${escHtml(PANEL_ROLE_LABEL[p.panel_role] || p.panel_role || '')}:</strong> ${escHtml(p.full_name)}</span>`).join('')
-          : '<span class=”text-gray-400 text-xs”>None assigned</span>';
+          ? s.panelists.map(p => `
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-primary-50 text-primary-800 border border-primary-200">
+              <strong class="font-semibold text-primary-900">${escHtml(PANEL_ROLE_LABEL[p.panel_role] || p.panel_role || '')}:</strong>
+              <span>${escHtml(p.full_name)}</span>
+            </span>`).join('')
+          : '<span class="text-gray-400 text-xs">None assigned</span>';
 
         const groupsHtml = s.groups?.length
           ? s.groups.map(g => `
-            <div class=”bg-gray-50 rounded-lg p-3 border border-gray-100”>
-              <p class=”font-semibold text-gray-800 text-sm”>${escHtml(g.name)}</p>
-              ${g.titles?.length
-                ? g.titles.map((t, i) => `<p class=”text-xs text-gray-500 mt-0.5”>${i + 1}. ${escHtml(t.title)}</p>`).join('')
-                : (g.group_title ? `<p class=”text-xs text-gray-500 mt-0.5”>${escHtml(g.group_title)}</p>` : '')}
+            <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 space-y-1.5">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-bold text-gray-900 text-sm">${escHtml(g.name)}</span>
+                ${g.department_code ? `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-700">${escHtml(g.department_code)}</span>` : ''}
+                ${g.set_name ? `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700">${escHtml(g.set_name.toLowerCase().startsWith('set') ? g.set_name : 'Set ' + g.set_name)}</span>` : ''}
+                ${g.school_year ? `<span class="text-xs text-gray-400">${escHtml(g.school_year)}</span>` : ''}
+              </div>
+              ${g.group_title ? `<p class="text-xs text-primary-700 font-semibold italic">${escHtml(g.group_title)}</p>` : ''}
+              ${g.member_names ? `<p class="text-xs text-gray-600"><strong class="font-medium text-gray-500">Members:</strong> ${escHtml(g.member_names)}</p>` : ''}
             </div>`).join('')
           : s.submission_title
-            ? `<p class=”text-sm text-gray-700”>${escHtml(s.submission_title)}</p>`
-            : '<span class=”text-gray-400 text-xs”>No groups assigned</span>';
+            ? `<div class="bg-gray-50 rounded-xl p-4 border border-gray-200"><p class="text-sm font-medium text-gray-800">${escHtml(s.submission_title)}</p></div>`
+            : '<span class="text-gray-400 text-xs">No groups assigned</span>';
+
+        const deptStr = s.groups?.map(g => g.department_code).filter(Boolean).join(', ') || s.department_codes || '–';
+        const setStr  = s.groups?.map(g => g.set_name).filter(Boolean).join(', ') || s.set_names || '–';
+        const yearStr = s.school_year || s.groups?.[0]?.school_year || s.group_school_years || '–';
+        const typeStr = DEFENSE_TYPE_LABEL[s.defense_type] || s.defense_type || '–';
 
         document.getElementById('detail-title').textContent =
           s.groups?.length ? s.groups.map(g => g.name).join(', ') : (s.submission_title || 'Schedule Details');
 
         document.getElementById('detail-body').innerHTML = `
+          <!-- Overview Cards -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white p-3 rounded-xl border border-gray-200">
+            <div>
+              <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Type</p>
+              <span class="inline-flex px-2 py-0.5 rounded text-xs font-bold uppercase bg-primary-100 text-primary-800">${escHtml(typeStr)}</span>
+            </div>
+            <div>
+              <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Department</p>
+              <p class="text-sm font-semibold text-gray-800">${escHtml(deptStr)}</p>
+            </div>
+            <div>
+              <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Year</p>
+              <p class="text-sm font-semibold text-gray-800">${escHtml(yearStr)}</p>
+            </div>
+            <div>
+              <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Set</p>
+              <p class="text-sm font-semibold text-gray-800">${escHtml(setStr && setStr !== '–' ? (String(setStr).toLowerCase().startsWith('set') ? setStr : 'Set ' + setStr) : '–')}</p>
+            </div>
+          </div>
+
+          <!-- Schedule Times & Venue -->
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 text-sm">
+            <div>
+              <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Date</p>
+              <p class="font-medium text-gray-800">${fmtDate(s.scheduled_date)}</p>
+            </div>
+            <div>
+              <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Timeslot</p>
+              <p class="font-medium text-gray-800">${escHtml(slotsLabel(s.time_slots))}</p>
+            </div>
+            <div>
+              <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Venue</p>
+              <p class="font-medium text-gray-800">${escHtml(s.venue_name || 'TBD')}</p>
+            </div>
+            <div class="col-span-full pt-1 border-t border-gray-200/60 flex items-center justify-between">
+              <span class="text-xs text-gray-500 font-medium">Schedule Status:</span>
+              ${badge(s.status)}
+            </div>
+          </div>
+
+          <!-- Presenting Groups -->
           <div>
-            <p class=”text-xs text-gray-400 uppercase tracking-wide mb-2”>Groups / Research Titles</p>
-            <div class=”space-y-2”>${groupsHtml}</div>
+            <p class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Presenting Groups &amp; Members</p>
+            <div class="space-y-2.5">${groupsHtml}</div>
           </div>
-          <div class=”grid grid-cols-2 gap-4 text-sm”>
-            <div><p class=”text-xs text-gray-400 uppercase tracking-wide mb-0.5”>Status</p>${badge(s.status)}</div>
-            <div><p class=”text-xs text-gray-400 uppercase tracking-wide mb-0.5”>Type</p><p class=”text-gray-800”>${escHtml(DEFENSE_TYPE_LABEL[s.defense_type] || s.defense_type || '–')}</p></div>
-            <div><p class=”text-xs text-gray-400 uppercase tracking-wide mb-0.5”>Date</p><p class=”text-gray-800”>${fmtDate(s.scheduled_date)}</p></div>
-            <div><p class=”text-xs text-gray-400 uppercase tracking-wide mb-0.5”>Timeslot</p><p class=”text-gray-800”>${escHtml(slotsLabel(s.time_slots))}</p></div>
-            <div><p class=”text-xs text-gray-400 uppercase tracking-wide mb-0.5”>Venue</p><p class=”text-gray-800”>${escHtml(s.venue_name || '–')}</p></div>
-            ${s.school_year ? `<div class=”col-span-2”><p class=”text-xs text-gray-400 uppercase tracking-wide mb-0.5”>School Year</p><p class=”text-gray-800”>${escHtml(s.school_year)}</p></div>` : ''}
+
+          <!-- Panelists -->
+          <div>
+            <p class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Assigned Panel</p>
+            <div class="flex flex-wrap gap-2">${panelHtml}</div>
           </div>
-          ${s.notes ? `<div><p class=”text-xs text-gray-400 uppercase tracking-wide mb-1”>Notes</p><p class=”text-sm text-gray-700”>${escHtml(s.notes)}</p></div>` : ''}
-          <div><p class=”text-xs text-gray-400 uppercase tracking-wide mb-2”>Panelists</p><div class=”flex flex-wrap gap-2”>${panelHtml}</div></div>`;
+
+          ${s.notes ? `
+          <div>
+            <p class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Notes</p>
+            <p class="text-sm text-gray-700 bg-gray-50 rounded-lg p-3 border border-gray-100">${escHtml(s.notes)}</p>
+          </div>` : ''}`;
 
         document.getElementById('detail-footer').innerHTML = s.status !== 'cancelled'
-          ? `<a href="/pages/panelist/evaluate.html?id=${s.id}" class="block w-full text-center px-4 py-2 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">Go to Evaluate</a>`
+          ? `<a href="/pages/panelist/evaluate.html?id=${s.id}" class="block w-full text-center px-4 py-2.5 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-xl shadow-sm transition-colors">Go to Evaluate</a>`
           : '';
       } catch (err) {
-        document.getElementById('detail-body').innerHTML = `<p class="text-sm text-red-500">${escHtml(err?.message || 'Failed to load.')}</p>`;
+        document.getElementById('detail-body').innerHTML = `<p class="text-sm text-red-500 text-center py-6">${escHtml(err?.message || 'Failed to load.')}</p>`;
       }
     }
 

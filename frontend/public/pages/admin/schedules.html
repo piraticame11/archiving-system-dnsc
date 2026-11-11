@@ -197,7 +197,9 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">Defense Type <span class="text-red-500">*</span></label>
           <select id="sched-defense-type" class="form-input" onchange="onDefenseTypeChange()">
             <option value="proposal">Proposal Defense (30 minutes)</option>
-            <option value="final">Outline-to-Final Defense (1 hour 30 minutes)</option>
+            <option value="outline">Outline Defense (1 hour)</option>
+            <option value="pre-final">Pre-Final Defense (1 hour)</option>
+            <option value="final">Final Defense (1 hour 30 minutes)</option>
           </select>
         </div>
 
@@ -351,8 +353,10 @@
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Defense Type <span class="text-red-500">*</span></label>
             <select id="auto-defense-type" class="form-input" onchange="loadEligibleGroups()">
-              <option value="proposal">Proposal Defense (30 min)</option>
-              <option value="final">Outline-to-Final Defense (1h30)</option>
+              <option value="proposal">Proposal Defense</option>
+              <option value="outline">Outline Defense</option>
+              <option value="pre-final">Pre-Final Defense</option>
+              <option value="final">Final Defense</option>
             </select>
           </div>
           <div></div>
@@ -422,14 +426,27 @@
       return out;
     }
     const SLOTS_BY_TYPE = {
-      proposal: [...buildSlots(8*60, 12*60, 30), ...buildSlots(13*60, 17*60, 30)],
-      final:    [...buildSlots(8*60, 12*60, 90), ...buildSlots(13*60, 16*60, 90)],
+      proposal:    [...buildSlots(8*60, 12*60, 30), ...buildSlots(13*60, 17*60, 30)],
+      outline:     [...buildSlots(8*60, 12*60, 60), ...buildSlots(13*60, 17*60, 60)],
+      'pre-final': [...buildSlots(8*60, 12*60, 60), ...buildSlots(13*60, 17*60, 60)],
+      final:       [...buildSlots(8*60, 12*60, 90), ...buildSlots(13*60, 16*60, 90)],
     };
-    const ALL_SLOTS = [...SLOTS_BY_TYPE.proposal, ...SLOTS_BY_TYPE.final]
+    const ALL_SLOTS = [
+      ...SLOTS_BY_TYPE.proposal,
+      ...SLOTS_BY_TYPE.outline,
+      ...SLOTS_BY_TYPE['pre-final'],
+      ...SLOTS_BY_TYPE.final,
+    ]
       .filter((s, i, arr) => arr.findIndex(x => x.value === s.value) === i)
       .sort((a,b) => a.value.localeCompare(b.value, undefined, { numeric: true }));
 
-    const DEFENSE_TYPE_LABEL = { proposal: 'Proposal (30 min)', final: 'Final (1h30)' };
+    const DEFENSE_TYPE_LABEL = {
+      proposal: 'Proposal',
+      outline: 'Outline',
+      'pre-final': 'Pre-Final',
+      pre_final: 'Pre-Final',
+      final: 'Final',
+    };
 
     function slotLabel(v) { return ALL_SLOTS.find(s=>s.value===v)?.label || v || '–'; }
     function slotsLabel(arr) {
@@ -718,7 +735,7 @@
       try {
         const [vRes, pRes, gRes, dRes] = await Promise.all([
           get('/api/v1/venues?limit=100'),
-          get('/api/v1/users?role=panelist&limit=100'),
+          get('/api/v1/users?role=panelist,instructor&limit=100'),
           get('/api/v1/groups'),
           get('/api/v1/departments'),
         ]);
@@ -757,14 +774,19 @@
       const el=document.getElementById('group-list');
       if(!allGroups.length){ el.innerHTML='<p class="text-xs text-gray-400">No groups found.</p>'; return; }
       el.innerHTML=allGroups.map(g=>`
-        <label class="flex items-start gap-2 cursor-pointer">
-          <input type="checkbox" name="group" value="${g.id}" class="mt-0.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+        <label class="flex items-start gap-2.5 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
+          <input type="checkbox" name="group" value="${g.id}" class="mt-1 rounded border-gray-300 text-primary-600 focus:ring-primary-500 flex-shrink-0"
             ${sel.has(String(g.id))?'checked':''}>
-          <span class="text-sm text-gray-700 leading-snug">
-            ${esc(g.name)}
-            ${g.school_year?`<span class="text-xs text-gray-400 ml-1">${esc(g.school_year)}</span>`:''}
-            ${g.group_title||g.title?`<br><span class="text-xs text-gray-500">${esc(g.group_title||g.title)}</span>`:''}
-          </span>
+          <div class="flex-1 min-w-0 text-sm">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-semibold text-gray-900">${esc(g.name)}</span>
+              ${g.department_code ? `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-700">${esc(g.department_code)}</span>` : ''}
+              ${g.set_name ? `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700">${esc(g.set_name.toLowerCase().startsWith('set') ? g.set_name : 'Set ' + g.set_name)}</span>` : ''}
+              ${g.school_year ? `<span class="text-xs text-gray-400">${esc(g.school_year)}</span>` : ''}
+            </div>
+            ${g.member_names ? `<p class="text-xs text-gray-600 mt-1"><span class="font-medium text-gray-500">Members:</span> ${esc(g.member_names)}</p>` : ''}
+            ${g.group_title||g.title ? `<p class="text-xs text-primary-700 mt-0.5 font-medium italic">${esc(g.group_title||g.title)}</p>` : ''}
+          </div>
         </label>`).join('');
     }
 
@@ -797,7 +819,7 @@
               <label class="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
                 <input type="checkbox" name="panelist" value="${p.id}" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                   ${checked ? 'checked' : ''} onchange="togglePanelist(${p.id}, this.checked)">
-                <span class="text-sm text-gray-700 truncate">${esc(p.first_name + ' ' + p.last_name)}</span>
+                <span class="text-sm text-gray-700 truncate">${esc(p.first_name + ' ' + p.last_name)}${p.role === 'instructor' ? ' <span class="text-[11px] text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.2 rounded font-medium">Instructor</span>' : ''}</span>
                 <span class="text-xs text-gray-400 truncate">${esc(p.email || '')}</span>
               </label>
               ${checked ? `
@@ -985,7 +1007,17 @@
         const res=await get(`/api/v1/schedules/${id}`);
         const s=res.data;
         const groupHtml=(s.groups||[]).length
-          ? s.groups.map(g=>`<div class="text-sm text-gray-700 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-purple-400 flex-shrink-0"></span>${esc(g.name)}${g.school_year?` <span class="text-xs text-gray-400">${esc(g.school_year)}</span>`:''}</div>`).join('')
+          ? s.groups.map(g=>`
+            <div class="p-3 bg-gray-50 rounded-lg border border-gray-100 text-sm">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-semibold text-gray-900">${esc(g.name)}</span>
+                ${g.department_code ? `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-700">${esc(g.department_code)}</span>` : ''}
+                ${g.set_name ? `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700">${esc(g.set_name.toLowerCase().startsWith('set') ? g.set_name : 'Set ' + g.set_name)}</span>` : ''}
+                ${g.school_year ? `<span class="text-xs text-gray-400">${esc(g.school_year)}</span>` : ''}
+              </div>
+              ${g.member_names ? `<p class="text-xs text-gray-600 mt-1"><span class="font-medium text-gray-500">Members:</span> ${esc(g.member_names)}</p>` : ''}
+              ${g.group_title ? `<p class="text-xs text-primary-700 mt-0.5 font-medium italic">${esc(g.group_title)}</p>` : ''}
+            </div>`).join('')
           : '<span class="text-xs text-gray-400">None assigned</span>';
         const panelHtml=(s.panelists||[]).length
           ? s.panelists.map(p=>`<div class="text-sm text-gray-700 flex items-center gap-1.5">
