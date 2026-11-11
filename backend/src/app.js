@@ -23,12 +23,42 @@ const instructorGuidelineRoutes = require('./modules/instructor_guidelines/instr
 const schoolYearRoutes          = require('./modules/school_years/school_years.routes');
 const { errorHandler }  = require('./middleware/errorHandler');
 
+const PRIVATE_DEV_ORIGIN_RE = /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$/i;
+
+function getConfiguredOrigins() {
+  return (process.env.FRONTEND_URL || 'http://localhost:3000')
+    .split(',')
+    .map((origin) => origin.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
+}
+
+function isSameHostOrigin(origin, req) {
+  const host = req.headers.host;
+  if (!host) return false;
+  try {
+    return new URL(origin).host.toLowerCase() === host.toLowerCase();
+  } catch {
+    return false;
+  }
+}
+
+function isAllowedCorsOrigin(origin, req) {
+  if (!origin) return true;
+  const normalized = origin.replace(/\/+$/, '');
+  if (getConfiguredOrigins().includes(normalized)) return true;
+  if (isSameHostOrigin(normalized, req)) return true;
+  if (process.env.NODE_ENV !== 'production' && PRIVATE_DEV_ORIGIN_RE.test(normalized)) return true;
+  return false;
+}
+
 const app = express();
 
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors({
-  origin:      process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true,
+app.use(cors((req, cb) => {
+  cb(null, {
+    origin:      isAllowedCorsOrigin(req.headers.origin, req),
+    credentials: true,
+  });
 }));
 app.use(morgan('dev'));
 app.use(express.json({ limit: '2mb' }));

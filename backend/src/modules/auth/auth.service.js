@@ -11,6 +11,56 @@ const TEMP_PASSWORD_VALIDITY_MINUTES = 30;
 const STUDENT_REG_OTP_EXPIRY_MS = 5 * 60 * 1000;   // 5 minutes
 const STUDENT_REG_OTP_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes
 
+let hasRevokedAtColumnCache = null;
+let ensureRevokedAtPromise = null;
+
+/**
+ * Ensure `refresh_tokens.revoked_at` exists for older schemas; falls back to
+ * non-revoked_at queries when DDL permissions are unavailable.
+ */
+async function ensureRevokedAtColumn() {
+  if (hasRevokedAtColumnCache !== null) return hasRevokedAtColumnCache;
+  if (ensureRevokedAtPromise) return ensureRevokedAtPromise;
+
+  ensureRevokedAtPromise = (async () => {
+    try {
+      const [cols] = await db.query(
+        `SELECT 1 FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'refresh_tokens' AND COLUMN_NAME = 'revoked_at'
+         LIMIT 1`
+      );
+      if (cols.length > 0) {
+        hasRevokedAtColumnCache = true;
+        return true;
+      }
+      await db.query(`ALTER TABLE refresh_tokens ADD COLUMN revoked_at DATETIME NULL AFTER revoked`);
+      hasRevokedAtColumnCache = true;
+      return true;
+    } catch {
+      hasRevokedAtColumnCache = false;
+      return false;
+    } finally {
+      ensureRevokedAtPromise = null;
+    }
+  })();
+
+  return ensureRevokedAtPromise;
+}
+
+async function queryRefreshTokens(userId, withRevokedAt) {
+  const revokedPredicate = withRevokedAt
+    ? '(revoked = 0 OR (revoked = 1 AND revoked_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 60 SECOND)))'
+    : 'revoked = 0';
+  const [rows] = await db.query(
+    `SELECT * FROM refresh_tokens
+     WHERE user_id = ?
+       AND ${revokedPredicate}
+       AND expires_at > UTC_TIMESTAMP()`,
+    [userId]
+  );
+  return rows;
+}
+
 async function findUserByEmail(email) {
   const [rows] = await db.query(
     `SELECT u.*, r.name AS role FROM users u
@@ -132,13 +182,19 @@ async function refresh(token) {
     throw Object.assign(new Error('Invalid refresh token.'), { status: 401 });
   }
 
-  const [tokenRows] = await db.query(
-    `SELECT * FROM refresh_tokens 
-     WHERE user_id = ? 
-       AND (revoked = 0 OR (revoked = 1 AND revoked_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 60 SECOND)))
-       AND expires_at > UTC_TIMESTAMP()`,
-    [payload.id]
-  );
+  let hasRevokedAt = await ensureRevokedAtColumn();
+  let tokenRows;
+  try {
+    tokenRows = await queryRefreshTokens(payload.id, hasRevokedAt);
+  } catch (err) {
+    if (hasRevokedAt && /revoked_at/i.test(err.message || '')) {
+      hasRevokedAt = false;
+      hasRevokedAtColumnCache = false;
+      tokenRows = await queryRefreshTokens(payload.id, false);
+    } else {
+      throw err;
+    }
+  }
 
   let matched = null;
   for (const row of tokenRows) {
@@ -147,7 +203,10 @@ async function refresh(token) {
   if (!matched) throw Object.assign(new Error('Refresh token not found or expired.'), { status: 401 });
 
   if (!matched.revoked) {
-    await db.query(`UPDATE refresh_tokens SET revoked = 1, revoked_at = UTC_TIMESTAMP() WHERE id = ?`, [matched.id]);
+    const updateSql = hasRevokedAt
+      ? `UPDATE refresh_tokens SET revoked = 1, revoked_at = UTC_TIMESTAMP() WHERE id = ?`
+      : `UPDATE refresh_tokens SET revoked = 1 WHERE id = ?`;
+    await db.query(updateSql, [matched.id]);
   }
 
   const user = await findUserById(payload.id);

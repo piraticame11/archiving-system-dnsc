@@ -1,6 +1,29 @@
 const authService = require('./auth.service');
 const { sendSuccess, sendCreated, sendError, send400, send401 } = require('../../utils/responseHelper');
 
+function isHttpsRequest(req) {
+  const forwardedProto = String(req.headers['x-forwarded-proto'] || '')
+    .split(',')[0]
+    .trim()
+    .toLowerCase();
+  return Boolean(req.secure || forwardedProto === 'https');
+}
+
+function refreshCookieOptions(req, includeMaxAge = true) {
+  const opts = {
+    path:     '/',
+    httpOnly: true,
+    secure:   isHttpsRequest(req),
+    sameSite: 'Lax',
+  };
+  if (includeMaxAge) opts.maxAge = 7 * 24 * 60 * 60 * 1000;
+  return opts;
+}
+
+function setRefreshCookie(res, req, refreshToken) {
+  res.cookie('refresh_token', refreshToken, refreshCookieOptions(req, true));
+}
+
 async function register(req, res, next) {
   try {
     const id = await authService.register(req.body);
@@ -14,13 +37,7 @@ async function register(req, res, next) {
 async function login(req, res, next) {
   try {
     const { accessToken, refreshToken, user } = await authService.login(req.body.email, req.body.password);
-    res.cookie('refresh_token', refreshToken, {
-      path:     '/',
-      httpOnly: true,
-      secure:   process.env.NODE_ENV === 'production',
-      sameSite: 'Strict',
-      maxAge:   7 * 24 * 60 * 60 * 1000,
-    });
+    setRefreshCookie(res, req, refreshToken);
     sendSuccess(res, { accessToken, user }, 'Login successful.');
   } catch (err) {
     if (err.status) return sendError(res, err.status, err.message);
@@ -34,13 +51,7 @@ async function refresh(req, res, next) {
     if (!token) return send401(res, 'Refresh token required.');
 
     const { accessToken, refreshToken } = await authService.refresh(token);
-    res.cookie('refresh_token', refreshToken, {
-      path:     '/',
-      httpOnly: true,
-      secure:   process.env.NODE_ENV === 'production',
-      sameSite: 'Strict',
-      maxAge:   7 * 24 * 60 * 60 * 1000,
-    });
+    setRefreshCookie(res, req, refreshToken);
     sendSuccess(res, { accessToken }, 'Token refreshed.');
   } catch (err) {
     if (err.status) return sendError(res, err.status, err.message);
@@ -52,7 +63,7 @@ async function logout(req, res, next) {
   try {
     const token = req.cookies?.refresh_token || req.body?.refresh_token;
     if (token) await authService.logout(token);
-    res.clearCookie('refresh_token');
+    res.clearCookie('refresh_token', refreshCookieOptions(req, false));
     sendSuccess(res, null, 'Logged out.');
   } catch (err) {
     next(err);
@@ -153,13 +164,7 @@ async function studentResendOtp(req, res, next) {
 async function studentVerifyOtp(req, res, next) {
   try {
     const { accessToken, refreshToken, user } = await authService.verifyStudentRegistrationOtp(req.body);
-    res.cookie('refresh_token', refreshToken, {
-      path:     '/',
-      httpOnly: true,
-      secure:   process.env.NODE_ENV === 'production',
-      sameSite: 'Strict',
-      maxAge:   7 * 24 * 60 * 60 * 1000,
-    });
+    setRefreshCookie(res, req, refreshToken);
     sendSuccess(res, { accessToken, user }, 'Account successfully created and verified.');
   } catch (err) {
     if (err.status) return sendError(res, err.status, err.message);
