@@ -8,7 +8,7 @@
     "migrate": "npm run migrate --prefix backend",
     "embeddings:generate": "npm run embeddings:generate --prefix backend",
     "install:all": "npm install --prefix backend && npm install --prefix frontend",
-    "deploy": "git pull && npm run install:all --no-audit --no-fund && npm run build && pm2 restart archiving-dnsc"
+    "deploy": "git pull && NODE_OPTIONS='--max-old-space-size=768' npm run install:all -- --no-audit --no-fund && npm run build && (pm2 restart archiving-dnsc || pm2 start npm --name 'archiving-dnsc' --cwd ./backend -- start) && pm2 save"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
