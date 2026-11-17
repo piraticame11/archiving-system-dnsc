@@ -8,7 +8,7 @@
     "migrate": "npm run migrate --prefix backend",
     "embeddings:generate": "npm run embeddings:generate --prefix backend",
     "install:all": "npm install --prefix backend && npm install --prefix frontend",
-    "deploy": "git pull && npm install:all --no-audit --no-fund && npm run build && pm2 restart project2"
+    "deploy": "git pull && npm run install:all --no-audit --no-fund && npm run build && pm2 restart project2"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
