@@ -56,7 +56,28 @@ async function listActivitiesForStudent(student_id) {
   );
 
   if (!membership) {
-    return { has_group: false, activities: [] };
+    // If student has no group, show general activities for their department so they can still see upcoming deadlines
+    const [[studentUser]] = await db.query('SELECT department_id FROM users WHERE id = ?', [student_id]);
+    const deptId = studentUser?.department_id || null;
+    const [rows] = await db.query(
+      `SELECT a.id, a.instructor_id, a.department_id, a.set_name, a.group_id, a.title, a.description, a.deadline,
+              a.created_at,
+              CONCAT(inst.first_name, ' ', inst.last_name) AS instructor_name,
+              d.code AS department_code,
+              NULL AS submission_id,
+              NULL AS file_name,
+              NULL AS submitted_at,
+              0 AS is_submitted,
+              0 AS is_late
+       FROM activities a
+       JOIN users inst ON a.instructor_id = inst.id
+       LEFT JOIN departments d ON a.department_id = d.id
+       WHERE a.group_id IS NULL
+         AND (a.department_id IS NULL OR ? IS NULL OR a.department_id = ?)
+       ORDER BY a.deadline ASC`,
+      [deptId, deptId]
+    );
+    return { has_group: false, group_id: null, set_name: null, activities: rows };
   }
 
   const groupId = membership.group_id;
@@ -83,13 +104,31 @@ async function listActivitiesForStudent(student_id) {
      LEFT JOIN activity_submissions asub ON asub.activity_id = a.id AND asub.group_id = ?
      WHERE a.group_id = ?
         OR (
-          (? IS NULL OR a.instructor_id = ? OR a.instructor_id IS NULL)
+          a.group_id IS NULL
           AND (
-            a.set_name IS NULL
-            OR ? IS NULL
-            OR LOWER(TRIM(a.set_name)) = LOWER(TRIM(?))
-            OR LOWER(TRIM(REPLACE(a.set_name, 'Set ', ''))) = LOWER(TRIM(REPLACE(?, 'Set ', '')))
-            OR LOWER(TRIM(CONCAT('Set ', a.set_name))) = LOWER(TRIM(?))
+            -- 1. Match by group's instructor
+            (? IS NOT NULL AND a.instructor_id = ? AND (
+              a.set_name IS NULL
+              OR ? IS NULL
+              OR LOWER(TRIM(a.set_name)) = LOWER(TRIM(?))
+              OR LOWER(TRIM(REPLACE(a.set_name, 'Set ', ''))) = LOWER(TRIM(REPLACE(?, 'Set ', '')))
+              OR LOWER(TRIM(CONCAT('Set ', a.set_name))) = LOWER(TRIM(?))
+            ))
+            -- 2. OR match by set name (even if instructor is not linked or different)
+            OR (
+              a.set_name IS NOT NULL
+              AND ? IS NOT NULL
+              AND (
+                LOWER(TRIM(a.set_name)) = LOWER(TRIM(?))
+                OR LOWER(TRIM(REPLACE(a.set_name, 'Set ', ''))) = LOWER(TRIM(REPLACE(?, 'Set ', '')))
+                OR LOWER(TRIM(CONCAT('Set ', a.set_name))) = LOWER(TRIM(?))
+              )
+            )
+            -- 3. OR general broadcast for department/all when group has no instructor or set is null
+            OR (
+              a.set_name IS NULL
+              AND (? IS NULL OR a.instructor_id = ? OR a.instructor_id IS NULL)
+            )
           )
           AND (a.department_id IS NULL OR ? IS NULL OR a.department_id = ?)
         )
@@ -99,11 +138,13 @@ async function listActivitiesForStudent(student_id) {
       groupId,
       instructorId, instructorId,
       rawSet, rawSet, rawSet, rawSet,
+      rawSet, rawSet, rawSet, rawSet,
+      instructorId, instructorId,
       deptId, deptId
     ]
   );
 
-  return { has_group: true, group_id: groupId, set_name: setName, activities: rows };
+  return { has_group: true, group_id: groupId, set_name: rawSet, activities: rows };
 }
 
 /* ─── Get Activity by ID ─────────────────────────────────────────── */

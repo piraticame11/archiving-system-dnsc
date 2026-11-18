@@ -1,6 +1,6 @@
 // Central fetch wrapper — auto-injects Bearer token, handles 401 with retry
 async function apiFetch(path, options = {}) {
-  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json', ...(options.headers || {}) };
 
   const token = getAccessToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -42,7 +42,7 @@ async function apiDelete(path) {
 
 async function apiPostForm(path, formData) {
   let token = getAccessToken();
-  const headers = {};
+  const headers = { 'Accept': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
   let res = await fetch(path, { method: 'POST', headers, body: formData, credentials: 'include' });
   if (res.status === 401) {

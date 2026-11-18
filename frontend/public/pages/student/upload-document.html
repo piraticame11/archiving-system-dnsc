@@ -280,20 +280,20 @@
     });
 
     function addFiles(fileList) {
-      const allowed = ['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      const allowed = ['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/x-pdf','application/octet-stream','application/msword'];
       let hadError = false;
       Array.from(fileList).forEach(file => {
         if (!allowed.includes(file.type) && !file.name.match(/\.(pdf|docx)$/i)) {
           hadError = true;
           return;
         }
-        if (file.size > 20 * 1024 * 1024) {
+        if (file.size > 50 * 1024 * 1024) {
           hadError = true;
           return;
         }
         queue.push({ file, docType: '' });
       });
-      if (hadError) showFieldErr('err-file', 'Some files were skipped — only PDF/DOCX up to 20 MB are allowed.');
+      if (hadError) showFieldErr('err-file', 'Some files were skipped — only PDF/DOCX up to 50 MB are allowed.');
       else hideFieldErr('err-file');
       renderQueue();
     }
@@ -340,34 +340,57 @@
       if (!currentSubmissionId) { showAlert('Could not resolve your group submission.'); return; }
 
       const btn = document.getElementById('btn-upload');
-      btn.disabled = true; btn.textContent = 'Uploading…';
+      btn.disabled = true;
+      btn.textContent = 'Uploading…';
       document.getElementById('progress-wrap').classList.remove('hidden');
+      document.getElementById('progress-bar').style.width = '0%';
+      document.getElementById('progress-pct').textContent = '0%';
 
       const total = queue.length;
       const failures = [];
-      for (let i = 0; i < total; i++) {
-        const { file, docType } = queue[i];
-        document.getElementById('progress-label').textContent = `Uploading ${i + 1} of ${total}…`;
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('doc_type', docType);
-        try {
-          await uploadWithProgress(`/api/v1/submissions/${currentSubmissionId}/documents`, formData);
-        } catch (err) {
-          failures.push(file.name);
+      const successes = [];
+
+      try {
+        for (let i = 0; i < total; i++) {
+          const { file, docType } = queue[i];
+          document.getElementById('progress-label').textContent = `Uploading ${i + 1} of ${total} (${file.name})…`;
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('doc_type', docType);
+          try {
+            await uploadWithProgress(`/api/v1/submissions/${currentSubmissionId}/documents`, formData);
+            successes.push(file.name);
+          } catch (err) {
+            failures.push({ name: file.name, reason: err.message || 'Upload failed' });
+          }
         }
+
+        // Remove successful uploads from the queue
+        if (successes.length) {
+          queue = queue.filter(item => !successes.includes(item.file.name));
+          renderQueue();
+        }
+
+        if (!failures.length) {
+          showAlert('All files uploaded successfully!', 'success');
+        } else if (successes.length) {
+          const reasons = failures.map(f => `${f.name}: ${f.reason}`).join('; ');
+          showAlert(`Uploaded ${successes.length} file(s), but ${failures.length} failed: ${reasons}`, 'warning');
+        } else {
+          const reasons = failures.map(f => `${f.name}: ${f.reason}`).join('; ');
+          showAlert(`Upload failed: ${reasons}`, 'error');
+        }
+
+        await loadGroupSubmission();
+      } catch (err) {
+        showAlert(err.message || 'An unexpected error occurred during upload.', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Upload Files';
+        document.getElementById('progress-wrap').classList.add('hidden');
+        document.getElementById('progress-bar').style.width = '0%';
+        document.getElementById('progress-pct').textContent = '0%';
       }
-
-      if (!failures.length) showAlert('All files uploaded successfully!', 'success');
-      else showAlert(`Some files failed to upload: ${failures.join(', ')}`, failures.length === total ? 'error' : 'warning');
-
-      queue = [];
-      renderQueue();
-      await loadGroupSubmission();
-
-      btn.disabled = false; btn.textContent = 'Upload Files';
-      document.getElementById('progress-wrap').classList.add('hidden');
-      document.getElementById('progress-bar').style.width = '0%';
     });
 
     function uploadWithProgress(url, formData) {
@@ -375,21 +398,51 @@
         const xhr = new XMLHttpRequest();
         const token = getAccessToken();
         xhr.open('POST', url);
+        xhr.setRequestHeader('Accept', 'application/json');
         if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
         xhr.withCredentials = true;
+        xhr.timeout = 180000; // 3 minutes timeout
+
         xhr.upload.onprogress = e => {
           if (e.lengthComputable) {
-            const pct = Math.round((e.loaded / e.total) * 100);
+            const pct = Math.min(Math.round((e.loaded / e.total) * 100), 100);
             document.getElementById('progress-bar').style.width = pct + '%';
             document.getElementById('progress-pct').textContent = pct + '%';
           }
         };
+
         xhr.onload = () => {
-          const json = JSON.parse(xhr.responseText);
-          if (xhr.status >= 200 && xhr.status < 300) resolve(json);
-          else reject(json);
+          let json = null;
+          try {
+            if (xhr.responseText) json = JSON.parse(xhr.responseText);
+          } catch (_) {
+            json = null;
+          }
+
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(json || { success: true });
+          } else {
+            let msg = json?.message || json?.error;
+            if (!msg) {
+              if (xhr.status === 413) msg = 'File size exceeds server upload limit (HTTP 413). Check Nginx client_max_body_size.';
+              else if (xhr.status === 403) msg = 'Permission denied. Only the group leader can upload documents for this submission.';
+              else if (xhr.status === 401) msg = 'Session expired. Please sign in again.';
+              else if (xhr.status === 400) msg = 'Invalid file format or missing document type.';
+              else if (xhr.status === 502 || xhr.status === 504) msg = 'Server gateway error. Please try again in a moment.';
+              else msg = `Upload failed with HTTP status ${xhr.status}.`;
+            }
+            reject(new Error(msg));
+          }
         };
-        xhr.onerror = () => reject({ message: 'Network error.' });
+
+        xhr.onerror = () => {
+          reject(new Error('Network error or connection lost during upload.'));
+        };
+
+        xhr.ontimeout = () => {
+          reject(new Error('Upload timed out. Please check your network connection and try again.'));
+        };
+
         xhr.send(formData);
       });
     }

@@ -1,7 +1,9 @@
 const { sendError } = require('../utils/responseHelper');
 
 function isApiRequest(req) {
-  return req.path.startsWith('/api/') || (req.headers.accept || '').includes('application/json');
+  const url = req.originalUrl || req.url || req.path || '';
+  const accept = req.headers.accept || '';
+  return url.startsWith('/api/') || accept.includes('application/json');
 }
 
 function redirectToError(res, code, message) {

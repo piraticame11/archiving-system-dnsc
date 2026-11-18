@@ -125,21 +125,33 @@
       document.getElementById('activities-container').classList.add('hidden');
 
       try {
-        const res = await apiGet('/api/v1/activities').then(r => r.json());
+        const response = await apiGet('/api/v1/activities');
+        let res = null;
+        try {
+          res = await response.json();
+        } catch (_) {
+          res = null;
+        }
+
         document.getElementById('loading-state').classList.add('hidden');
 
-        if (res.data?.has_group === false) {
-          document.getElementById('no-group-notice').classList.remove('hidden');
-          return;
+        if (!response.ok || !res?.success) {
+          throw new Error(res?.message || 'Failed to load activities.');
         }
 
+        const hasGroup = res.data?.has_group !== false;
         activities = res.data?.activities || [];
+
+        if (!hasGroup) {
+          document.getElementById('no-group-notice').classList.remove('hidden');
+        }
+
         if (!activities.length) {
-          document.getElementById('empty-state').classList.remove('hidden');
+          if (hasGroup) document.getElementById('empty-state').classList.remove('hidden');
           return;
         }
 
-        renderActivities(activities);
+        renderActivities(activities, hasGroup);
         document.getElementById('activities-container').classList.remove('hidden');
       } catch (err) {
         document.getElementById('loading-state').classList.add('hidden');
@@ -147,19 +159,22 @@
       }
     }
 
-    function renderActivities(list) {
+    function renderActivities(list, canSubmit = true) {
       const container = document.getElementById('activities-container');
       container.innerHTML = list.map(a => {
         const deadlineDate = new Date(a.deadline);
         const isPast = deadlineDate < new Date();
-        const formattedDeadline = deadlineDate.toLocaleDateString('en-PH', {
+        const formattedDeadline = deadlineDate.toLocaleString('en-PH', {
           month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
         });
 
         let submissionBadge = '';
-        let actionBtnText = 'Submit Deliverable';
+        let actionBtn = '';
 
-        if (a.is_submitted) {
+        if (!canSubmit) {
+          submissionBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-200">Group Required</span>`;
+          actionBtn = `<a href="/pages/student/my-group.html" class="inline-flex items-center gap-1.5 text-xs font-semibold bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-200 px-3.5 py-1.5 rounded-lg transition-colors">Join Group to Submit</a>`;
+        } else if (a.is_submitted) {
           const lateText = a.is_late ? ' (Submitted Late)' : ' (On Time)';
           const colorClass = a.is_late ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-green-50 text-green-700 border-green-200';
           submissionBadge = `
@@ -168,11 +183,22 @@
               Submitted${lateText}
             </span>
           `;
-          actionBtnText = 'Re-upload / Update';
+          actionBtn = `
+            <button onclick="openSubmitModal(${a.id})" class="inline-flex items-center gap-1.5 text-xs font-semibold bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+              Re-upload / Update
+            </button>
+          `;
         } else {
           submissionBadge = isPast
             ? `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">Missing / Past Due</span>`
             : `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">Pending Submission</span>`;
+          actionBtn = `
+            <button onclick="openSubmitModal(${a.id})" class="inline-flex items-center gap-1.5 text-xs font-semibold bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+              Submit Deliverable
+            </button>
+          `;
         }
 
         return `
@@ -199,10 +225,7 @@
             </div>
 
             <div class="flex items-center justify-end">
-              <button onclick="openSubmitModal(${a.id})" class="inline-flex items-center gap-1.5 text-xs font-semibold bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                ${actionBtnText}
-              </button>
+              ${actionBtn}
             </div>
           </div>
         `;
@@ -255,8 +278,23 @@
         const comments = document.getElementById('sub-comments').value.trim();
         if (comments) formData.append('comments', comments);
 
-        const res = await apiPostForm(`/api/v1/activities/${currentActivityId}/submit`, formData).then(r => r.json());
-        if (!res.success) throw new Error(res.message);
+        const response = await apiPostForm(`/api/v1/activities/${currentActivityId}/submit`, formData);
+        let res = null;
+        try {
+          res = await response.json();
+        } catch (_) {
+          res = null;
+        }
+
+        if (!response.ok || !res?.success) {
+          let msg = res?.message || res?.error;
+          if (!msg) {
+            if (response.status === 413) msg = 'File is too large for the server to accept (HTTP 413).';
+            else if (response.status === 403) msg = 'Permission denied. Only group members can submit.';
+            else msg = `Submission failed with status ${response.status}.`;
+          }
+          throw new Error(msg);
+        }
 
         hideSubmitModal();
         await loadActivities();

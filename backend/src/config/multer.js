@@ -38,7 +38,10 @@ const guidelineStorage = multer.diskStorage({
 
 function fileFilter(req, file, cb) {
   const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
-  if (!ALLOWED_MIME_TYPES.includes(file.mimetype) || !ALLOWED_EXTENSIONS.includes(ext)) {
+  if (!ALLOWED_EXTENSIONS.includes(ext)) {
+    return cb(new Error('Only PDF and DOCX files are allowed.'), false);
+  }
+  if (file.mimetype && !ALLOWED_MIME_TYPES.includes(file.mimetype)) {
     return cb(new Error('Only PDF and DOCX files are allowed.'), false);
   }
   cb(null, true);

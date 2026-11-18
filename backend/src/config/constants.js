@@ -32,7 +32,15 @@ const DOC_TYPES = ['title_proposal', 'ch1_2', 'full_document', 'imrad', 'present
 
 const ALLOWED_MIME_TYPES = [
   'application/pdf',
+  'application/x-pdf',
+  'application/acrobat',
+  'applications/vnd.pdf',
+  'text/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/msword',
+  'application/octet-stream',
+  'application/zip',
+  'application/x-zip-compressed',
 ];
 
 const ALLOWED_EXTENSIONS = ['pdf', 'docx'];
