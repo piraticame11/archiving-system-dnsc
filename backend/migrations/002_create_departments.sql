@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS departments (
 
 INSERT IGNORE INTO departments (code, name) VALUES
   ('BSIT',  'Bachelor of Science in Information Technology'),
-  ('BSCS',  'Bachelor of Science in Computer Science'),
-  ('BSIS',  'Bachelor of Science in Information Systems'),
-  ('BSED',  'Bachelor of Secondary Education'),
-  ('BSBA',  'Bachelor of Science in Business Administration');
+  ('BSHM',  'Bachelor of Science in Hospitality Management'),
+  ('BSBA',  'Bachelor of Science in Business Administration'),
+  ('BSAB',  'Bachelor of Science in Agriculture Business'),
+  ('BS Crim',  'Bachelor of Science in Criminology');
