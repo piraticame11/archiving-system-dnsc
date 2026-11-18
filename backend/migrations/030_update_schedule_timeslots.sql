@@ -16,7 +16,7 @@ SET @s = IF(
   (SELECT COUNT(*) FROM information_schema.COLUMNS
    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'defense_schedules' AND COLUMN_NAME = 'time_slots') > 0,
   'SELECT 1',
-  "ALTER TABLE defense_schedules ADD COLUMN time_slots TEXT NOT NULL DEFAULT '[]' AFTER scheduled_date"
+  'ALTER TABLE defense_schedules ADD COLUMN time_slots TEXT NULL AFTER scheduled_date'
 );
 PREPARE _s FROM @s; EXECUTE _s; DEALLOCATE PREPARE _s;
 
@@ -29,6 +29,9 @@ SET @s = IF(@hasSrc > 0,
   'SELECT 1'
 );
 PREPARE _s FROM @s; EXECUTE _s; DEALLOCATE PREPARE _s;
+
+-- Ensure any remaining NULL time_slots default to empty JSON array '[]'
+UPDATE defense_schedules SET time_slots = '[]' WHERE time_slots IS NULL;
 
 -- Drop old time_slot ENUM column if it still exists
 SET @s = IF(
