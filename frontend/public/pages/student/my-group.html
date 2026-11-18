@@ -98,7 +98,10 @@
       <!-- Members Section -->
       <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="font-bold text-gray-800">Group Members</h3>
+          <div>
+            <h3 class="font-bold text-gray-800">Group Members</h3>
+            <p class="text-xs text-gray-400">Min 4, max 6 members including leader</p>
+          </div>
           <span id="member-count-badge" class="text-xs font-semibold px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full"></span>
         </div>
 
@@ -109,10 +112,11 @@
           <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Add Member</p>
           <form id="add-member-form" class="flex items-center gap-2">
             <input id="add-member-name" type="text" placeholder="Enter member's full name (e.g. Maria Santos)" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" required>
-            <button type="submit" class="bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors whitespace-nowrap">
+            <button id="add-member-btn" type="submit" class="bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors whitespace-nowrap">
               + Add Member
             </button>
           </form>
+          <p id="add-member-notice" class="text-xs text-amber-600 mt-1 hidden"></p>
           <p id="add-member-error" class="text-xs text-red-600 mt-1 hidden"></p>
         </div>
       </div>
@@ -151,15 +155,23 @@
         <!-- 3. Members -->
         <div>
           <div class="flex items-center justify-between mb-1">
-            <label class="block text-sm font-semibold text-gray-700">Members <span class="text-gray-400 font-normal">(Leader is added automatically)</span></label>
-            <button type="button" onclick="addMemberInputRow()" class="text-xs font-semibold text-primary-600 hover:text-primary-800">+ Add member row</button>
+            <label class="block text-sm font-semibold text-gray-700">Members <span class="text-gray-400 font-normal">(Min 4, max 6 total including leader)</span></label>
+            <button id="add-member-row-btn" type="button" onclick="addMemberInputRow()" class="text-xs font-semibold text-primary-600 hover:text-primary-800">+ Add member row</button>
           </div>
-          <p class="text-xs text-gray-400 mb-2">Enter the full names of your group members. No accounts required for them.</p>
+          <p class="text-xs text-gray-400 mb-2">Enter the full names of at least 3 members (so your group has at least 4 members including you). Up to 5 additional members allowed.</p>
           <div id="c-members-inputs" class="space-y-2">
-            <!-- Initial row -->
+            <!-- 3 initial required member rows -->
             <div class="flex items-center gap-2 member-row">
-              <input type="text" placeholder="Member full name (e.g. Juan Dela Cruz)" class="c-member-input flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-              <button type="button" onclick="removeMemberInputRow(this)" class="text-gray-400 hover:text-red-500 px-2 py-1 text-sm font-bold">&times;</button>
+              <input type="text" placeholder="Member 1 full name (e.g. Maria Santos)" class="c-member-input flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" required>
+              <button type="button" onclick="removeMemberInputRow(this)" class="text-gray-400 hover:text-red-500 px-2 py-1 text-sm font-bold" title="Clear/remove">&times;</button>
+            </div>
+            <div class="flex items-center gap-2 member-row">
+              <input type="text" placeholder="Member 2 full name" class="c-member-input flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" required>
+              <button type="button" onclick="removeMemberInputRow(this)" class="text-gray-400 hover:text-red-500 px-2 py-1 text-sm font-bold" title="Clear/remove">&times;</button>
+            </div>
+            <div class="flex items-center gap-2 member-row">
+              <input type="text" placeholder="Member 3 full name" class="c-member-input flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" required>
+              <button type="button" onclick="removeMemberInputRow(this)" class="text-gray-400 hover:text-red-500 px-2 py-1 text-sm font-bold" title="Clear/remove">&times;</button>
             </div>
           </div>
         </div>
@@ -367,7 +379,26 @@
 
     function renderMembers(members, leaderId, viewerIsLeader, groupId) {
       const list = document.getElementById('members-list');
-      document.getElementById('member-count-badge').textContent = `${members.length} member${members.length === 1 ? '' : 's'}`;
+      document.getElementById('member-count-badge').textContent = `${members.length} / 6 members (min 4)`;
+
+      const addInput = document.getElementById('add-member-name');
+      const addBtn = document.getElementById('add-member-btn');
+      const notice = document.getElementById('add-member-notice');
+
+      if (viewerIsLeader) {
+        if (members.length >= 6) {
+          if (addInput) addInput.disabled = true;
+          if (addBtn) { addBtn.disabled = true; addBtn.classList.add('opacity-50', 'cursor-not-allowed'); }
+          if (notice) {
+            notice.textContent = 'Maximum group capacity reached (6 of 6 members).';
+            notice.classList.remove('hidden');
+          }
+        } else {
+          if (addInput) addInput.disabled = false;
+          if (addBtn) { addBtn.disabled = false; addBtn.classList.remove('opacity-50', 'cursor-not-allowed'); }
+          if (notice) notice.classList.add('hidden');
+        }
+      }
 
       if (!members.length) {
         list.innerHTML = '<p class="text-sm text-gray-400 py-3">No members found.</p>';
@@ -403,6 +434,13 @@
       e.preventDefault();
       const errEl = document.getElementById('add-member-error');
       errEl.classList.add('hidden');
+
+      if (currentGroup?.members?.length >= 6) {
+        errEl.textContent = 'This group has already reached the maximum limit of 6 members.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+
       const input = document.getElementById('add-member-name');
       const name = input.value.trim();
       if (!name) return;
@@ -421,6 +459,10 @@
 
     /* ── Remove Member ──────────────────────────────────────────────── */
     async function removeMember(groupId, memberId, name) {
+      if (currentGroup?.members?.length <= 4) {
+        alert('A group must have a minimum of 4 members including the leader. Please add a replacement member first before removing this member.');
+        return;
+      }
       if (!confirm(`Are you sure you want to remove ${name} from the group?`)) return;
       try {
         const res = await apiDelete(`/api/v1/groups/${groupId}/members/${memberId}`).then(r => r.json());
@@ -447,11 +489,16 @@
 
     function addMemberInputRow() {
       const container = document.getElementById('c-members-inputs');
+      const rows = container.querySelectorAll('.member-row');
+      if (rows.length >= 5) {
+        alert('A group can have at most 6 members including the leader (up to 5 additional members).');
+        return;
+      }
       const row = document.createElement('div');
       row.className = 'flex items-center gap-2 member-row';
       row.innerHTML = `
-        <input type="text" placeholder="Member full name" class="c-member-input flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-        <button type="button" onclick="removeMemberInputRow(this)" class="text-gray-400 hover:text-red-500 px-2 py-1 text-sm font-bold">&times;</button>
+        <input type="text" placeholder="Member ${rows.length + 1} full name" class="c-member-input flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+        <button type="button" onclick="removeMemberInputRow(this)" class="text-gray-400 hover:text-red-500 px-2 py-1 text-sm font-bold" title="Clear/remove">&times;</button>
       `;
       container.appendChild(row);
       row.querySelector('input').focus();
@@ -459,7 +506,7 @@
 
     function removeMemberInputRow(btn) {
       const rows = document.querySelectorAll('.member-row');
-      if (rows.length > 1) {
+      if (rows.length > 3) {
         btn.closest('.member-row').remove();
       } else {
         btn.closest('.member-row').querySelector('input').value = '';
@@ -498,6 +545,17 @@
       const member_names = Array.from(memberInputs)
         .map(input => input.value.trim())
         .filter(Boolean);
+
+      if (member_names.length < 3) {
+        errEl.textContent = 'Please enter at least 3 members (a group must have between 4 and 6 members including the leader).';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if (member_names.length > 5) {
+        errEl.textContent = 'A group can have at most 6 members including the leader (maximum 5 members listed).';
+        errEl.classList.remove('hidden');
+        return;
+      }
 
       const btn = document.getElementById('create-submit-btn');
       btn.disabled = true;

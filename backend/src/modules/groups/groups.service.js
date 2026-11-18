@@ -154,8 +154,23 @@ async function createGroup({ leader_id, department_id, set_name, instructor_id, 
       : [];
 
   const cleanMemberNames = rawMembers.map(n => String(n).trim()).filter(Boolean);
-  const totalCount = cleanMemberNames.length + 1;
-  const cap = Math.max(parseInt(max_members) || 5, totalCount, 4);
+  const totalCount = cleanMemberNames.length + 1; // leader + members
+
+  if (totalCount < 4) {
+    throw Object.assign(
+      new Error(`A group must have a minimum of 4 members including the leader. Please list at least 3 members.`),
+      { statusCode: 400 }
+    );
+  }
+
+  if (totalCount > 6) {
+    throw Object.assign(
+      new Error(`A group can have a maximum of 6 members including the leader. You listed ${cleanMemberNames.length} members (total ${totalCount}).`),
+      { statusCode: 400 }
+    );
+  }
+
+  const cap = Math.min(Math.max(parseInt(max_members) || 6, 4), 6);
   const groupType = type || 'capstone';
   const join_code = await uniqueJoinCode();
 
@@ -214,7 +229,7 @@ async function updateGroup(groupId, leaderId, { name, adviser_id, instructor_id,
   if (department_id !== undefined) fields.department_id = department_id;
   if (school_year   !== undefined) fields.school_year   = school_year;
   if (type          !== undefined) fields.type          = type;
-  if (max_members   !== undefined) fields.max_members   = Math.max(parseInt(max_members) || 5, 4);
+  if (max_members   !== undefined) fields.max_members   = Math.min(Math.max(parseInt(max_members) || 6, 4), 6);
   if (adviserChanged) {
     fields.adviser_id            = adviser_id;
     fields.adviser_status        = adviser_id ? 'pending' : null;
@@ -244,7 +259,10 @@ async function addMember(groupId, leaderId, memberName) {
   const [[{ memberCount }]] = await db.query(
     'SELECT COUNT(*) AS memberCount FROM group_members WHERE group_id = ?', [groupId]
   );
-  if (group.max_members && memberCount >= group.max_members) {
+  if (memberCount >= 6) {
+    throw Object.assign(new Error('A group can have a maximum of 6 members including the leader.'), { statusCode: 400 });
+  }
+  if (group.max_members && memberCount >= group.max_members && group.max_members < 6) {
     await db.query('UPDATE thesis_groups SET max_members = max_members + 1 WHERE id = ?', [groupId]);
   }
 
@@ -308,7 +326,7 @@ async function requestJoin(studentId, joinCode) {
   const [[{ memberCount }]] = await db.query(
     'SELECT COUNT(*) AS memberCount FROM group_members WHERE group_id = ?', [group.id]
   );
-  if (memberCount >= group.max_members) throw Object.assign(new Error('This group is already full.'), { statusCode: 409 });
+  if (memberCount >= Math.min(group.max_members || 6, 6)) throw Object.assign(new Error('This group is already full (maximum 6 members).'), { statusCode: 409 });
 
   await db.query(
     'INSERT INTO group_join_requests (group_id, student_id) VALUES (?, ?)',
@@ -368,7 +386,7 @@ async function acceptRequest(requestId, groupId, leaderId) {
   const [[{ memberCount }]] = await db.query(
     'SELECT COUNT(*) AS memberCount FROM group_members WHERE group_id = ?', [groupId]
   );
-  if (memberCount >= group.max_members) throw Object.assign(new Error('Group is already full.'), { statusCode: 409 });
+  if (memberCount >= Math.min(group.max_members || 6, 6)) throw Object.assign(new Error('Group is already full (maximum 6 members).'), { statusCode: 409 });
 
   const conn = await db.getConnection();
   await conn.beginTransaction();
@@ -439,6 +457,16 @@ async function removeMember(groupId, targetId, leaderId) {
   );
   if (!group) throw Object.assign(new Error('Group not found.'), { statusCode: 404 });
   if (group.leader_id !== leaderId) throw Object.assign(new Error('Only the group leader can remove members.'), { statusCode: 403 });
+
+  const [[{ memberCount }]] = await db.query(
+    'SELECT COUNT(*) AS memberCount FROM group_members WHERE group_id = ?', [groupId]
+  );
+  if (memberCount <= 4) {
+    throw Object.assign(
+      new Error('A group must have a minimum of 4 members including the leader. Add a replacement member first before removing this one.'),
+      { statusCode: 400 }
+    );
+  }
 
   const [[member]] = await db.query(
     'SELECT id, student_id FROM group_members WHERE group_id = ? AND (id = ? OR student_id = ?)',

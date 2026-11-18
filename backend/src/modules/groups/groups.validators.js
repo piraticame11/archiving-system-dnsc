@@ -19,7 +19,7 @@ const createRules = [
     return validSchoolYear(val);
   }),
   body('type').optional({ nullable: true }).isIn(['thesis', 'capstone']),
-  body('max_members').optional({ nullable: true }).isInt({ min: 1, max: 20 }),
+  body('max_members').optional({ nullable: true }).isInt({ min: 4, max: 6 }).withMessage('Group size must be between 4 and 6 members'),
 ];
 
 const updateRules = [
@@ -34,7 +34,7 @@ const updateRules = [
     return validSchoolYear(val);
   }),
   body('type').optional().isIn(['thesis', 'capstone']).withMessage('Type must be "thesis" or "capstone"'),
-  body('max_members').optional().isInt({ min: 1, max: 20 }),
+  body('max_members').optional().isInt({ min: 4, max: 6 }).withMessage('Group size must be between 4 and 6 members'),
 ];
 
 const joinRules = [
