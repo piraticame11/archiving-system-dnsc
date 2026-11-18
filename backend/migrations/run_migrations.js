@@ -10,6 +10,8 @@ async function run() {
   const dbPassword = process.env.DB_PASSWORD;
   const dbName = process.env.DB_NAME || 'archiving_system';
 
+  const isFresh = process.argv.includes('--fresh') || process.argv.includes('--reset');
+
   // Ensure the database exists before connecting to it
   const serverConn = await mysql.createConnection({
     host: dbHost,
@@ -17,6 +19,10 @@ async function run() {
     user: dbUser,
     password: dbPassword,
   });
+  if (isFresh) {
+    console.log(`--fresh passed: Dropping existing database \`${dbName}\`...`);
+    await serverConn.query(`DROP DATABASE IF EXISTS \`${dbName}\``);
+  }
   await serverConn.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
   await serverConn.end();
 

@@ -7,6 +7,7 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "migrate": "node migrations/run_migrations.js",
+    "migrate:fresh": "node migrations/run_migrations.js --fresh",
     "db:push": "node migrations/run_migrations.js",
     "embeddings:generate": "node scripts/generate_embeddings.js",
     "test": "jest --runInBand"
