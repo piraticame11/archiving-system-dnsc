@@ -1,13 +1,16 @@
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
-  host: process.env.MAIL_HOST,
+  host: process.env.MAIL_HOST || 'smtp.gmail.com',
   port: Number(process.env.MAIL_PORT) || 587,
   secure: process.env.MAIL_SECURE === 'true',
   auth: {
     user: process.env.MAIL_USER,
     pass: process.env.MAIL_PASS,
   },
+  connectionTimeout: 10000, // 10 seconds timeout
+  greetingTimeout: 10000,
+  socketTimeout: 15000,
 });
 
 // Gmail SMTP requires the From address to match the authenticated account.

@@ -445,11 +445,19 @@ async function initiateStudentRegistration({ first_name, last_name, email, passw
     );
   }
 
-  await sendMail({
-    to: normEmail,
-    subject: 'Your Verification Code — ACES Research System',
-    html: studentRegistrationOtpHtml(`${first_name} ${last_name}`, code, 5),
-  });
+  try {
+    await sendMail({
+      to: normEmail,
+      subject: 'Your Verification Code — ACES Research System',
+      html: studentRegistrationOtpHtml(`${first_name} ${last_name}`, code, 5),
+    });
+  } catch (mailErr) {
+    console.error('Failed to send registration OTP email:', mailErr);
+    throw Object.assign(
+      new Error(`Failed to send verification email (${mailErr.message || 'SMTP error'}). Please verify the server email configuration in .env`),
+      { status: 502 }
+    );
+  }
 
   return {
     email: normEmail,
@@ -495,11 +503,19 @@ async function resendStudentRegistrationOtp(email) {
     [otpHash, expiresAt, lastSentAt, normEmail]
   );
 
-  await sendMail({
-    to: normEmail,
-    subject: 'Your New Verification Code — ACES Research System',
-    html: studentRegistrationOtpHtml(`${pending.first_name} ${pending.last_name}`, code, 5),
-  });
+  try {
+    await sendMail({
+      to: normEmail,
+      subject: 'Your New Verification Code — ACES Research System',
+      html: studentRegistrationOtpHtml(`${pending.first_name} ${pending.last_name}`, code, 5),
+    });
+  } catch (mailErr) {
+    console.error('Failed to send registration OTP email:', mailErr);
+    throw Object.assign(
+      new Error(`Failed to send verification email (${mailErr.message || 'SMTP error'}). Please verify the server email configuration in .env`),
+      { status: 502 }
+    );
+  }
 
   return {
     email: normEmail,

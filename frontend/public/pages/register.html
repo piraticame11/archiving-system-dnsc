@@ -379,12 +379,17 @@
         };
 
         const res = await apiPost('/api/v1/auth/student-register/send-otp', payload);
-        const data = await res.json();
+        let data = null;
+        try {
+          data = await res.json();
+        } catch {}
 
         if (!res.ok) {
-          const msg = Array.isArray(data.errors)
-            ? data.errors.map(err => err.msg).join(' ')
-            : (data.message || 'Failed to send verification code.');
+          const msg = (data && data.message)
+            || (data && Array.isArray(data.errors) && data.errors.map(err => err.msg).join(' '))
+            || (res.status === 502 ? 'The backend server is offline or restarting (502 Bad Gateway). Please check PM2.' : null)
+            || (res.status === 504 ? 'Request timed out (504 Gateway Timeout). Email service took too long to respond. Please check mail settings.' : null)
+            || `Server error (${res.status}). Please try again later.`;
           showError(msg);
           return;
         }
@@ -393,7 +398,10 @@
         showStep2(email);
 
       } catch (err) {
-        showError('Network error. Please try again.');
+        console.error('Registration send-otp error:', err);
+        showError(err && err.message && err.message.includes('Failed to fetch')
+          ? 'Network error: could not connect to server. Please check your connection or server status.'
+          : (err.message || 'Network error. Please try again.'));
       } finally {
         btnSendCode.disabled = false;
         btnSendCode.textContent = 'Send Verification Code';
@@ -410,15 +418,20 @@
 
       try {
         const res = await apiPost('/api/v1/auth/student-register/resend-otp', { email: currentEmail });
-        const data = await res.json();
+        let data = null;
+        try {
+          data = await res.json();
+        } catch {}
 
         if (!res.ok) {
-          const msg = Array.isArray(data.errors)
-            ? data.errors.map(err => err.msg).join(' ')
-            : (data.message || 'Failed to resend verification code.');
+          const msg = (data && data.message)
+            || (data && Array.isArray(data.errors) && data.errors.map(err => err.msg).join(' '))
+            || (res.status === 502 ? 'The backend server is offline or restarting (502 Bad Gateway).' : null)
+            || (res.status === 504 ? 'Request timed out (504 Gateway Timeout).' : null)
+            || `Server error (${res.status}). Please try again.`;
           showError(msg);
           // If server reports cooldown retryAfter, honor it
-          if (res.status === 429 && data.retryAfter) {
+          if (res.status === 429 && data && data.retryAfter) {
             startCooldownTimer(data.retryAfter);
           } else {
             btnResendOtp.disabled = false;
@@ -434,7 +447,8 @@
         otpInput.value = '';
         otpInput.focus();
 
-      } catch {
+      } catch (err) {
+        console.error('Registration resend-otp error:', err);
         showError('Network error while resending code.');
         btnResendOtp.disabled = false;
         btnResendText.textContent = 'Send a new code';
@@ -460,12 +474,16 @@
           email: currentEmail,
           otp,
         });
-        const data = await res.json();
+        let data = null;
+        try {
+          data = await res.json();
+        } catch {}
 
         if (!res.ok) {
-          const msg = Array.isArray(data.errors)
-            ? data.errors.map(err => err.msg).join(' ')
-            : (data.message || 'Verification failed.');
+          const msg = (data && data.message)
+            || (data && Array.isArray(data.errors) && data.errors.map(err => err.msg).join(' '))
+            || (res.status === 502 ? 'The backend server is offline or restarting (502 Bad Gateway).' : null)
+            || `Server error (${res.status}). Please try again.`;
           showError(msg);
           return;
         }
