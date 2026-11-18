@@ -16,10 +16,10 @@ const transporter = nodemailer.createTransport({
   socketTimeout: 15000,
 });
 
-// Gmail SMTP requires the From address to match the authenticated account.
-// Always use MAIL_USER as the actual sender address.
+// Default sender address (respects MAIL_FROM if provided, else falls back to MAIL_USER)
 const fromName = process.env.MAIL_FROM_NAME || 'ACES Research Office';
-const FROM = `"${fromName}" <${process.env.MAIL_USER}>`;
+const fromEmail = process.env.MAIL_FROM || process.env.MAIL_USER;
+const FROM = `"${fromName}" <${fromEmail}>`;
 
 async function sendMail({ to, subject, html }) {
   return transporter.sendMail({ from: FROM, to, subject, html });
