@@ -22,9 +22,14 @@
   </nav>
 
   <div class="max-w-4xl mx-auto px-6 py-10">
-    <div class="mb-8">
-      <h1 class="text-2xl font-bold text-gray-900">My Group</h1>
-      <p class="text-gray-500 text-sm mt-0.5">Manage your thesis or capstone group and members</p>
+    <div class="mb-6 flex items-center justify-between flex-wrap gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">My Group</h1>
+        <p class="text-gray-500 text-sm mt-0.5">Manage your thesis or capstone group and members</p>
+      </div>
+      <a href="/pages/student/dashboard.html" class="inline-flex items-center gap-1.5 text-sm bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-3.5 py-2 rounded-lg font-medium shadow-sm transition-colors">
+        &larr; Back to Dashboard
+      </a>
     </div>
 
     <!-- Loading -->
@@ -69,6 +74,7 @@
             </div>
           </div>
           <div class="flex items-center gap-2 flex-wrap">
+            <button id="edit-group-btn" onclick="showEditModal()" class="hidden text-sm bg-primary-50 border border-primary-200 text-primary-700 px-3 py-1.5 rounded-lg hover:bg-primary-100 transition-colors font-medium">Edit Group</button>
             <a href="/pages/student/activities.html" class="text-sm bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-colors font-medium">Activities</a>
             <a href="/pages/student/upload-document.html" class="text-sm bg-primary-50 text-primary-700 border border-primary-200 px-3 py-1.5 rounded-lg hover:bg-primary-100 transition-colors font-medium">Upload Document</a>
             <button id="disband-btn" onclick="confirmDisband()" class="hidden text-sm bg-red-50 border border-red-200 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors">Disband Group</button>
@@ -184,6 +190,59 @@
     </div>
   </div>
 
+  <!-- Edit Group Modal (Leader Edit) -->
+  <div id="edit-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-lg font-bold text-gray-900">Edit Group Details</h2>
+          <p class="text-xs text-gray-500 mt-0.5">Update group title, program, set, instructor, and adviser</p>
+        </div>
+        <button type="button" onclick="hideEditModal()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+      </div>
+
+      <form id="edit-form" class="space-y-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Group Name / Title</label>
+          <input id="edit-name" type="text" maxlength="255" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Group display name">
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Program <span class="text-red-500">*</span></label>
+          <select id="edit-program" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white" required>
+            <option value="">Select program…</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Set / Section <span class="text-red-500">*</span></label>
+          <input id="edit-set" type="text" maxlength="50" placeholder="e.g. Set A, Set B, or A" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" required>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Instructor <span class="text-red-500">*</span></label>
+          <select id="edit-instructor" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white" required>
+            <option value="">Select instructor…</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Adviser <span class="text-gray-400 font-normal">(optional)</span></label>
+          <select id="edit-adviser" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white">
+            <option value="">None / To be assigned later</option>
+          </select>
+        </div>
+
+        <p id="edit-error" class="text-sm text-red-600 hidden"></p>
+
+        <div class="flex justify-end gap-3 pt-3 border-t border-gray-100">
+          <button type="button" onclick="hideEditModal()" class="text-sm border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+          <button type="submit" id="edit-submit-btn" class="text-sm bg-primary-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-primary-700 transition-colors">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="/assets/js/auth.js"></script>
   <script src="/assets/js/api.js"></script>
   <script src="/assets/js/utils.js"></script>
@@ -206,9 +265,12 @@
       try {
         const res = await apiGet('/api/v1/departments').then(r => r.json());
         departments = res.data || [];
-        const sel = document.getElementById('c-program');
-        sel.innerHTML = '<option value="">Select program…</option>' +
+        const opts = '<option value="">Select program…</option>' +
           departments.map(d => `<option value="${d.id}">${escHtml(d.code)} - ${escHtml(d.name)}</option>`).join('');
+        const sel = document.getElementById('c-program');
+        const editSel = document.getElementById('edit-program');
+        if (sel) sel.innerHTML = opts;
+        if (editSel) editSel.innerHTML = opts;
       } catch (err) {
         console.error('Failed to load departments', err);
       }
@@ -219,17 +281,23 @@
         const res = await apiGet('/api/v1/groups/instructors').then(r => r.json());
         instructors = res.data || [];
 
-        const instSel = document.getElementById('c-instructor');
-        instSel.innerHTML = '<option value="">Select instructor…</option>' +
+        const instOpts = '<option value="">Select instructor…</option>' +
           instructors.map(i => `<option value="${i.id}">${escHtml(i.first_name + ' ' + i.last_name)} (${escHtml(i.department_name || 'Faculty')})</option>`).join('');
+        const instSel = document.getElementById('c-instructor');
+        const editInstSel = document.getElementById('edit-instructor');
+        if (instSel) instSel.innerHTML = instOpts;
+        if (editInstSel) editInstSel.innerHTML = instOpts;
 
-        const advSel = document.getElementById('c-adviser');
-        advSel.innerHTML = '<option value="">None / To be assigned later</option>' +
+        const advOpts = '<option value="">None / To be assigned later</option>' +
           instructors.map(i => {
             const occupied = i.slots_occupied ?? (i.slots_max != null && i.slots_available != null ? Math.max(0, i.slots_max - i.slots_available) : 0);
             const slotText = i.slots_max != null ? ` [${occupied}/${i.slots_max} advisees]` : '';
             return `<option value="${i.id}">${escHtml(i.first_name + ' ' + i.last_name)} (${escHtml(i.department_name || 'Faculty')})${slotText}</option>`;
           }).join('');
+        const advSel = document.getElementById('c-adviser');
+        const editAdvSel = document.getElementById('edit-adviser');
+        if (advSel) advSel.innerHTML = advOpts;
+        if (editAdvSel) editAdvSel.innerHTML = advOpts;
       } catch (err) {
         console.error('Failed to load instructors', err);
       }
@@ -264,6 +332,7 @@
       document.getElementById('group-name').textContent = group.name;
       document.getElementById('leader-badge').classList.toggle('hidden', !isLeader);
       document.getElementById('member-badge').classList.toggle('hidden', isLeader);
+      document.getElementById('edit-group-btn').classList.toggle('hidden', !isLeader);
       document.getElementById('disband-btn').classList.toggle('hidden', !isLeader);
       document.getElementById('leave-btn').classList.toggle('hidden', isLeader);
       document.getElementById('add-member-section').classList.toggle('hidden', !isLeader);
@@ -453,6 +522,78 @@
       } finally {
         btn.disabled = false;
         btn.textContent = 'Create Group';
+      }
+    });
+
+    /* ── Edit Modal Helpers ──────────────────────────────────────────── */
+    function showEditModal() {
+      if (!currentGroup) return;
+      document.getElementById('edit-name').value = currentGroup.name || '';
+      document.getElementById('edit-program').value = currentGroup.department_id || '';
+      document.getElementById('edit-set').value = currentGroup.set_name || '';
+      document.getElementById('edit-instructor').value = currentGroup.instructor_id || '';
+      document.getElementById('edit-adviser').value = currentGroup.adviser_id || '';
+      document.getElementById('edit-error').classList.add('hidden');
+      document.getElementById('edit-modal').classList.remove('hidden');
+    }
+
+    function hideEditModal() {
+      document.getElementById('edit-modal').classList.add('hidden');
+      document.getElementById('edit-error').classList.add('hidden');
+    }
+
+    /* ── Submit Edit Form ───────────────────────────────────────────── */
+    document.getElementById('edit-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const errEl = document.getElementById('edit-error');
+      errEl.classList.add('hidden');
+
+      const name = document.getElementById('edit-name').value.trim();
+      const department_id = parseInt(document.getElementById('edit-program').value);
+      const set_name = document.getElementById('edit-set').value.trim();
+      const instructor_id = parseInt(document.getElementById('edit-instructor').value);
+      const adviserVal = document.getElementById('edit-adviser').value;
+      const adviser_id = adviserVal ? parseInt(adviserVal) : null;
+
+      if (!department_id) {
+        errEl.textContent = 'Please select a program.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if (!set_name) {
+        errEl.textContent = 'Please specify a set or section.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if (!instructor_id) {
+        errEl.textContent = 'Please select an instructor.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      const btn = document.getElementById('edit-submit-btn');
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+
+      try {
+        const body = {
+          name: name || undefined,
+          department_id,
+          set_name,
+          instructor_id,
+          adviser_id
+        };
+        const res = await apiPatch(`/api/v1/groups/${currentGroup.id}`, body).then(r => r.json());
+        if (!res.success) throw new Error(res.message);
+
+        hideEditModal();
+        await loadGroup();
+      } catch (err) {
+        errEl.textContent = err.message || 'Failed to update group.';
+        errEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save Changes';
       }
     });
 

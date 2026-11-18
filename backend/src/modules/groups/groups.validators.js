@@ -24,12 +24,15 @@ const createRules = [
 
 const updateRules = [
   param('id').isInt({ min: 1 }),
-  body('name').optional().trim().notEmpty().isLength({ max: 255 }),
+  body('name').optional({ nullable: true }).trim().isLength({ max: 255 }),
   body('department_id').optional().isInt({ min: 1 }),
   body('set_name').optional({ nullable: true }).trim().isLength({ max: 50 }),
   body('instructor_id').optional({ nullable: true }).isInt({ min: 1 }),
   body('adviser_id').optional({ nullable: true }).isInt({ min: 1 }),
-  body('school_year').optional().trim().custom(validSchoolYear),
+  body('school_year').optional({ nullable: true }).trim().custom(async (val) => {
+    if (!val) return true;
+    return validSchoolYear(val);
+  }),
   body('type').optional().isIn(['thesis', 'capstone']).withMessage('Type must be "thesis" or "capstone"'),
   body('max_members').optional().isInt({ min: 1, max: 20 }),
 ];

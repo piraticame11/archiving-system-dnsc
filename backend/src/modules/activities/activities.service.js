@@ -61,12 +61,12 @@ async function listActivitiesForStudent(student_id) {
 
   const groupId = membership.group_id;
   const deptId = membership.department_id;
-  const setName = membership.set_name;
-  const instructorId = membership.instructor_id;
+  const rawSet = membership.set_name ? membership.set_name.trim() : null;
+  const instructorId = membership.instructor_id || null;
 
   // Query activities matching the student's group:
-  // 1. Specifically assigned to this group (a.group_id = groupId)
-  // 2. Or assigned by their instructor to their set/section (or all sets if set_name is null)
+  // 1. Directly assigned to this group (a.group_id = groupId)
+  // 2. Assigned by this group's instructor or for this set/program
   const [rows] = await db.query(
     `SELECT a.id, a.instructor_id, a.department_id, a.set_name, a.group_id, a.title, a.description, a.deadline,
             a.created_at,
@@ -83,12 +83,24 @@ async function listActivitiesForStudent(student_id) {
      LEFT JOIN activity_submissions asub ON asub.activity_id = a.id AND asub.group_id = ?
      WHERE a.group_id = ?
         OR (
-          (a.instructor_id = ? OR a.instructor_id IS NULL)
-          AND (a.set_name IS NULL OR a.set_name = ? OR LOWER(a.set_name) = LOWER(?))
-          AND (a.department_id IS NULL OR a.department_id = ?)
+          (? IS NULL OR a.instructor_id = ? OR a.instructor_id IS NULL)
+          AND (
+            a.set_name IS NULL
+            OR ? IS NULL
+            OR LOWER(TRIM(a.set_name)) = LOWER(TRIM(?))
+            OR LOWER(TRIM(REPLACE(a.set_name, 'Set ', ''))) = LOWER(TRIM(REPLACE(?, 'Set ', '')))
+            OR LOWER(TRIM(CONCAT('Set ', a.set_name))) = LOWER(TRIM(?))
+          )
+          AND (a.department_id IS NULL OR ? IS NULL OR a.department_id = ?)
         )
      ORDER BY a.deadline ASC`,
-    [groupId, groupId, instructorId, setName, setName, deptId]
+    [
+      groupId,
+      groupId,
+      instructorId, instructorId,
+      rawSet, rawSet, rawSet, rawSet,
+      deptId, deptId
+    ]
   );
 
   return { has_group: true, group_id: groupId, set_name: setName, activities: rows };
@@ -237,26 +249,29 @@ async function getSubmissionFile(submission_id, user) {
 
 /* ─── Get Distinct Sets & Groups for Instructor ──────────────────── */
 async function getInstructorSets(instructor_id) {
-  // Get sets and groups associated with this instructor
+  const [[inst]] = await db.query('SELECT department_id FROM users WHERE id = ?', [instructor_id]);
+  const instDeptId = inst ? inst.department_id : null;
+
+  // Get sets and groups associated with this instructor or their department
   const [sets] = await db.query(
     `SELECT DISTINCT tg.set_name, tg.department_id, d.code AS department_code, d.name AS department_name
      FROM thesis_groups tg
      LEFT JOIN departments d ON tg.department_id = d.id
-     WHERE (tg.instructor_id = ? OR tg.adviser_id = ?)
+     WHERE (tg.instructor_id = ? OR tg.adviser_id = ? OR (? IS NOT NULL AND tg.department_id = ?))
        AND tg.set_name IS NOT NULL
        AND tg.deleted_at IS NULL
      ORDER BY tg.set_name ASC`,
-    [instructor_id, instructor_id]
+    [instructor_id, instructor_id, instDeptId, instDeptId]
   );
 
   const [groups] = await db.query(
     `SELECT tg.id, tg.name, tg.set_name, tg.department_id, d.code AS department_code
      FROM thesis_groups tg
      LEFT JOIN departments d ON tg.department_id = d.id
-     WHERE (tg.instructor_id = ? OR tg.adviser_id = ?)
+     WHERE (tg.instructor_id = ? OR tg.adviser_id = ? OR (? IS NOT NULL AND tg.department_id = ?))
        AND tg.deleted_at IS NULL
      ORDER BY tg.name ASC`,
-    [instructor_id, instructor_id]
+    [instructor_id, instructor_id, instDeptId, instDeptId]
   );
 
   return { sets, groups };

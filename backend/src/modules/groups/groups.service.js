@@ -208,7 +208,7 @@ async function updateGroup(groupId, leaderId, { name, adviser_id, instructor_id,
   }
 
   const fields = {};
-  if (name          !== undefined) fields.name          = name;
+  if (name          !== undefined && name !== null && String(name).trim()) fields.name = String(name).trim();
   if (set_name      !== undefined) fields.set_name      = set_name ? set_name.trim() : null;
   if (instructor_id !== undefined) fields.instructor_id = instructor_id || null;
   if (department_id !== undefined) fields.department_id = department_id;

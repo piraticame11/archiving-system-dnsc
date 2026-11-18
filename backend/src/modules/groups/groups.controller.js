@@ -77,12 +77,16 @@ async function getMyGroup(req, res, next) {
 async function create(req, res, next) {
   try {
     const group = await service.createGroup({
-      leader_id:   req.user.id,
-      name:        req.body.name,
-      adviser_id:  req.body.adviser_id,
-      school_year: req.body.school_year,
-      max_members: req.body.max_members,
-      type:        req.body.type,
+      leader_id:     req.user.id,
+      department_id: req.body.department_id,
+      set_name:      req.body.set_name,
+      instructor_id: req.body.instructor_id,
+      adviser_id:    req.body.adviser_id,
+      member_names:  req.body.member_names,
+      name:          req.body.name,
+      school_year:   req.body.school_year,
+      max_members:   req.body.max_members,
+      type:          req.body.type,
     });
     sendCreated(res, group, 'Group created successfully');
   } catch (err) {
