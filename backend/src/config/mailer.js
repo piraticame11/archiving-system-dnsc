@@ -23,10 +23,11 @@ const fromEmail = process.env.MAIL_FROM || process.env.MAIL_USER;
 const FROM = `"${fromName}" <${fromEmail}>`;
 
 function sendBrevoApiEmail({ to, subject, html }) {
-  const apiKey = process.env.BREVO_API_KEY || process.env.MAIL_API_KEY;
+  const apiKey = (process.env.BREVO_API_KEY || process.env.MAIL_API_KEY || '').trim();
+  const cleanSenderEmail = (fromEmail || '').replace(/.*<([^>]+)>.*/, '$1').trim();
   return new Promise((resolve, reject) => {
     const payload = JSON.stringify({
-      sender: { name: fromName, email: fromEmail },
+      sender: { name: fromName, email: cleanSenderEmail },
       to: [{ email: to }],
       subject: subject,
       htmlContent: html,
