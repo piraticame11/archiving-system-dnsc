@@ -7,7 +7,7 @@ const BASE_SELECT = `
   SELECT ts.id, ts.title, ts.abstract, ts.keywords, ts.type,
          ts.school_year, ts.semester, ts.status,
          ts.submitted_at, ts.approved_at, ts.created_at, ts.updated_at,
-         ts.student_id, ts.adviser_id, ts.department_id,
+         ts.student_id, ts.group_id, ts.adviser_id, ts.department_id,
          CONCAT(st.first_name, ' ', st.last_name) AS student_name,
          st.student_number,
          CONCAT(adv.first_name, ' ', adv.last_name) AS adviser_name,
@@ -180,11 +180,12 @@ async function addDocument({ submission_id, uploaded_by, doc_type, file_name, fi
   if (!sub) throw Object.assign(new Error('Submission not found'), { statusCode: 404 });
 
   /* increment version for same doc_type */
-  const [[{ maxVer }]] = await db.query(
+  const [[verRow]] = await db.query(
     'SELECT COALESCE(MAX(version), 0) AS maxVer FROM submission_documents WHERE submission_id = ? AND doc_type = ?',
     [submission_id, doc_type]
   );
-  const version = maxVer + 1;
+  const maxVer = verRow?.maxVer;
+  const version = (parseInt(maxVer, 10) || 0) + 1;
 
   /* mark previous as not current */
   await db.query(
@@ -192,11 +193,14 @@ async function addDocument({ submission_id, uploaded_by, doc_type, file_name, fi
     [submission_id, doc_type]
   );
 
+  const cleanMime = String(mime_type || 'application/pdf').slice(0, 100);
+  const cleanSize = parseInt(file_size, 10) || 0;
+
   const [result] = await db.query(
     `INSERT INTO submission_documents
        (submission_id, uploaded_by, version, doc_type, file_name, file_path, file_size, mime_type, is_current)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`,
-    [submission_id, uploaded_by, version, doc_type, file_name, file_path, file_size, mime_type]
+    [submission_id, uploaded_by, version, doc_type, file_name, file_path, cleanSize, cleanMime]
   );
   return result.insertId;
 }

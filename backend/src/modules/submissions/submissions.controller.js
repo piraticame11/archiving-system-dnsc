@@ -110,11 +110,12 @@ async function uploadDocument(req, res, next) {
 
     if (req.user.role === ROLES.STUDENT) {
       if (sub.group_id) {
-        /* group submission: only the leader can upload */
+        /* group submission: leader or group member */
         const groupService = require('../groups/groups.service');
         const groupRole = await groupService.getStudentGroupRole(req.user.id);
-        if (!groupRole.isLeader || groupRole.groupId !== sub.group_id)
+        if (!groupRole.inGroup || groupRole.groupId !== sub.group_id || (!groupRole.isLeader && sub.student_id !== req.user.id)) {
           return send403(res, 'Only the group leader can upload documents for this submission.');
+        }
       } else if (sub.student_id !== req.user.id) {
         return send403(res, 'Forbidden');
       }

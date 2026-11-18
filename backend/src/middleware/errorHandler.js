@@ -22,9 +22,10 @@ function errorHandler(err, req, res, next) {
     return isApiRequest(req) ? sendError(res, 400, msg) : redirectToError(res, 400, msg);
   }
 
-  console.error(err);
-  const msg = 'An unexpected server error occurred.';
-  return isApiRequest(req) ? sendError(res, 500, msg) : redirectToError(res, 500, msg);
+  console.error('SERVER ERROR:', err);
+  const status = err.statusCode || (err.status >= 400 && err.status < 600 ? err.status : 500);
+  const msg = err.message || 'An unexpected server error occurred.';
+  return isApiRequest(req) ? sendError(res, status, msg) : redirectToError(res, status, msg);
 }
 
 module.exports = { errorHandler };
