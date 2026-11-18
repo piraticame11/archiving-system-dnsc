@@ -1,3 +1,4 @@
+const https = require('https');
 const nodemailer = require('nodemailer');
 
 const mailPort = Number(process.env.MAIL_PORT) || 587;
@@ -21,7 +22,51 @@ const fromName = process.env.MAIL_FROM_NAME || 'ACES Research Office';
 const fromEmail = process.env.MAIL_FROM || process.env.MAIL_USER;
 const FROM = `"${fromName}" <${fromEmail}>`;
 
+function sendBrevoApiEmail({ to, subject, html }) {
+  const apiKey = process.env.BREVO_API_KEY || process.env.MAIL_API_KEY;
+  return new Promise((resolve, reject) => {
+    const payload = JSON.stringify({
+      sender: { name: fromName, email: fromEmail },
+      to: [{ email: to }],
+      subject: subject,
+      htmlContent: html,
+    });
+
+    const req = https.request('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': apiKey,
+        'content-type': 'application/json',
+        'content-length': Buffer.byteLength(payload),
+      },
+      timeout: 10000,
+    }, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(JSON.parse(body || '{}'));
+        } else {
+          reject(new Error(`Brevo HTTP API returned status ${res.statusCode}: ${body}`));
+        }
+      });
+    });
+
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('Brevo API request timed out'));
+    });
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
+}
+
 async function sendMail({ to, subject, html }) {
+  if (process.env.BREVO_API_KEY || process.env.MAIL_API_KEY) {
+    return sendBrevoApiEmail({ to, subject, html });
+  }
   return transporter.sendMail({ from: FROM, to, subject, html });
 }
 
