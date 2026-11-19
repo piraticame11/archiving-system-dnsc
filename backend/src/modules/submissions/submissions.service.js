@@ -38,7 +38,7 @@ async function listSubmissions({ search, status, department_id, type, school_yea
   if (require_full_document) {
     conditions.push(`EXISTS (
       SELECT 1 FROM submission_documents sd
-      WHERE sd.submission_id = ts.id AND sd.doc_type = 'full_document'
+      WHERE sd.submission_id = ts.id AND sd.doc_type IN ('full_document', 'imrad')
     )`);
   }
 
@@ -113,18 +113,29 @@ async function getOrCreateGroupSubmission(groupId) {
     `SELECT id FROM thesis_submissions WHERE group_id = ? AND deleted_at IS NULL LIMIT 1`,
     [groupId]
   );
-  if (existing) return getById(existing.id);
+  if (existing) {
+    const group = await groupService.getGroupById(groupId);
+    if (group) {
+      const correctType = group.department_code === 'BSIT' ? 'capstone' : 'thesis';
+      await db.query(
+        'UPDATE thesis_submissions SET type = ? WHERE id = ? AND type != ?',
+        [correctType, existing.id, correctType]
+      );
+    }
+    return getById(existing.id);
+  }
 
   const group = await groupService.getGroupById(groupId);
   if (!group) throw Object.assign(new Error('Group not found.'), { statusCode: 404 });
 
   const title = group.titles?.[0]?.title || group.title || 'Untitled';
+  const subType = (group.department_code === 'BSIT') ? 'capstone' : 'thesis';
 
   const [result] = await db.query(
     `INSERT INTO thesis_submissions
        (student_id, group_id, department_id, adviser_id, title, type, school_year, semester, status, approved_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, '1st', 'approved', NOW())`,
-    [group.leader_id, groupId, group.department_id, group.adviser_id || null, title, group.type || 'thesis', group.school_year]
+    [group.leader_id, groupId, group.department_id, group.adviser_id || null, title, subType, group.school_year]
   );
   return getById(result.insertId);
 }

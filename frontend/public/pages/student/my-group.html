@@ -68,6 +68,7 @@
               <span id="member-badge" class="hidden text-xs bg-gray-100 text-gray-600 font-semibold px-2.5 py-0.5 rounded-full">Member</span>
             </div>
             <div class="flex flex-wrap items-center gap-2 text-sm text-gray-600 mt-2">
+              <span id="group-type-badge" class="px-2.5 py-0.5 font-medium rounded-md text-xs"></span>
               <span id="group-program-badge" class="px-2.5 py-0.5 bg-blue-50 text-blue-700 font-medium rounded-md border border-blue-100 text-xs"></span>
               <span id="group-set-badge" class="px-2.5 py-0.5 bg-purple-50 text-purple-700 font-medium rounded-md border border-purple-100 text-xs"></span>
               <span id="group-sy-badge" class="px-2.5 py-0.5 bg-gray-100 text-gray-700 font-medium rounded-md text-xs"></span>
@@ -143,6 +144,7 @@
           <select id="c-program" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white" required>
             <option value="">Select program…</option>
           </select>
+          <p class="text-xs text-gray-400 mt-1">BSIT is designated as Capstone Project; all other programs are Thesis.</p>
         </div>
 
         <!-- 2. Set (Section) -->
@@ -224,6 +226,7 @@
           <select id="edit-program" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white" required>
             <option value="">Select program…</option>
           </select>
+          <p class="text-xs text-gray-400 mt-1">BSIT is designated as Capstone Project; all other programs are Thesis.</p>
         </div>
 
         <div>
@@ -348,6 +351,15 @@
       document.getElementById('disband-btn').classList.toggle('hidden', !isLeader);
       document.getElementById('leave-btn').classList.toggle('hidden', isLeader);
       document.getElementById('add-member-section').classList.toggle('hidden', !isLeader);
+
+      const isCap = (group.department_code === 'BSIT' || group.type === 'capstone');
+      const typeBadge = document.getElementById('group-type-badge');
+      if (typeBadge) {
+        typeBadge.textContent = isCap ? 'Capstone Project' : 'Thesis';
+        typeBadge.className = isCap
+          ? 'px-2.5 py-0.5 bg-teal-50 text-teal-700 font-medium rounded-md border border-teal-100 text-xs'
+          : 'px-2.5 py-0.5 bg-indigo-50 text-indigo-700 font-medium rounded-md border border-indigo-100 text-xs';
+      }
 
       const progText = group.department_code ? `${group.department_code}` : 'No Program';
       document.getElementById('group-program-badge').textContent = progText;

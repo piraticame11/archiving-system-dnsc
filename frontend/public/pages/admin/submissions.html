@@ -191,7 +191,7 @@
           <select id="arch-document-id" class="form-input">
             <option value="">Select document…</option>
           </select>
-          <p class="text-xs text-gray-500 mt-1">Only approved <strong>Full Document</strong> manuscripts can be archived.</p>
+          <p class="text-xs text-gray-500 mt-1">Only approved <strong>Full Document</strong> or <strong>IMRaD</strong> manuscripts can be archived.</p>
           <p id="err-arch-doc" class="text-xs text-red-600 mt-1 hidden"></p>
         </div>
 
@@ -584,11 +584,12 @@
 
       const docSel = document.getElementById('arch-document-id');
       docSel.innerHTML = '<option value="">Select document…</option>';
-      const docs = (sub.documents || []).filter(d => d.doc_type === 'full_document');
+      const docs = (sub.documents || []).filter(d => d.doc_type === 'full_document' || d.doc_type === 'imrad');
       docs.forEach(d => {
         const o = document.createElement('option');
         o.value = d.id;
-        o.textContent = `${d.file_name}${d.is_current ? ' (current)' : ''}`;
+        const typeLabel = d.doc_type === 'imrad' ? 'IMRaD' : 'Full Document';
+        o.textContent = `${typeLabel} — ${d.file_name}${d.is_current ? ' (current)' : ''}`;
         if (d.is_current) o.selected = true;
         docSel.appendChild(o);
       });

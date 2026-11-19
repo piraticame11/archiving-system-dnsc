@@ -171,7 +171,8 @@ async function createGroup({ leader_id, department_id, set_name, instructor_id, 
   }
 
   const cap = Math.min(Math.max(parseInt(max_members) || 6, 4), 6);
-  const groupType = type || 'capstone';
+  // Only BSIT is capstone; all other departments are thesis
+  const groupType = (dept?.code === 'BSIT') ? 'capstone' : 'thesis';
   const join_code = await uniqueJoinCode();
 
   const conn = await db.getConnection();
@@ -226,9 +227,15 @@ async function updateGroup(groupId, leaderId, { name, adviser_id, instructor_id,
   if (name          !== undefined && name !== null && String(name).trim()) fields.name = String(name).trim();
   if (set_name      !== undefined) fields.set_name      = set_name ? set_name.trim() : null;
   if (instructor_id !== undefined) fields.instructor_id = instructor_id || null;
-  if (department_id !== undefined) fields.department_id = department_id;
+  if (department_id !== undefined) {
+    fields.department_id = department_id;
+    const [[dept]] = await db.query('SELECT code FROM departments WHERE id = ?', [department_id]);
+    fields.type = (dept?.code === 'BSIT') ? 'capstone' : 'thesis';
+  } else if (type !== undefined) {
+    const [[dept]] = await db.query('SELECT code FROM departments WHERE id = ?', [group.department_id]);
+    fields.type = (dept?.code === 'BSIT') ? 'capstone' : 'thesis';
+  }
   if (school_year   !== undefined) fields.school_year   = school_year;
-  if (type          !== undefined) fields.type          = type;
   if (max_members   !== undefined) fields.max_members   = Math.min(Math.max(parseInt(max_members) || 6, 4), 6);
   if (adviserChanged) {
     fields.adviser_id            = adviser_id;
@@ -240,6 +247,15 @@ async function updateGroup(groupId, leaderId, { name, adviser_id, instructor_id,
   if (Object.keys(fields).length) {
     const sets = Object.keys(fields).map(f => `${f} = ?`).join(', ');
     await db.query(`UPDATE thesis_groups SET ${sets} WHERE id = ?`, [...Object.values(fields), groupId]);
+
+    // Keep linked submission in sync with group's type and department
+    if (fields.type || fields.department_id) {
+      const subUpdates = [];
+      const subParams = [];
+      if (fields.type) { subUpdates.push('type = ?'); subParams.push(fields.type); }
+      if (fields.department_id) { subUpdates.push('department_id = ?'); subParams.push(fields.department_id); }
+      await db.query(`UPDATE thesis_submissions SET ${subUpdates.join(', ')} WHERE group_id = ?`, [...subParams, groupId]);
+    }
   }
 
   return getGroupById(groupId);

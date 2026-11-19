@@ -347,14 +347,14 @@ async function getEligible({ page, limit }) {
     [limit, offset]
   );
 
-  /* attach full_document files only — those are the only promotable documents */
+  /* attach full_document and imrad files — promotable documents */
   if (rows.length) {
     const ids = rows.map(r => r.id);
     const [docs] = await db.query(
       `SELECT id, submission_id, doc_type, file_name, file_size, is_current
        FROM submission_documents
        WHERE submission_id IN (${ids.map(() => '?').join(',')})
-         AND doc_type = 'full_document'
+         AND doc_type IN ('full_document', 'imrad')
        ORDER BY version DESC`,
       ids
     );
@@ -394,13 +394,13 @@ async function promoteToArchive({ submission_id, document_id, authors, adviser, 
   const [[existing]] = await db.query('SELECT id FROM archive WHERE submission_id = ?', [submission_id]);
   if (existing) throw Object.assign(new Error('Submission is already archived'), { statusCode: 409 });
 
-  /* validate document belongs to submission and is a full document */
+  /* validate document belongs to submission and is a full document or imrad */
   const [[doc]] = await db.query(
     `SELECT id, file_path, mime_type, file_name FROM submission_documents
-     WHERE id = ? AND submission_id = ? AND doc_type = 'full_document'`,
+     WHERE id = ? AND submission_id = ? AND doc_type IN ('full_document', 'imrad')`,
     [document_id, submission_id]
   );
-  if (!doc) throw Object.assign(new Error('Only full documents can be archived'), { statusCode: 400 });
+  if (!doc) throw Object.assign(new Error('Only full documents or IMRaD manuscripts can be archived'), { statusCode: 400 });
 
   /* Scan whole document content using DocumentExtractor */
   let documentContent = '';
