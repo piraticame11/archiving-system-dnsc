@@ -87,9 +87,9 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1">Target Program</label>
-            <select id="act-department" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white">
-              <option value="">All Programs</option>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Target Program <span class="text-red-500">*</span></label>
+            <select id="act-department" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white" required>
+              <option value="">Select a program…</option>
             </select>
           </div>
 
@@ -183,7 +183,7 @@
 
         departments = deptRes.data || [];
         const deptSel = document.getElementById('act-department');
-        deptSel.innerHTML = '<option value="">All Programs</option>' +
+        deptSel.innerHTML = '<option value="">Select a program…</option>' +
           departments.map(d => `<option value="${d.id}">${escHtml(d.code)} - ${escHtml(d.name)}</option>`).join('');
 
         const setsData = metaRes.data?.sets || [];
@@ -307,8 +307,8 @@
       const set_name = document.getElementById('act-set').value.trim() || null;
       const deadline = document.getElementById('act-deadline').value;
 
-      if (!title || !deadline) {
-        errEl.textContent = 'Activity title and deadline are required.';
+      if (!title || !deadline || !department_id) {
+        errEl.textContent = 'Activity title, target program, and deadline are required.';
         errEl.classList.remove('hidden');
         return;
       }
