@@ -354,17 +354,18 @@ async function getEligible({ page, limit }) {
     const groupIds = [...new Set(rows.map(r => r.group_id).filter(Boolean))];
     if (groupIds.length) {
       const [members] = await db.query(
-        `SELECT gm.group_id, CONCAT(u.first_name, ' ', u.last_name) AS member_name
-         FROM thesis_group_members gm
-         JOIN users u ON gm.user_id = u.id
+        `SELECT gm.group_id, COALESCE(CONCAT(u.first_name, ' ', u.last_name), gm.name) AS member_name
+         FROM group_members gm
+         JOIN thesis_groups tg ON gm.group_id = tg.id
+         LEFT JOIN users u ON gm.student_id = u.id
          WHERE gm.group_id IN (${groupIds.map(() => '?').join(',')})
-         ORDER BY CASE WHEN gm.role = 'leader' THEN 0 ELSE 1 END, u.last_name ASC`,
+         ORDER BY CASE WHEN gm.student_id = tg.leader_id THEN 0 ELSE 1 END, member_name ASC`,
         groupIds
       );
       const groupMembersMap = {};
       members.forEach(m => {
         if (!groupMembersMap[m.group_id]) groupMembersMap[m.group_id] = [];
-        groupMembersMap[m.group_id].push(m.member_name);
+        if (m.member_name) groupMembersMap[m.group_id].push(m.member_name);
       });
       rows.forEach(r => {
         if (r.group_id && groupMembersMap[r.group_id]?.length) {

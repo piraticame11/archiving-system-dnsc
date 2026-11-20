@@ -104,15 +104,17 @@ async function getById(id) {
   /* attach group members as authors and group adviser if available */
   if (sub.group_id) {
     const [members] = await db.query(
-      `SELECT CONCAT(u.first_name, ' ', u.last_name) AS member_name, gm.role
-       FROM thesis_group_members gm
-       JOIN users u ON gm.user_id = u.id
+      `SELECT COALESCE(CONCAT(u.first_name, ' ', u.last_name), gm.name) AS member_name,
+              CASE WHEN gm.student_id = tg.leader_id THEN 'leader' ELSE 'member' END AS role
+       FROM group_members gm
+       JOIN thesis_groups tg ON gm.group_id = tg.id
+       LEFT JOIN users u ON gm.student_id = u.id
        WHERE gm.group_id = ?
-       ORDER BY CASE WHEN gm.role = 'leader' THEN 0 ELSE 1 END, u.last_name ASC`,
+       ORDER BY CASE WHEN gm.student_id = tg.leader_id THEN 0 ELSE 1 END, member_name ASC`,
       [sub.group_id]
     );
     if (members.length) {
-      sub.authors = members.map(m => m.member_name).join(', ');
+      sub.authors = members.map(m => m.member_name).filter(Boolean).join(', ');
       sub.members = members;
     }
     if (!sub.adviser_name) {

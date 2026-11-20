@@ -121,7 +121,7 @@ describe('New Features Validation Suite', () => {
         if (sql.includes('FROM submission_history sh')) {
           return Promise.resolve([[]]);
         }
-        if (sql.includes('FROM thesis_group_members gm')) {
+        if (sql.includes('FROM thesis_group_members gm') || sql.includes('FROM group_members gm')) {
           return Promise.resolve([[
             { member_name: 'Leader Student', role: 'leader' },
             { member_name: 'Member Two', role: 'member' },
