@@ -101,6 +101,35 @@ async function getById(id) {
   );
   sub.history = history;
 
+  /* attach group members as authors and group adviser if available */
+  if (sub.group_id) {
+    const [members] = await db.query(
+      `SELECT CONCAT(u.first_name, ' ', u.last_name) AS member_name, gm.role
+       FROM thesis_group_members gm
+       JOIN users u ON gm.user_id = u.id
+       WHERE gm.group_id = ?
+       ORDER BY CASE WHEN gm.role = 'leader' THEN 0 ELSE 1 END, u.last_name ASC`,
+      [sub.group_id]
+    );
+    if (members.length) {
+      sub.authors = members.map(m => m.member_name).join(', ');
+      sub.members = members;
+    }
+    if (!sub.adviser_name) {
+      const [[grp]] = await db.query(
+        `SELECT CONCAT(adv.first_name, ' ', adv.last_name) AS adviser_name
+         FROM thesis_groups tg
+         JOIN users adv ON tg.adviser_id = adv.id
+         WHERE tg.id = ?`,
+        [sub.group_id]
+      );
+      if (grp?.adviser_name) sub.adviser_name = grp.adviser_name;
+    }
+  }
+  if (!sub.authors) {
+    sub.authors = sub.student_name || '';
+  }
+
   return sub;
 }
 

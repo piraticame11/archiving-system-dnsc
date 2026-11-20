@@ -227,11 +227,21 @@ async function upsertEvaluation({ schedule_id, panelist_id, group_id, scores, de
 
     const totals = await saveScores(evaluationId, scores, conn);
 
-    if (submit && (totals.research_output_score == null || totals.oral_presentation_score == null)) {
-      throw Object.assign(
-        new Error('Please score every criterion in both rubrics before submitting.'),
-        { statusCode: 400 }
-      );
+    if (submit) {
+      if (totals.research_output_score == null || totals.oral_presentation_score == null) {
+        throw Object.assign(
+          new Error('Please score every criterion in both rubrics before submitting.'),
+          { statusCode: 400 }
+        );
+      }
+      for (const s of (scores || [])) {
+        if (s.raw_score == null || Number(s.raw_score) <= 0) {
+          throw Object.assign(
+            new Error('All criteria scores must be greater than 0.'),
+            { statusCode: 400 }
+          );
+        }
+      }
     }
 
     await conn.query(

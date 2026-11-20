@@ -347,6 +347,15 @@ async function syncPanelists(scheduleId, panelists, conn = db) {
 
 /* ─── create ────────────────────────────────────────────────────────── */
 async function createSchedule({ venue_id, defense_type, scheduled_date, time_slots, notes, panelists, group_ids, created_by }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const schedDateStr = String(scheduled_date).slice(0, 10);
+  if (schedDateStr <= today) {
+    const err = new Error('Defense schedule date must be in the future (cannot be today or a past date).');
+    err.status = 400;
+    err.statusCode = 400;
+    throw err;
+  }
+
   const panelList = Array.isArray(panelists) ? panelists : [];
   validateSlotsForType(defense_type, time_slots);
   validatePanelComposition(panelList);
@@ -645,6 +654,13 @@ async function autoSchedule({ defense_type, group_ids, venue_ids, panelist_ids, 
   }
   if (!Array.isArray(group_ids) || !group_ids.length) {
     const err = new Error('Select at least one group to schedule.');
+    err.status = 400;
+    throw err;
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  if (String(start_date).slice(0, 10) <= today) {
+    const err = new Error('Auto-schedule start date must be in the future (cannot be today or a past date).');
     err.status = 400;
     throw err;
   }

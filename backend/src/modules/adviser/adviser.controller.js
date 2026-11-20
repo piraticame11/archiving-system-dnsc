@@ -66,9 +66,13 @@ async function rejectGroupRequest(req, res, next) {
 
 async function updateSettings(req, res, next) {
   try {
-    const value = req.body.max_advisee_groups === '' || req.body.max_advisee_groups === null
+    const raw = req.body.max_advisee_groups;
+    const value = raw === '' || raw === null || raw === undefined
       ? null
-      : parseInt(req.body.max_advisee_groups);
+      : parseInt(raw, 10);
+    if (value !== null && (isNaN(value) || value < 1 || value > 3)) {
+      return send400(res, 'Advisee group capacity must be between 1 and 3.');
+    }
     const row = await service.setMaxAdviseeGroups(req.user.id, value);
     sendSuccess(res, row, 'Settings updated.');
   } catch (err) { next(err); }

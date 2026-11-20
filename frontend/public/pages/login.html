@@ -106,6 +106,9 @@
           const settingsMap = {
             student:    '/pages/student/settings.html',
             instructor: '/pages/instructor/settings.html',
+            panelist:   '/pages/panelist/settings.html',
+            admin:      '/pages/admin/settings.html',
+            superadmin: '/pages/superadmin/settings.html',
           };
           if (settingsMap[user.role]) {
             sessionStorage.setItem('temp-password-notice', '1');

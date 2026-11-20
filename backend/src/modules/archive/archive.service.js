@@ -334,18 +334,49 @@ async function getEligible({ page, limit }) {
   const [[{ total }]] = await db.query(`SELECT COUNT(*) AS total ${base}`);
   const [rows] = await db.query(
     `SELECT ts.id, ts.title, ts.type, ts.school_year, ts.semester,
-            ts.abstract, ts.keywords, ts.approved_at,
+            ts.abstract, ts.keywords, ts.approved_at, ts.group_id,
             CONCAT(u.first_name, ' ', u.last_name) AS student_name,
             u.student_number,
             d.name AS department_name, d.code AS department_code,
             ts.adviser_id,
-            (SELECT CONCAT(a2.first_name, ' ', a2.last_name)
-             FROM users a2 WHERE a2.id = ts.adviser_id) AS adviser_name
+            COALESCE(
+              (SELECT CONCAT(a2.first_name, ' ', a2.last_name) FROM users a2 WHERE a2.id = ts.adviser_id),
+              (SELECT CONCAT(adv.first_name, ' ', adv.last_name) FROM thesis_groups tg JOIN users adv ON tg.adviser_id = adv.id WHERE tg.id = ts.group_id)
+            ) AS adviser_name
      ${base}
      ORDER BY ts.approved_at DESC
      LIMIT ? OFFSET ?`,
     [limit, offset]
   );
+
+  /* attach authors (from group members if group submission, or student_name) */
+  if (rows.length) {
+    const groupIds = [...new Set(rows.map(r => r.group_id).filter(Boolean))];
+    if (groupIds.length) {
+      const [members] = await db.query(
+        `SELECT gm.group_id, CONCAT(u.first_name, ' ', u.last_name) AS member_name
+         FROM thesis_group_members gm
+         JOIN users u ON gm.user_id = u.id
+         WHERE gm.group_id IN (${groupIds.map(() => '?').join(',')})
+         ORDER BY CASE WHEN gm.role = 'leader' THEN 0 ELSE 1 END, u.last_name ASC`,
+        groupIds
+      );
+      const groupMembersMap = {};
+      members.forEach(m => {
+        if (!groupMembersMap[m.group_id]) groupMembersMap[m.group_id] = [];
+        groupMembersMap[m.group_id].push(m.member_name);
+      });
+      rows.forEach(r => {
+        if (r.group_id && groupMembersMap[r.group_id]?.length) {
+          r.authors = groupMembersMap[r.group_id].join(', ');
+        } else {
+          r.authors = r.student_name || '';
+        }
+      });
+    } else {
+      rows.forEach(r => { r.authors = r.student_name || ''; });
+    }
+  }
 
   /* attach full_document and imrad files — promotable documents */
   if (rows.length) {

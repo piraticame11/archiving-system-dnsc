@@ -374,15 +374,25 @@
     function handleRubricInput(inp, prefix, group) {
       const cid = Number(inp.dataset.criteriaId);
       const c = criteria.find(x => x.id === cid);
-      if (c && inp.value !== '') {
-        const max = Number(c.max_score);
-        let val = parseFloat(inp.value);
-        if (isNaN(val) || val < 0) {
-          inp.value = 0;
+      const valStr = inp.value.trim();
+      const max = c ? Number(c.max_score) : 100;
+
+      if (valStr === '') {
+        inp.classList.add('border-red-500', 'ring-2', 'ring-red-400', 'bg-red-50');
+        inp.classList.remove('border-gray-300');
+      } else {
+        let val = parseFloat(valStr);
+        if (isNaN(val) || val <= 0) {
+          inp.classList.add('border-red-500', 'ring-2', 'ring-red-400', 'bg-red-50');
+          inp.classList.remove('border-gray-300');
         } else if (val > max) {
           inp.value = max;
-          inp.classList.add('ring-2', 'ring-red-500');
+          inp.classList.remove('border-red-500', 'ring-red-400', 'bg-red-50');
+          inp.classList.add('border-gray-300', 'ring-2', 'ring-red-500');
           setTimeout(() => inp.classList.remove('ring-2', 'ring-red-500'), 1200);
+        } else {
+          inp.classList.remove('border-red-500', 'ring-2', 'ring-red-400', 'bg-red-50');
+          inp.classList.add('border-gray-300');
         }
       }
       updateRubricTotal(prefix, group);
@@ -400,8 +410,8 @@
             <p class="text-xs text-gray-500 mt-0.5">${escHtml(c.description || '')}</p>
           </div>
           <div class="flex flex-col items-end flex-shrink-0">
-            <input type="number" min="0" max="${c.max_score}" step="0.5" data-criteria-id="${c.id}"
-              placeholder="0 - ${c.max_score}"
+            <input type="number" min="1" max="${c.max_score}" step="0.5" data-criteria-id="${c.id}"
+              placeholder="1 - ${c.max_score}"
               class="rubric-input-${prefix} w-24 border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-center font-medium focus:outline-none focus:ring-2 focus:ring-primary-500"
               oninput="handleRubricInput(this, '${prefix}', '${group}')">
           </div>
@@ -432,6 +442,8 @@
       document.querySelectorAll(`.rubric-input-${prefix}`).forEach(inp => {
         const cid = Number(inp.dataset.criteriaId);
         inp.value = map[cid] != null ? map[cid] : '';
+        inp.classList.remove('border-red-500', 'ring-2', 'ring-red-400', 'bg-red-50');
+        inp.classList.add('border-gray-300');
       });
       updateRubricTotal(prefix, 'research_output');
       updateRubricTotal(prefix, 'oral_presentation');
@@ -470,9 +482,23 @@
 
     function rubricComplete(prefix) {
       let complete = true;
+      let firstInvalid = null;
       document.querySelectorAll(`.rubric-input-${prefix}`).forEach(inp => {
-        if (inp.value.trim() === '') complete = false;
+        const valStr = inp.value.trim();
+        const val = parseFloat(valStr);
+        if (valStr === '' || isNaN(val) || val <= 0) {
+          complete = false;
+          inp.classList.add('border-red-500', 'ring-2', 'ring-red-400', 'bg-red-50');
+          inp.classList.remove('border-gray-300');
+          if (!firstInvalid) firstInvalid = inp;
+        } else {
+          inp.classList.remove('border-red-500', 'ring-2', 'ring-red-400', 'bg-red-50');
+          inp.classList.add('border-gray-300');
+        }
       });
+      if (firstInvalid) {
+        firstInvalid.focus();
+      }
       return complete;
     }
 
@@ -678,13 +704,13 @@
         return;
       }
       if (submit && !rubricComplete('carousel')) {
-        showAlert('Please score every criterion in both rubrics before submitting.', 'error');
+        showAlert('Please enter a valid score (greater than 0) for every criterion before submitting.', 'error');
         return;
       }
       for (const s of scores) {
         const c = criteria.find(x => x.id === s.criteria_id);
-        if (c && (s.raw_score < 0 || s.raw_score > Number(c.max_score))) {
-          showAlert(`Score for "${c.name}" cannot exceed ${c.max_score}%.`, 'error');
+        if (c && (s.raw_score <= 0 || s.raw_score > Number(c.max_score))) {
+          showAlert(`Score for "${c.name}" must be greater than 0 and cannot exceed ${c.max_score}%.`, 'error');
           return;
         }
       }
@@ -776,13 +802,13 @@
         return;
       }
       if (submit && !rubricComplete('single')) {
-        showAlert('Please score every criterion in both rubrics before submitting.', 'error');
+        showAlert('Please enter a valid score (greater than 0) for every criterion before submitting.', 'error');
         return;
       }
       for (const s of scores) {
         const c = criteria.find(x => x.id === s.criteria_id);
-        if (c && (s.raw_score < 0 || s.raw_score > Number(c.max_score))) {
-          showAlert(`Score for "${c.name}" cannot exceed ${c.max_score}%.`, 'error');
+        if (c && (s.raw_score <= 0 || s.raw_score > Number(c.max_score))) {
+          showAlert(`Score for "${c.name}" must be greater than 0 and cannot exceed ${c.max_score}%.`, 'error');
           return;
         }
       }

@@ -575,7 +575,7 @@
     function openArchiveModal(sub) {
       document.getElementById('arch-submission-id').value = sub.id;
       document.getElementById('arch-title').textContent   = sub.title || '';
-      document.getElementById('arch-authors').value       = '';
+      document.getElementById('arch-authors').value       = sub.authors || sub.student_name || '';
       document.getElementById('arch-adviser').value       = sub.adviser_name || '';
       document.getElementById('arch-keywords').value      = sub.keywords || '';
       document.getElementById('alert-archive').classList.add('hidden');

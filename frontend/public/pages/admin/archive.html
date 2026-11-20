@@ -694,7 +694,7 @@
         `${submission.student_name} &middot; ${submission.department_code} &middot; ${submission.school_year} ${SEM_LABEL[submission.semester] || submission.semester}`;
 
       /* pre-fill */
-      document.getElementById('pm-authors').value  = submission.student_name || '';
+      document.getElementById('pm-authors').value  = submission.authors || submission.student_name || '';
       document.getElementById('pm-adviser').value  = submission.adviser_name || '';
       document.getElementById('pm-keywords').value = submission.keywords || '';
 

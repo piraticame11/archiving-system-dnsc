@@ -16,16 +16,17 @@ async function getGroupTitles(groupId) {
 /* ─── adviser capacity check ─────────────────────────────────────── */
 async function assertAdviserHasCapacity(adviserId) {
   const [[adv]] = await db.query('SELECT max_advisee_groups FROM users WHERE id = ?', [adviserId]);
-  if (!adv || adv.max_advisee_groups == null) return;
+  if (!adv) return;
+  const limit = adv.max_advisee_groups != null ? Math.min(adv.max_advisee_groups, 3) : 3;
 
   const [[{ count }]] = await db.query(
     `SELECT COUNT(*) AS count FROM thesis_groups
      WHERE adviser_id = ? AND adviser_status = 'approved' AND deleted_at IS NULL`,
     [adviserId]
   );
-  if (count >= adv.max_advisee_groups) {
+  if (count >= limit) {
     throw Object.assign(
-      new Error('This adviser has reached their maximum number of advisee groups.'),
+      new Error('This adviser has reached their maximum number of advisee groups (limit of 3).'),
       { statusCode: 409 }
     );
   }

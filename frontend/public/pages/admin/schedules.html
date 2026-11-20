@@ -880,8 +880,12 @@
        CREATE / EDIT MODAL
     ════════════════════════════════════════════════════════════════════ */
     function openCreateModal(prefillDate='', prefillSlot='') {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const minDate = toYMD(tomorrow);
+      document.getElementById('sched-date').min = minDate;
       document.getElementById('sched-id').value    = '';
-      document.getElementById('sched-date').value  = prefillDate;
+      document.getElementById('sched-date').value  = prefillDate && prefillDate >= minDate ? prefillDate : '';
       document.getElementById('sched-notes').value = '';
       document.getElementById('err-date').classList.add('hidden');
       document.getElementById('err-slots').classList.add('hidden');
@@ -907,6 +911,7 @@
 
     async function openEditModal(id) {
       document.getElementById('sched-id').value = id;
+      document.getElementById('sched-date').removeAttribute('min');
       document.getElementById('sched-modal-title').textContent = 'Edit Schedule';
       document.getElementById('btn-save-sched').textContent    = 'Save Changes';
       document.getElementById('sched-alert').classList.add('hidden');
@@ -948,6 +953,12 @@
 
       let valid=true;
       if(!date){ const e=document.getElementById('err-date'); e.textContent='Please select a date.'; e.classList.remove('hidden'); valid=false; }
+      else if(!id && date <= toYMD(new Date())){
+        const e=document.getElementById('err-date');
+        e.textContent='Defense date must be in the future (cannot be today or a past date).';
+        e.classList.remove('hidden');
+        valid=false;
+      }
       else document.getElementById('err-date').classList.add('hidden');
       if(!slots.length){ const e=document.getElementById('err-slots'); e.textContent='Please select a timeslot.'; e.classList.remove('hidden'); valid=false; }
       else document.getElementById('err-slots').classList.add('hidden');
@@ -1201,9 +1212,14 @@
 
     function openAutoScheduleModal() {
       document.getElementById('auto-defense-type').value = 'proposal';
-      const today = new Date();
-      const in30  = new Date(); in30.setDate(today.getDate() + 30);
-      document.getElementById('auto-start-date').value = toYMD(today);
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const in30  = new Date(tomorrow);
+      in30.setDate(in30.getDate() + 30);
+      const minDate = toYMD(tomorrow);
+      document.getElementById('auto-start-date').min = minDate;
+      document.getElementById('auto-end-date').min = minDate;
+      document.getElementById('auto-start-date').value = minDate;
       document.getElementById('auto-end-date').value   = toYMD(in30);
       document.getElementById('auto-alert').classList.add('hidden');
       document.getElementById('auto-results').classList.add('hidden');
@@ -1257,6 +1273,10 @@
       let valid = true;
       if (!start_date || !end_date || start_date > end_date) {
         document.getElementById('err-auto-dates').textContent = 'Please provide a valid start and end date.';
+        document.getElementById('err-auto-dates').classList.remove('hidden');
+        valid = false;
+      } else if (start_date <= toYMD(new Date())) {
+        document.getElementById('err-auto-dates').textContent = 'Start date must be in the future (cannot be today or a past date).';
         document.getElementById('err-auto-dates').classList.remove('hidden');
         valid = false;
       }
