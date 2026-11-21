@@ -261,5 +261,70 @@ describe('Thesis vs Capstone by Department and Archive Promotion Suite', () => {
         })
       ).rejects.toThrow('Only full documents or IMRaD manuscripts can be archived');
     });
+
+    test('promoteToArchive forces "thesis" type when department is not BSIT even if submission was capstone', async () => {
+      let insertedType = null;
+      let updatedSubmissionType = null;
+      db.query = jest.fn().mockImplementation((sql, params) => {
+        if (sql.includes('SELECT ts.*, d.id AS dept_id')) {
+          return Promise.resolve([[{
+            id: 15,
+            title: 'Business Research Paper',
+            abstract: 'Abstract text',
+            keywords: 'business, finance',
+            school_year: '2026-2027',
+            semester: '1st',
+            type: 'capstone', // mistakenly capstone
+            dept_id: 3,
+            dept_code: 'BSBA', // non-IT
+            status: 'approved',
+            deleted_at: null,
+          }]]);
+        }
+        if (sql.includes('SELECT id FROM archive WHERE submission_id = ?')) {
+          return Promise.resolve([[]]);
+        }
+        if (sql.includes('SELECT id, file_path, mime_type, file_name FROM submission_documents')) {
+          return Promise.resolve([[{
+            id: 88,
+            file_path: '',
+            mime_type: 'application/pdf',
+            file_name: 'paper.pdf',
+            doc_type: 'full_document',
+          }]]);
+        }
+        if (sql.includes('UPDATE thesis_submissions SET type = ?')) {
+          updatedSubmissionType = params[0];
+          return Promise.resolve([{ affectedRows: 1 }]);
+        }
+        if (sql.includes('INSERT INTO archive')) {
+          // params: [submission_id, document_id, title, abstract, authors, adviser, dept_id, sy, sem, keywords, correctType, ...]
+          insertedType = params[10];
+          return Promise.resolve([{ insertId: 1001 }]);
+        }
+        if (sql.includes('FROM archive a')) {
+          return Promise.resolve([[{
+            id: 1001,
+            title: 'Business Research Paper',
+            document_id: 88,
+            type: insertedType,
+          }]]);
+        }
+        return Promise.resolve([[]]);
+      });
+
+      const result = await archiveService.promoteToArchive({
+        submission_id: 15,
+        document_id: 88,
+        authors: 'Business Student',
+        adviser: 'Prof. Smith',
+        keywords: 'business',
+        archived_by: 1,
+      });
+
+      expect(insertedType).toBe('thesis');
+      expect(updatedSubmissionType).toBe('thesis');
+      expect(result.type).toBe('thesis');
+    });
   });
 });

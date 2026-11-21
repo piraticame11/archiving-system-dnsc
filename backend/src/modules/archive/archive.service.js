@@ -405,7 +405,7 @@ async function getEligible({ page, limit }) {
 async function promoteToArchive({ submission_id, document_id, authors, adviser, keywords, archived_by }) {
   /* validate submission */
   const [[sub]] = await db.query(
-    `SELECT ts.*, d.id AS dept_id
+    `SELECT ts.*, d.id AS dept_id, d.code AS dept_code
      FROM thesis_submissions ts
      JOIN departments d ON ts.department_id = d.id
      WHERE ts.id = ? AND ts.deleted_at IS NULL`,
@@ -454,6 +454,15 @@ async function promoteToArchive({ submission_id, document_id, authors, adviser, 
     content: documentContent || '',
   });
 
+  // Only BSIT is capstone; all other departments are thesis
+  const correctType = sub.dept_code
+    ? (sub.dept_code === 'BSIT' ? 'capstone' : 'thesis')
+    : (sub.type || 'thesis');
+
+  if (sub.type !== correctType) {
+    await db.query('UPDATE thesis_submissions SET type = ? WHERE id = ?', [correctType, submission_id]);
+  }
+
   const [result] = await db.query(
     `INSERT INTO archive
        (submission_id, document_id, title, abstract, authors, adviser,
@@ -465,7 +474,7 @@ async function promoteToArchive({ submission_id, document_id, authors, adviser, 
       authors, adviser || null,
       sub.dept_id, sub.school_year, sub.semester,
       keywords || sub.keywords || null,
-      sub.type,
+      correctType,
       archived_by,
       embedding ? JSON.stringify(embedding) : null,
       documentContent || null

@@ -66,7 +66,6 @@
         <option value="instructor">Instructor</option>
         <option value="panelist">Panelist</option>
         <option value="admin">Admin</option>
-        <option value="superadmin">Superadmin</option>
       </select>
       <select id="f-status" class="form-input w-auto text-sm py-2">
         <option value="">All Statuses</option>
@@ -214,7 +213,6 @@
           <option value="instructor">Instructor</option>
           <option value="panelist">Panelist</option>
           <option value="admin">Admin</option>
-          <option value="superadmin">Superadmin</option>
         </select>
         <p id="err-create-role" class="text-xs text-red-600 mt-1 hidden"></p>
       </div>
@@ -271,7 +269,6 @@
       instructor: { label: 'Instructor', bg: 'bg-indigo-100',  text: 'text-indigo-700'  },
       panelist:   { label: 'Panelist',   bg: 'bg-orange-100',  text: 'text-orange-700'  },
       admin:      { label: 'Admin',      bg: 'bg-primary-100', text: 'text-primary-700' },
-      superadmin: { label: 'Superadmin', bg: 'bg-red-100',     text: 'text-red-700'     },
     };
 
     function roleBadge(role) {
@@ -352,7 +349,7 @@
                   class="px-3 py-1.5 text-xs font-semibold text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors">
                   Reset Password
                 </button>
-                ${currentRole === 'superadmin' ? `
+                ${(currentRole === 'admin' || currentRole === 'superadmin') ? `
                 <button onclick="openDeleteModal(${u.id}, '${escAttr(u.first_name + ' ' + u.last_name)}')"
                   class="px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
                   Delete

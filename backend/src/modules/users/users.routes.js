@@ -7,7 +7,6 @@ const { uploadExcel }     = require('../../config/multer');
 const v          = require('./users.validators');
 
 const adminGuard      = [verifyToken, requireRole('admin', 'superadmin')];
-const superAdminGuard = [verifyToken, requireRole('superadmin')];
 
 router.get(   '/import-template',     adminGuard,                                                          ctrl.downloadImportTemplate);
 router.post(  '/import-students',     adminGuard,      uploadExcel.single('file'),                         ctrl.importStudents);
@@ -15,8 +14,8 @@ router.post(  '/export-credentials',  adminGuard,                               
 router.get(   '/',                    adminGuard,      v.listRules,          handleValidation, ctrl.list);
 router.post(  '/',                    adminGuard,      v.createRules,        handleValidation, ctrl.create);
 router.get(   '/:id',                 adminGuard,      v.idRules,            handleValidation, ctrl.getOne);
-router.patch( '/:id',                 superAdminGuard, v.updateRules,        handleValidation, ctrl.update);
-router.delete('/:id',                 superAdminGuard, v.idRules,            handleValidation, ctrl.remove);
+router.patch( '/:id',                 adminGuard,      v.updateRules,        handleValidation, ctrl.update);
+router.delete('/:id',                 adminGuard,      v.idRules,            handleValidation, ctrl.remove);
 router.patch( '/:id/toggle-active',   adminGuard,      v.idRules,            handleValidation, ctrl.toggleActive);
 router.post(  '/:id/reset-password',  adminGuard,      v.resetPasswordRules, handleValidation, ctrl.resetPassword);
 

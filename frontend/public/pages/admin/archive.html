@@ -367,11 +367,6 @@
       /* show admin-only elements */
       document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
 
-      /* fix back link for superadmin */
-      if (user.role === 'superadmin') {
-        document.getElementById('back-link').href = '/pages/superadmin/dashboard.html';
-      }
-
       loadDepts().then(() => {
         loadStats();
         loadBrowse();

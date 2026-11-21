@@ -27,9 +27,6 @@
         <h1 class="text-2xl font-bold text-gray-900 mb-1">Research Office Dashboard</h1>
         <p class="text-gray-500 text-sm">Manage submissions, schedules, and the research archive.</p>
       </div>
-      <a id="back-superadmin-btn" href="/pages/superadmin/dashboard.html" class="hidden inline-flex items-center gap-1.5 text-sm bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-3.5 py-2 rounded-lg font-medium shadow-sm transition-colors">
-        &larr; Back to Superadmin Dashboard
-      </a>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -108,13 +105,7 @@
   <script>
     requireAuthAsync('admin', 'superadmin').then(user => {
       if (!user) return;
-      if (user.role === 'superadmin') {
-        document.getElementById('user-name').textContent = 'Super Administrator';
-        const backBtn = document.getElementById('back-superadmin-btn');
-        if (backBtn) backBtn.classList.remove('hidden');
-      } else {
-        document.getElementById('user-name').textContent = 'Research Office';
-      }
+      document.getElementById('user-name').textContent = user.full_name || 'Research Office';
     });
   </script>
 </body>

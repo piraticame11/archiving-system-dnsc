@@ -1,6 +1,7 @@
 const { body, query, param } = require('express-validator');
 const { ROLES } = require('../../config/constants');
 
+const assignableRoles = [ROLES.STUDENT, ROLES.INSTRUCTOR, ROLES.PANELIST, ROLES.ADMIN];
 const allRoles = Object.values(ROLES);
 
 const listRules = [
@@ -22,7 +23,7 @@ const createRules = [
     .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
     .matches(/[A-Z]/).withMessage('Password must contain an uppercase letter')
     .matches(/[0-9]/).withMessage('Password must contain a number'),
-  body('role').isIn(allRoles).withMessage('Invalid role'),
+  body('role').isIn(assignableRoles).withMessage('Invalid role'),
   body('department_id').optional({ nullable: true }).isInt({ min: 1 }),
   body('student_number').optional({ nullable: true }).isString().trim(),
   body('is_active').optional().isBoolean(),
@@ -37,7 +38,7 @@ const updateRules = [
     .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
     .matches(/[A-Z]/).withMessage('Password must contain an uppercase letter')
     .matches(/[0-9]/).withMessage('Password must contain a number'),
-  body('role').optional().isIn(allRoles),
+  body('role').optional().isIn(assignableRoles).withMessage('Invalid role'),
   body('department_id').optional({ nullable: true }).isInt({ min: 1 }),
   body('student_number').optional({ nullable: true }).isString().trim(),
   body('is_active').optional().isBoolean(),
