@@ -43,12 +43,30 @@
     /* Dynamically-generated element styles */
     .promote-btn {
       display: inline-flex; align-items: center; justify-content: center;
-      background: #16a34a; color: #fff; border: none; cursor: pointer;
+      background: #dc2626; color: #fff; border: none; cursor: pointer;
       padding: 6px 14px; border-radius: 8px;
       font-size: .75rem; font-weight: 600;
       transition: background-color .15s;
     }
-    .promote-btn:hover { background: #15803d; }
+    .promote-btn:hover { background: #b91c1c; }
+
+    @keyframes checkmarkPop {
+      0% { transform: scale(0); opacity: 0; }
+      60% { transform: scale(1.15); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes checkmarkStroke {
+      0% { stroke-dashoffset: 48; }
+      100% { stroke-dashoffset: 0; }
+    }
+    .animate-check-pop {
+      animation: checkmarkPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+    .animate-check-stroke {
+      stroke-dasharray: 48;
+      stroke-dashoffset: 48;
+      animation: checkmarkStroke 0.35s ease-out 0.15s forwards;
+    }
     .type-pill {
       display: inline-flex; align-items: center;
       padding: 2px 10px; border-radius: 9999px;
@@ -261,10 +279,10 @@
       </div>
       <div class="px-6 pb-5 flex gap-3">
         <button onclick="closeDetailModal()" class="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">Close</button>
-        <button id="dm-remove-btn" onclick="removeFromDetail()"
-          class="admin-only hidden flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-          Remove from Archive
+        <button id="dm-remove-btn" onclick="retrieveFromDetail()"
+          class="admin-only hidden flex items-center justify-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+          Retrieve to Promote to Archive
         </button>
       </div>
     </div>
@@ -280,7 +298,9 @@
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
-      <form id="promote-form" onsubmit="submitPromote(event)" class="px-6 py-5 space-y-4">
+
+      <!-- Step 1: Form View -->
+      <form id="promote-form" onsubmit="handlePromoteSubmit(event)" class="px-6 py-5 space-y-4">
         <input type="hidden" id="pm-submission-id">
 
         <!-- Read-only summary -->
@@ -323,11 +343,49 @@
 
         <div class="flex gap-3 pt-2">
           <button type="button" onclick="closePromoteModal()" class="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">Cancel</button>
-          <button type="submit" id="pm-submit" class="flex-1 bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60">
-            Archive Submission
+          <button type="submit" id="pm-submit" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-60 shadow-sm">
+            Promote to Archive
           </button>
         </div>
       </form>
+
+      <!-- Step 2: Confirmation View -->
+      <div id="pm-confirm-view" class="hidden px-6 py-6 text-center space-y-4">
+        <div class="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
+          <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-gray-900">Confirm Promotion</h3>
+          <p class="text-xs text-gray-500 mt-1 max-w-sm mx-auto">Are you sure you want to promote this submission to the official archive? It will become publicly searchable and downloadable.</p>
+        </div>
+        <div class="flex gap-3 pt-2 justify-center max-w-xs mx-auto">
+          <button type="button" onclick="cancelPromoteConfirm()" class="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">Cancel</button>
+          <button type="button" id="pm-btn-confirm" onclick="executePromote()" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm">
+            Yes, Promote
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 3: Loading & Success Animation View -->
+      <div id="pm-anim-view" class="hidden px-6 py-10 text-center space-y-3">
+        <!-- 0.5s loading state -->
+        <div id="pm-loading-state" class="flex flex-col items-center justify-center space-y-3">
+          <div class="w-12 h-12 border-4 border-red-200 border-t-red-600 rounded-full animate-spin"></div>
+          <p class="text-sm font-semibold text-gray-700">Promoting to archive…</p>
+        </div>
+        <!-- Checkmark animation state -->
+        <div id="pm-check-state" class="hidden flex flex-col items-center justify-center space-y-2">
+          <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-600 animate-check-pop shadow-inner">
+            <svg class="w-9 h-9" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+              <path class="animate-check-stroke" stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+            </svg>
+          </div>
+          <p class="text-base font-bold text-gray-900">Promoted Successfully!</p>
+          <p class="text-xs text-gray-500">Document has been promoted to archive.</p>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -489,10 +547,19 @@
               </div>` : ''}
             <div class="flex items-center justify-between pt-3 border-t border-gray-100">
               <span class="text-xs font-medium text-gray-500">${esc(a.department_code)}</span>
-              <span class="text-xs text-gray-400">${esc(a.school_year)} &middot; ${SEM_LABEL[a.semester] || a.semester}</span>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-400">${esc(a.school_year)} &middot; ${SEM_LABEL[a.semester] || a.semester}</span>
+                <button type="button" onclick="event.stopPropagation(); retrieveArchiveEntry(${a.id}, '${esc(a.title)}')"
+                  class="admin-only hidden px-2 py-1 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-md transition-colors inline-flex items-center gap-1 shadow-sm"
+                  title="Retrieve document back to Promote to Archive">
+                  <svg class="w-3 h-3 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                  Retrieve
+                </button>
+              </div>
             </div>
           </div>`;
       }).join('');
+      syncAdminVisibility();
     }
 
     function populateYearFilter(rows) {
@@ -586,15 +653,29 @@
 
     async function removeFromDetail() {
       if (!activeDetailId) return;
-      if (!confirm('Remove this document from the archive? The submission and file will not be deleted.')) return;
+      const title = document.getElementById('dm-title')?.textContent || '';
+      await retrieveArchiveEntry(activeDetailId, title);
+    }
+
+    async function retrieveArchiveEntry(id, title) {
+      if (!confirm(`Are you sure you want to retrieve "${title || 'this document'}" back to "Promote to archive"?\n\nThe document will be removed from the archive and will return to the "Promote to archive" eligible list.`)) return;
       try {
-        await del(`/api/v1/archive/${activeDetailId}`);
-        showToast('Removed from archive', 'success');
-        closeDetailModal();
-        loadBrowse();
-        loadStats();
+        await del(`/api/v1/archive/${id}`);
+        showToast('Document retrieved back to Promote to archive', 'success');
+        if (activeDetailId === id) closeDetailModal();
+        await Promise.all([
+          loadBrowse(browsePage),
+          loadStats(),
+          loadEligible(1)
+        ]);
       } catch (err) {
-        showToast(err?.message || 'Failed to remove', 'error');
+        showToast(err?.message || 'Failed to retrieve document', 'error');
+      }
+    }
+
+    function syncAdminVisibility() {
+      if (userRole === 'admin' || userRole === 'superadmin') {
+        document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
       }
     }
 
@@ -629,13 +710,12 @@
       eligibleMap = {};
       rows.forEach(s => { eligibleMap[s.id] = s; });
 
-      // Cleaned up and transformed inline styles to tailwind classes
       const html = rows.map((s, i) => {
         const typeCls = TYPE_BADGE[s.type] || 'bg-gray-100 text-gray-600';
         const hasDocs = s.documents && s.documents.length > 0;
         
         const actionCell = hasDocs
-          ? `<td class="px-4 py-3 text-center"><button onclick="openPromoteModal(${s.id})" class="promote-btn">Promote</button></td>`
+          ? `<td class="px-4 py-3 text-center"><button onclick="openPromoteModal(${s.id})" class="promote-btn">Promote to Archive</button></td>`
           : `<td class="px-4 py-3 text-center text-xs text-gray-400 italic">No docs</td>`;
           
         return `<tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
@@ -704,43 +784,97 @@
       });
 
       document.getElementById('pm-error').classList.add('hidden');
+      document.getElementById('promote-form').classList.remove('hidden');
+      document.getElementById('pm-confirm-view').classList.add('hidden');
+      document.getElementById('pm-anim-view').classList.add('hidden');
+      document.getElementById('pm-loading-state').classList.remove('hidden');
+      document.getElementById('pm-check-state').classList.add('hidden');
       document.getElementById('promote-modal').classList.remove('hidden');
     }
 
     function closePromoteModal() {
       document.getElementById('promote-modal').classList.add('hidden');
+      document.getElementById('promote-form').classList.remove('hidden');
+      document.getElementById('pm-confirm-view').classList.add('hidden');
+      document.getElementById('pm-anim-view').classList.add('hidden');
     }
 
-    async function submitPromote(e) {
+    let pendingPromoteBody = null;
+    function handlePromoteSubmit(e) {
       e.preventDefault();
-      const btn   = document.getElementById('pm-submit');
       const errEl = document.getElementById('pm-error');
+      const document_id = parseInt(document.getElementById('pm-document').value);
+      const authors     = document.getElementById('pm-authors').value.trim();
 
-      const body = {
+      if (!document_id) {
+        errEl.textContent = 'Please select a document.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if (!authors) {
+        errEl.textContent = 'Authors are required.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      errEl.classList.add('hidden');
+
+      pendingPromoteBody = {
         submission_id: parseInt(document.getElementById('pm-submission-id').value),
-        document_id:   parseInt(document.getElementById('pm-document').value),
-        authors:       document.getElementById('pm-authors').value.trim(),
-        adviser:       document.getElementById('pm-adviser').value.trim() || null,
-        keywords:      document.getElementById('pm-keywords').value.trim() || null,
+        document_id,
+        authors,
+        adviser:   document.getElementById('pm-adviser').value.trim() || null,
+        keywords:  document.getElementById('pm-keywords').value.trim() || null,
       };
 
-      if (!body.document_id) {
-        errEl.textContent = 'Please select a document.'; errEl.classList.remove('hidden'); return;
-      }
+      // Transition to confirmation view
+      document.getElementById('promote-form').classList.add('hidden');
+      document.getElementById('pm-confirm-view').classList.remove('hidden');
+    }
 
-      btn.disabled = true; btn.textContent = 'Archiving…'; errEl.classList.add('hidden');
+    function cancelPromoteConfirm() {
+      document.getElementById('pm-confirm-view').classList.add('hidden');
+      document.getElementById('promote-form').classList.remove('hidden');
+    }
+
+    async function executePromote() {
+      if (!pendingPromoteBody) return;
+      const confirmView = document.getElementById('pm-confirm-view');
+      const animView    = document.getElementById('pm-anim-view');
+      const loadingEl   = document.getElementById('pm-loading-state');
+      const checkEl     = document.getElementById('pm-check-state');
+
+      confirmView.classList.add('hidden');
+      animView.classList.remove('hidden');
+      loadingEl.classList.remove('hidden');
+      checkEl.classList.add('hidden');
+
       try {
-        await post('/api/v1/archive', body);
-        showToast('Submission archived successfully', 'success');
+        await Promise.all([
+          post('/api/v1/archive', pendingPromoteBody),
+          new Promise(resolve => setTimeout(resolve, 500))
+        ]);
+
+        loadingEl.classList.add('hidden');
+        checkEl.classList.remove('hidden');
+
+        await new Promise(resolve => setTimeout(resolve, 800));
+
         closePromoteModal();
-        loadBrowse(1);
-        loadStats();
-        loadEligible(1);
+        showToast('Submission archived successfully', 'success');
+
+        await Promise.all([
+          loadEligible(1),
+          loadBrowse(1),
+          loadStats()
+        ]);
       } catch (err) {
+        animView.classList.add('hidden');
+        document.getElementById('promote-form').classList.remove('hidden');
+        const errEl = document.getElementById('pm-error');
         errEl.textContent = err?.message || 'Something went wrong.';
         errEl.classList.remove('hidden');
       } finally {
-        btn.disabled = false; btn.textContent = 'Archive Submission';
+        pendingPromoteBody = null;
       }
     }
 

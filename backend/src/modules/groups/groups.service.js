@@ -146,7 +146,20 @@ async function createGroup({ leader_id, department_id, set_name, instructor_id, 
     ? name.trim()
     : `${dept?.code || 'Group'} ${setSuffix} - ${leader.last_name} et al.`.trim();
 
-  if (adviser_id) await validateAdviserAndNotify(adviser_id, groupName, leader_id);
+  if (instructor_id) {
+    const [[instUser]] = await db.query('SELECT department_id FROM users WHERE id = ?', [instructor_id]);
+    if (instUser && instUser.department_id && instUser.department_id !== deptId) {
+      throw Object.assign(new Error('The selected instructor does not belong to your group\'s program.'), { statusCode: 400 });
+    }
+  }
+
+  if (adviser_id) {
+    const [[advUser]] = await db.query('SELECT department_id FROM users WHERE id = ?', [adviser_id]);
+    if (advUser && advUser.department_id && advUser.department_id !== deptId) {
+      throw Object.assign(new Error('The selected adviser does not belong to your group\'s program.'), { statusCode: 400 });
+    }
+    await validateAdviserAndNotify(adviser_id, groupName, leader_id);
+  }
 
   const rawMembers = Array.isArray(member_names)
     ? member_names
@@ -218,6 +231,20 @@ async function updateGroup(groupId, leaderId, { name, adviser_id, instructor_id,
   const group = await getGroupById(groupId);
   if (!group) throw Object.assign(new Error('Group not found.'), { statusCode: 404 });
   if (group.leader_id !== leaderId) throw Object.assign(new Error('Only the group leader can update group info.'), { statusCode: 403 });
+
+  const effectiveDeptId = department_id !== undefined ? department_id : group.department_id;
+  if (instructor_id) {
+    const [[instUser]] = await db.query('SELECT department_id FROM users WHERE id = ?', [instructor_id]);
+    if (instUser && instUser.department_id && instUser.department_id !== effectiveDeptId) {
+      throw Object.assign(new Error('The selected instructor does not belong to your group\'s program.'), { statusCode: 400 });
+    }
+  }
+  if (adviser_id) {
+    const [[advUser]] = await db.query('SELECT department_id FROM users WHERE id = ?', [adviser_id]);
+    if (advUser && advUser.department_id && advUser.department_id !== effectiveDeptId) {
+      throw Object.assign(new Error('The selected adviser does not belong to your group\'s program.'), { statusCode: 400 });
+    }
+  }
 
   const adviserChanged = adviser_id !== undefined && adviser_id !== group.adviser_id;
   if (adviserChanged && adviser_id !== null) {
@@ -555,7 +582,20 @@ async function getAdviserRequests(adviserId) {
      ORDER BY tg.created_at ASC`,
     [adviserId]
   );
-  for (const g of rows) g.titles = await getGroupTitles(g.id);
+  for (const g of rows) {
+    g.titles = await getGroupTitles(g.id);
+    const [docs] = await db.query(
+      `SELECT sd.id, sd.doc_type, sd.file_name, sd.file_size, sd.mime_type, sd.version, sd.is_current, sd.created_at,
+              ts.id AS submission_id
+       FROM submission_documents sd
+       JOIN thesis_submissions ts ON sd.submission_id = ts.id
+       WHERE ts.group_id = ? AND ts.deleted_at IS NULL
+         AND sd.doc_type IN ('title_proposal', 'chapters', 'ch1_2')
+       ORDER BY sd.created_at DESC`,
+      [g.id]
+    );
+    g.documents = docs;
+  }
   return rows;
 }
 

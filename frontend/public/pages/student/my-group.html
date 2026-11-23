@@ -296,25 +296,82 @@
         const res = await apiGet('/api/v1/groups/instructors').then(r => r.json());
         instructors = res.data || [];
 
-        const instOpts = '<option value="">Select instructor…</option>' +
-          instructors.map(i => `<option value="${i.id}">${escHtml(i.first_name + ' ' + i.last_name)} (${escHtml(i.department_name || 'Faculty')})</option>`).join('');
-        const instSel = document.getElementById('c-instructor');
-        const editInstSel = document.getElementById('edit-instructor');
-        if (instSel) instSel.innerHTML = instOpts;
-        if (editInstSel) editInstSel.innerHTML = instOpts;
-
-        const advOpts = '<option value="">None / To be assigned later</option>' +
-          instructors.map(i => {
-            const occupied = i.slots_occupied ?? (i.slots_max != null && i.slots_available != null ? Math.max(0, i.slots_max - i.slots_available) : 0);
-            const slotText = i.slots_max != null ? ` [${occupied}/${i.slots_max} advisees]` : '';
-            return `<option value="${i.id}">${escHtml(i.first_name + ' ' + i.last_name)} (${escHtml(i.department_name || 'Faculty')})${slotText}</option>`;
-          }).join('');
-        const advSel = document.getElementById('c-adviser');
-        const editAdvSel = document.getElementById('edit-adviser');
-        if (advSel) advSel.innerHTML = advOpts;
-        if (editAdvSel) editAdvSel.innerHTML = advOpts;
+        populateInstructorAndAdviserOptions('c-program', 'c-instructor', 'c-adviser');
+        populateInstructorAndAdviserOptions('edit-program', 'edit-instructor', 'edit-adviser');
       } catch (err) {
         console.error('Failed to load instructors', err);
+      }
+    }
+
+    function populateInstructorAndAdviserOptions(programSelectId, instructorSelectId, adviserSelectId, selectedInstructorId = null, selectedAdviserId = null) {
+      const progSel = document.getElementById(programSelectId);
+      const instSel = document.getElementById(instructorSelectId);
+      const advSel  = document.getElementById(adviserSelectId);
+      if (!instSel || !advSel) return;
+
+      const currentProgramId = progSel && progSel.value ? parseInt(progSel.value) : null;
+
+      // Group instructors by matching program
+      let sameProgram = [];
+      let otherProgram = [];
+
+      if (currentProgramId) {
+        sameProgram = instructors.filter(i => Number(i.department_id) === currentProgramId);
+        otherProgram = instructors.filter(i => Number(i.department_id) !== currentProgramId);
+      } else {
+        sameProgram = instructors;
+        otherProgram = [];
+      }
+
+      // 1. Instructors dropdown
+      let instHtml = '<option value="">Select instructor…</option>';
+      if (sameProgram.length) {
+        if (currentProgramId) instHtml += `<optgroup label="Instructors in Selected Program">`;
+        sameProgram.forEach(i => {
+          const isSel = selectedInstructorId && String(selectedInstructorId) === String(i.id);
+          instHtml += `<option value="${i.id}" ${isSel ? 'selected' : ''}>${escHtml(i.first_name + ' ' + i.last_name)} (${escHtml(i.department_code || i.department_name || 'Faculty')})</option>`;
+        });
+        if (currentProgramId) instHtml += `</optgroup>`;
+      }
+      if (otherProgram.length && currentProgramId) {
+        instHtml += `<optgroup label="Other Programs (Not Selectable)">`;
+        otherProgram.forEach(i => {
+          instHtml += `<option value="${i.id}" disabled class="text-gray-400 bg-gray-100">${escHtml(i.first_name + ' ' + i.last_name)} (${escHtml(i.department_code || i.department_name || 'Other')}) — Not in selected program</option>`;
+        });
+        instHtml += `</optgroup>`;
+      }
+      instSel.innerHTML = instHtml;
+
+      // 2. Advisers dropdown
+      let advHtml = '<option value="">None / To be assigned later</option>';
+      if (sameProgram.length) {
+        if (currentProgramId) advHtml += `<optgroup label="Advisers in Selected Program">`;
+        sameProgram.forEach(i => {
+          const occupied = i.slots_occupied ?? (i.slots_max != null && i.slots_available != null ? Math.max(0, i.slots_max - i.slots_available) : 0);
+          const slotText = i.slots_max != null ? ` [${occupied}/${i.slots_max} advisees]` : '';
+          const isFull = i.slots_max != null && occupied >= i.slots_max;
+          const isSel = selectedAdviserId && String(selectedAdviserId) === String(i.id);
+          const disabledAttr = isFull && !isSel ? 'disabled' : '';
+          const fullText = isFull && !isSel ? ' (Full)' : '';
+          advHtml += `<option value="${i.id}" ${disabledAttr} ${isSel ? 'selected' : ''}>${escHtml(i.first_name + ' ' + i.last_name)} (${escHtml(i.department_code || i.department_name || 'Faculty')})${slotText}${fullText}</option>`;
+        });
+        if (currentProgramId) advHtml += `</optgroup>`;
+      }
+      if (otherProgram.length && currentProgramId) {
+        advHtml += `<optgroup label="Other Programs (Not Selectable)">`;
+        otherProgram.forEach(i => {
+          advHtml += `<option value="${i.id}" disabled class="text-gray-400 bg-gray-100">${escHtml(i.first_name + ' ' + i.last_name)} (${escHtml(i.department_code || i.department_name || 'Other')}) — Not in selected program</option>`;
+        });
+        advHtml += `</optgroup>`;
+      }
+      advSel.innerHTML = advHtml;
+
+      // If existing selection is now disabled, clear it
+      if (instSel.selectedOptions[0] && instSel.selectedOptions[0].disabled) {
+        instSel.value = '';
+      }
+      if (advSel.selectedOptions[0] && advSel.selectedOptions[0].disabled) {
+        advSel.value = '';
       }
     }
 
@@ -492,6 +549,7 @@
       if (currentUser?.department_id) {
         document.getElementById('c-program').value = currentUser.department_id;
       }
+      populateInstructorAndAdviserOptions('c-program', 'c-instructor', 'c-adviser');
     }
 
     function hideCreateModal() {
@@ -601,11 +659,17 @@
       document.getElementById('edit-name').value = currentGroup.name || '';
       document.getElementById('edit-program').value = currentGroup.department_id || '';
       document.getElementById('edit-set').value = currentGroup.set_name || '';
-      document.getElementById('edit-instructor').value = currentGroup.instructor_id || '';
-      document.getElementById('edit-adviser').value = currentGroup.adviser_id || '';
+      populateInstructorAndAdviserOptions('edit-program', 'edit-instructor', 'edit-adviser', currentGroup.instructor_id, currentGroup.adviser_id);
       document.getElementById('edit-error').classList.add('hidden');
       document.getElementById('edit-modal').classList.remove('hidden');
     }
+
+    document.getElementById('c-program').addEventListener('change', () => {
+      populateInstructorAndAdviserOptions('c-program', 'c-instructor', 'c-adviser');
+    });
+    document.getElementById('edit-program').addEventListener('change', () => {
+      populateInstructorAndAdviserOptions('edit-program', 'edit-instructor', 'edit-adviser');
+    });
 
     function hideEditModal() {
       document.getElementById('edit-modal').classList.add('hidden');

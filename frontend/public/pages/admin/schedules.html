@@ -248,9 +248,19 @@
 
           <!-- Groups -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Presenting Groups
-              <span class="text-xs font-normal text-gray-400 ml-1">(select all that will present)</span>
-            </label>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-sm font-medium text-gray-700">Presenting Groups
+                <span class="text-xs font-normal text-gray-400 ml-1">(select all that will present)</span>
+              </label>
+            </div>
+            <!-- Search bar for presenting groups -->
+            <div class="relative mb-2">
+              <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"/>
+              </svg>
+              <input type="text" id="sched-group-search" oninput="filterPresentingGroups()" placeholder="Search presenting groups by name, program, set, or title…"
+                class="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white">
+            </div>
             <div id="group-list" class="border border-gray-300 rounded-lg p-3 max-h-44 overflow-y-auto space-y-2">
               <p class="text-xs text-gray-400">Loading groups…</p>
             </div>
@@ -772,14 +782,38 @@
       });
     }
 
-    function populateGroupList(selectedIds = []) {
-      const sel=new Set(selectedIds.map(String));
-      const el=document.getElementById('group-list');
-      if(!allGroups.length){ el.innerHTML='<p class="text-xs text-gray-400">No groups found.</p>'; return; }
-      el.innerHTML=allGroups.map(g=>`
+    let schedSelectedGroupIds = new Set();
+
+    function getSelectedSchedGroupIds() {
+      document.querySelectorAll('#group-list input[name="group"]').forEach(cb => {
+        if (cb.checked) schedSelectedGroupIds.add(String(cb.value));
+        else schedSelectedGroupIds.delete(String(cb.value));
+      });
+      return schedSelectedGroupIds;
+    }
+
+    function filterPresentingGroups() {
+      getSelectedSchedGroupIds();
+      const q = (document.getElementById('sched-group-search')?.value || '').toLowerCase().trim();
+      const filtered = q
+        ? allGroups.filter(g => {
+            const str = `${g.name || ''} ${g.department_code || ''} ${g.set_name || ''} ${g.member_names || ''} ${g.group_title || g.title || ''}`.toLowerCase();
+            return str.includes(q);
+          })
+        : allGroups;
+      renderGroupItems(filtered);
+    }
+
+    function renderGroupItems(groups) {
+      const el = document.getElementById('group-list');
+      if (!groups.length) {
+        el.innerHTML = '<p class="text-xs text-gray-400">No matching groups found.</p>';
+        return;
+      }
+      el.innerHTML = groups.map(g => `
         <label class="flex items-start gap-2.5 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
-          <input type="checkbox" name="group" value="${g.id}" class="mt-1 rounded border-gray-300 text-primary-600 focus:ring-primary-500 flex-shrink-0"
-            ${sel.has(String(g.id))?'checked':''}>
+          <input type="checkbox" name="group" value="${g.id}" onchange="getSelectedSchedGroupIds()" class="mt-1 rounded border-gray-300 text-primary-600 focus:ring-primary-500 flex-shrink-0"
+            ${schedSelectedGroupIds.has(String(g.id)) ? 'checked' : ''}>
           <div class="flex-1 min-w-0 text-sm">
             <div class="flex items-center gap-2 flex-wrap">
               <span class="font-semibold text-gray-900">${esc(g.name)}</span>
@@ -791,6 +825,17 @@
             ${g.group_title||g.title ? `<p class="text-xs text-primary-700 mt-0.5 font-medium italic">${esc(g.group_title||g.title)}</p>` : ''}
           </div>
         </label>`).join('');
+    }
+
+    function populateGroupList(selectedIds = []) {
+      schedSelectedGroupIds = new Set(selectedIds.map(String));
+      const searchInp = document.getElementById('sched-group-search');
+      if (searchInp) searchInp.value = '';
+      if (!allGroups.length) {
+        document.getElementById('group-list').innerHTML = '<p class="text-xs text-gray-400">No groups found.</p>';
+        return;
+      }
+      renderGroupItems(allGroups);
     }
 
     function populatePanelistList() {
@@ -948,7 +993,8 @@
       const date    = document.getElementById('sched-date').value;
       const slots   = getSelectedSlots();
       const notes   = document.getElementById('sched-notes').value.trim();
-      const groups  = [...document.querySelectorAll('input[name=group]:checked')].map(c=>parseInt(c.value));
+      getSelectedSchedGroupIds();
+      const groups  = Array.from(schedSelectedGroupIds).map(c=>parseInt(c)).filter(Boolean);
       const panels  = getSelectedPanelists();
 
       let valid=true;

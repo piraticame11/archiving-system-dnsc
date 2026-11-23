@@ -94,6 +94,18 @@ async function getMyGroups(adviserId, { school_year } = {}) {
     const chair = await evaluationsService.getChairpersonDecision({ group_id: group.id });
     group.decision = chair ? chair.decision : null;
     group.decision_defense_type = chair ? chair.defense_type : null;
+
+    const [docs] = await db.query(
+      `SELECT sd.id, sd.doc_type, sd.file_name, sd.file_size, sd.mime_type, sd.version, sd.is_current, sd.created_at,
+              ts.id AS submission_id
+       FROM submission_documents sd
+       JOIN thesis_submissions ts ON sd.submission_id = ts.id
+       WHERE ts.group_id = ? AND ts.deleted_at IS NULL
+         AND sd.doc_type IN ('title_proposal', 'chapters', 'ch1_2')
+       ORDER BY sd.created_at DESC`,
+      [group.id]
+    );
+    group.documents = docs;
   }
 
   return groups;

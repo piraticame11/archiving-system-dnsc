@@ -5,10 +5,31 @@ const fs = require('fs');
 
 async function create(req, res, next) {
   try {
+    const setNames = Array.isArray(req.body.set_names)
+      ? req.body.set_names.map(s => String(s || '').trim()).filter(Boolean)
+      : (req.body.set_name ? [req.body.set_name.trim()] : []);
+
+    if (setNames.length > 1) {
+      const created = [];
+      for (const sn of setNames) {
+        const act = await service.createActivity({
+          instructor_id: req.user.id,
+          department_id: req.body.department_id,
+          set_name:      sn,
+          group_id:      req.body.group_id,
+          title:         req.body.title,
+          description:   req.body.description,
+          deadline:      req.body.deadline,
+        });
+        created.push(act);
+      }
+      return sendCreated(res, created, `Activity created for ${created.length} sets successfully`);
+    }
+
     const activity = await service.createActivity({
       instructor_id: req.user.id,
       department_id: req.body.department_id,
-      set_name:      req.body.set_name,
+      set_name:      setNames[0] || (req.body.set_name ? req.body.set_name.trim() : null),
       group_id:      req.body.group_id,
       title:         req.body.title,
       description:   req.body.description,

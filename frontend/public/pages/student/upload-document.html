@@ -87,7 +87,7 @@
       <div class="mb-5 px-4 py-3 bg-gray-50 rounded-lg border border-gray-200 text-xs text-gray-500 space-y-1">
         <p class="font-medium text-gray-600">What each document type is for:</p>
         <p><strong class="text-gray-700">Title Proposal</strong> — your group's proposed research title, before it's approved.</p>
-        <p><strong class="text-gray-700">Ch1-2</strong> — Chapters 1 and 2 draft/proposal manuscript.</p>
+        <p><strong class="text-gray-700">Chapters</strong> — Chapters draft/proposal manuscript.</p>
         <p><strong class="text-gray-700">Full Document</strong> — the complete thesis/capstone manuscript, required for defense scheduling and eligible for archiving.</p>
         <p><strong class="text-gray-700">IMRaD</strong> — your own manuscript formatted in Introduction–Methods–Results–and–Discussion structure, eligible for archiving.</p>
         <p>All uploaded files appear below under "Existing Documents" and are visible to your adviser and defense panel.</p>
@@ -253,7 +253,7 @@
     });
 
     function formatDocType(type) {
-      if (type === 'ch1_2') return 'Ch1-2';
+      if (type === 'chapters' || type === 'ch1_2') return 'Chapters';
       if (type === 'imrad') return 'IMRaD';
       return (type || '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
@@ -261,7 +261,7 @@
     let queue = []; // { file, docType }
     const DOC_TYPES = [
       ['title_proposal', 'Title Proposal'],
-      ['ch1_2',          'Ch1-2'],
+      ['chapters',       'Chapters'],
       ['full_document',  'Full Document'],
       ['imrad',          'IMRaD'],
     ];

@@ -59,6 +59,7 @@ async function listSubmissions({ search, status, department_id, type, school_yea
             CONCAT(adv.first_name, ' ', adv.last_name) AS adviser_name,
             d.name AS department_name, d.code AS department_code,
             (SELECT COUNT(*) FROM submission_documents sd WHERE sd.submission_id = ts.id) AS documents_count,
+            (SELECT COUNT(*) FROM archive a WHERE a.submission_id = ts.id) AS is_archived,
             (SELECT sh.remarks FROM submission_history sh WHERE sh.submission_id = ts.id ORDER BY sh.changed_at DESC LIMIT 1) AS latest_remarks
      ${from}
      ORDER BY ts.created_at DESC

@@ -5,6 +5,8 @@ const createRules = [
   body('deadline').notEmpty().withMessage('Deadline is required'),
   body('department_id').notEmpty().withMessage('Target program is required').isInt({ min: 1 }).withMessage('Valid target program is required'),
   body('set_name').optional({ nullable: true }).trim().isLength({ max: 50 }),
+  body('set_names').optional({ nullable: true }).isArray(),
+  body('set_names.*').optional({ nullable: true }).trim().isLength({ max: 50 }),
   body('group_id').optional({ nullable: true }).isInt({ min: 1 }),
   body('description').optional({ nullable: true }).trim(),
 ];

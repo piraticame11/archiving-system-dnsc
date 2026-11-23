@@ -45,7 +45,8 @@ async function listAll(req, res, next) {
 async function listInstructors(req, res, next) {
   try {
     const [rows] = await db.query(
-      `SELECT u.id, u.first_name, u.last_name, u.email, d.name AS department_name,
+      `SELECT u.id, u.first_name, u.last_name, u.email, u.department_id,
+              d.name AS department_name, d.code AS department_code,
               u.max_advisee_groups,
               COUNT(tg.id) AS current_advisee_groups
        FROM users u
@@ -54,7 +55,7 @@ async function listInstructors(req, res, next) {
        LEFT JOIN thesis_groups tg
               ON tg.adviser_id = u.id AND tg.adviser_status = 'approved' AND tg.deleted_at IS NULL
        WHERE r.name = 'instructor' AND u.is_active = 1 AND u.deleted_at IS NULL
-       GROUP BY u.id, u.first_name, u.last_name, u.email, d.name, u.max_advisee_groups
+       GROUP BY u.id, u.first_name, u.last_name, u.email, u.department_id, d.name, d.code, u.max_advisee_groups
        ORDER BY u.last_name, u.first_name`
     );
     const withSlots = rows.map(({ max_advisee_groups, current_advisee_groups, ...rest }) => {

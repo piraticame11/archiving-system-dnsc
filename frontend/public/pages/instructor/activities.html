@@ -93,10 +93,23 @@
             </select>
           </div>
 
-          <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1">Target Set (Section)</label>
-            <input id="act-set" type="text" list="set-suggestions" placeholder="e.g. Set A (or leave blank for all)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-            <datalist id="set-suggestions"></datalist>
+          <div class="col-span-1 sm:col-span-2">
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-sm font-semibold text-gray-700">Target Set (Section) <span class="text-xs font-normal text-gray-400">(Select 1 or more)</span></label>
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="selectAllSets(true)" class="text-xs text-primary-600 hover:text-primary-800 font-medium">Select All</button>
+                <span class="text-gray-300">|</span>
+                <button type="button" onclick="selectAllSets(false)" class="text-xs text-gray-500 hover:text-gray-700">Clear</button>
+              </div>
+            </div>
+            <div id="sets-checkbox-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 p-2.5 bg-gray-50 border border-gray-200 rounded-lg max-h-36 overflow-y-auto">
+              <p class="text-xs text-gray-400 col-span-full">Loading sets…</p>
+            </div>
+            <div class="flex items-center gap-2 mt-2">
+              <input id="custom-set-input" type="text" placeholder="Add other set (e.g. Set C)…" class="flex-1 border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white">
+              <button type="button" onclick="addCustomSet()" class="px-2.5 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors border border-gray-200">+ Add</button>
+            </div>
+            <p class="text-xs text-gray-400 mt-1">Check 1 or more target sets. Leave all unchecked to assign to <strong>All Sets</strong>.</p>
           </div>
         </div>
 
@@ -187,13 +200,44 @@
           departments.map(d => `<option value="${d.id}">${escHtml(d.code)} - ${escHtml(d.name)}</option>`).join('');
 
         const setsData = metaRes.data?.sets || [];
-        const dl = document.getElementById('set-suggestions');
         const uniqueSets = [...new Set(setsData.map(s => s.set_name).filter(Boolean))].sort();
         knownSets = uniqueSets;
-        dl.innerHTML = uniqueSets.map(s => `<option value="${escHtml(s)}"></option>`).join('');
+        renderSetCheckboxes();
       } catch (err) {
         console.error('Error loading metadata', err);
       }
+    }
+
+    function renderSetCheckboxes() {
+      const container = document.getElementById('sets-checkbox-grid');
+      if (!container) return;
+      if (!knownSets.length) {
+        container.innerHTML = '<p class="text-xs text-gray-400 col-span-full">No active sets found. You can add one below.</p>';
+        return;
+      }
+      container.innerHTML = knownSets.map(s => `
+        <label class="flex items-center gap-2 p-1.5 rounded bg-white border border-gray-200 text-xs text-gray-700 hover:bg-gray-100 cursor-pointer select-none">
+          <input type="checkbox" name="target_set" value="${escHtml(s)}" class="set-checkbox rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+          <span class="truncate font-medium">${escHtml(s)}</span>
+        </label>
+      `).join('');
+    }
+
+    function selectAllSets(checked) {
+      document.querySelectorAll('.set-checkbox').forEach(cb => { cb.checked = checked; });
+    }
+
+    function addCustomSet() {
+      const input = document.getElementById('custom-set-input');
+      const val = input.value.trim();
+      if (!val) return;
+      if (!knownSets.includes(val)) {
+        knownSets.push(val);
+      }
+      renderSetCheckboxes();
+      const cb = document.querySelector(`.set-checkbox[value="${val}"]`);
+      if (cb) cb.checked = true;
+      input.value = '';
     }
 
     async function loadActivities() {
@@ -282,6 +326,7 @@
     /* ── Create Activity ─────────────────────────────────────────────── */
     function showCreateModal() {
       document.getElementById('create-modal').classList.remove('hidden');
+      renderSetCheckboxes();
       // Default deadline to 7 days from now at 23:59
       const d = new Date();
       d.setDate(d.getDate() + 7);
@@ -294,6 +339,9 @@
       document.getElementById('create-modal').classList.add('hidden');
       document.getElementById('create-error').classList.add('hidden');
       document.getElementById('create-form').reset();
+      selectAllSets(false);
+      const customInp = document.getElementById('custom-set-input');
+      if (customInp) customInp.value = '';
     }
 
     document.getElementById('create-form').addEventListener('submit', async e => {
@@ -304,8 +352,14 @@
       const title = document.getElementById('act-title').value.trim();
       const description = document.getElementById('act-description').value.trim();
       const department_id = document.getElementById('act-department').value || null;
-      const set_name = document.getElementById('act-set').value.trim() || null;
       const deadline = document.getElementById('act-deadline').value;
+
+      // Collect checked sets
+      const checkedBoxes = Array.from(document.querySelectorAll('.set-checkbox:checked')).map(cb => cb.value.trim()).filter(Boolean);
+      const pendingCustom = document.getElementById('custom-set-input')?.value.trim();
+      if (pendingCustom && !checkedBoxes.includes(pendingCustom)) {
+        checkedBoxes.push(pendingCustom);
+      }
 
       if (!title || !deadline || !department_id) {
         errEl.textContent = 'Activity title, target program, and deadline are required.';
@@ -322,7 +376,8 @@
           title,
           description,
           department_id: department_id ? parseInt(department_id) : null,
-          set_name,
+          set_names: checkedBoxes.length ? checkedBoxes : null,
+          set_name: checkedBoxes.length === 1 ? checkedBoxes[0] : (checkedBoxes.length > 1 ? checkedBoxes.join(', ') : null),
           deadline: new Date(deadline).toISOString()
         };
 

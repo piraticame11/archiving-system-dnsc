@@ -242,36 +242,99 @@
         </tr>`).join('');
     }
 
-    function buildMembersPanel(g) {
-      if (!g.members || !g.members.length) {
-        return `<p class="text-sm text-gray-400 italic">No members yet.</p>`;
-      }
-      const rows = g.members.map(m => `
-        <tr class="border-b border-gray-200 last:border-0">
-          <td class="py-2 pr-6">
-            <div class="flex items-center gap-2">
-              <span class="font-medium text-gray-800 text-sm">${escHtml(m.name)}</span>
-              ${m.student_id === g.leader_id
-                ? `<span class="leader-badge">Leader</span>`
-                : ''}
-            </div>
-          </td>
-          <td class="py-2 pr-6 text-xs text-gray-500">${escHtml(m.student_number || '—')}</td>
-          <td class="py-2 text-xs text-gray-500">${escHtml(m.email || '—')}</td>
-        </tr>`).join('');
+    function formatDocType(dt) {
+      if (dt === 'title_proposal') return 'Proposal';
+      if (dt === 'chapters' || dt === 'ch1_2') return 'Chapters';
+      return dt;
+    }
 
-      return `
-        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Members (${g.members.length} / ${g.max_members})</p>
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="border-b border-gray-200">
-              <th class="text-left pb-2 text-xs font-semibold text-gray-500">Name</th>
-              <th class="text-left pb-2 text-xs font-semibold text-gray-500">Student No.</th>
-              <th class="text-left pb-2 text-xs font-semibold text-gray-500">Email</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>`;
+    function formatBytes(bytes) {
+      if (!bytes) return '—';
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    async function viewDoc(submissionId, docId, fileName) {
+      try {
+        const token = getAccessToken();
+        const res = await fetch(`/api/v1/submissions/${submissionId}/documents/${docId}/view`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          let msg = `Error ${res.status}`;
+          try { const j = await res.json(); msg = j.message || msg; } catch {}
+          showAlert(msg, 'error');
+          return;
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+      } catch (e) {
+        showAlert('Failed to open document: ' + e.message, 'error');
+      }
+    }
+
+    function buildMembersPanel(g) {
+      let html = '';
+      if (!g.members || !g.members.length) {
+        html += `<p class="text-sm text-gray-400 italic">No members yet.</p>`;
+      } else {
+        const rows = g.members.map(m => `
+          <tr class="border-b border-gray-200 last:border-0">
+            <td class="py-2 pr-6">
+              <div class="flex items-center gap-2">
+                <span class="font-medium text-gray-800 text-sm">${escHtml(m.name)}</span>
+                ${m.student_id === g.leader_id
+                  ? `<span class="leader-badge">Leader</span>`
+                  : ''}
+              </div>
+            </td>
+            <td class="py-2 pr-6 text-xs text-gray-500">${escHtml(m.student_number || '—')}</td>
+            <td class="py-2 text-xs text-gray-500">${escHtml(m.email || '—')}</td>
+          </tr>`).join('');
+
+        html += `
+          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Members (${g.members.length} / ${g.max_members})</p>
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-gray-200">
+                <th class="text-left pb-2 text-xs font-semibold text-gray-500">Name</th>
+                <th class="text-left pb-2 text-xs font-semibold text-gray-500">Student No.</th>
+                <th class="text-left pb-2 text-xs font-semibold text-gray-500">Email</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>`;
+      }
+
+      const docs = g.documents || [];
+      html += `
+        <div class="mt-4 pt-4 border-t border-gray-200">
+          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2.5">Uploaded Documents (Proposal &amp; Chapters)</p>
+          ${!docs.length
+            ? `<p class="text-xs text-gray-400 italic">No proposal or chapters documents submitted yet.</p>`
+            : `<div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                ${docs.map(d => `
+                  <div class="flex items-center justify-between p-2.5 bg-white border border-gray-200 rounded-lg text-xs shadow-xs">
+                    <div class="flex items-center gap-2 min-w-0 mr-2">
+                      <span class="px-2 py-0.5 rounded text-xs font-semibold ${d.doc_type === 'title_proposal' ? 'bg-indigo-50 text-indigo-700' : 'bg-emerald-50 text-emerald-700'} flex-shrink-0">
+                        ${escHtml(formatDocType(d.doc_type))}
+                      </span>
+                      <span class="truncate font-medium text-gray-800" title="${escHtml(d.file_name)}">${escHtml(d.file_name)}</span>
+                      <span class="text-gray-400 flex-shrink-0">(${formatBytes(d.file_size)})</span>
+                    </div>
+                    <button onclick="event.stopPropagation(); viewDoc(${d.submission_id}, ${d.id}, '${escHtml(d.file_name)}')"
+                      class="px-2.5 py-1 bg-primary-50 text-primary-700 hover:bg-primary-100 font-semibold rounded transition-colors flex-shrink-0 cursor-pointer">
+                      View
+                    </button>
+                  </div>
+                `).join('')}
+              </div>`
+          }
+        </div>`;
+
+      return html;
     }
 
     function toggleGroup(i) {

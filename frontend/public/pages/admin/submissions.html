@@ -224,7 +224,7 @@
       <div class="flex gap-3 mt-5">
         <button onclick="closeArchiveModal()" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
         <button id="btn-save-archive" onclick="submitPromote()"
-          class="flex-1 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors">
+          class="flex-1 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm">
           Promote to Archive
         </button>
       </div>
@@ -404,12 +404,16 @@
                       Update Status
                     </button>`
                   : ''}
-                ${sub.status === 'approved'
-                  ? `<button onclick="openArchiveFromRow(${sub.id})"
-                      class="px-3 py-1.5 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">
-                      Promote to Archive
-                    </button>`
-                  : ''}
+                ${sub.is_archived ? `
+                  <span class="px-2.5 py-1 text-xs font-semibold text-purple-700 bg-purple-50 rounded-lg border border-purple-200">
+                    Archived
+                  </span>`
+                  : (sub.status === 'approved'
+                    ? `<button onclick="openArchiveFromRow(${sub.id})"
+                        class="px-3 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm">
+                        Promote to Archive
+                      </button>`
+                    : '')}
                 <button onclick="openDetail(${sub.id})"
                   class="px-3 py-1.5 text-xs font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
                   View
@@ -494,7 +498,7 @@
                     <svg class="w-5 h-5 text-primary-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                     <div class="flex-1 min-w-0">
                       <p class="text-sm font-medium text-gray-800 truncate">${escHtml(d.file_name)}</p>
-                      <p class="text-xs text-gray-500">${d.doc_type === 'ch1_2' ? 'Ch1-2' : d.doc_type === 'imrad' ? 'IMRaD' : d.doc_type.replace(/_/g,' ')} &middot; v${d.version} &middot; ${formatBytes(d.file_size)}</p>
+                      <p class="text-xs text-gray-500">${(d.doc_type === 'chapters' || d.doc_type === 'ch1_2') ? 'Chapters' : d.doc_type === 'imrad' ? 'IMRaD' : d.doc_type.replace(/_/g,' ')} &middot; v${d.version} &middot; ${formatBytes(d.file_size)}</p>
                     </div>
                     ${d.is_current ? '<span class="text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full">Current</span>' : ''}
                     <button onclick="viewDoc(${sub.id}, ${d.id}, '${d.file_name.replace(/'/g, "\\'")}')" class="flex-shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-800 bg-primary-50 hover:bg-primary-100 px-2.5 py-1 rounded-md transition-colors">
@@ -527,9 +531,9 @@
                Update Status
              </button>`);
         }
-        if (sub.status === 'approved') {
+        if (sub.status === 'approved' && !sub.is_archived) {
           footerBtns.push(`<button onclick="closeModal();openArchiveModal(currentSubDetail)"
-               class="px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors">
+               class="px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm">
                Promote to Archive
              </button>`);
         }
@@ -627,26 +631,33 @@
       }
       if (!valid) return;
 
+      if (!confirm('Are you sure you want to promote this submission to the archive?')) return;
+
       const btn = document.getElementById('btn-save-archive');
       btn.disabled = true; btn.textContent = 'Promoting…';
       try {
-        const res = await fetch('/api/v1/archive', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAccessToken()}` },
-          body: JSON.stringify({
-            submission_id: parseInt(submissionId),
-            document_id:   parseInt(documentId),
-            authors,
-            adviser:   adviser   || null,
-            keywords:  keywords  || null,
+        const [res] = await Promise.all([
+          fetch('/api/v1/archive', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAccessToken()}` },
+            body: JSON.stringify({
+              submission_id: parseInt(submissionId),
+              document_id:   parseInt(documentId),
+              authors,
+              adviser:   adviser   || null,
+              keywords:  keywords  || null,
+            }),
           }),
-        });
+          new Promise(resolve => setTimeout(resolve, 500))
+        ]);
         const json = await res.json();
         if (!res.ok) throw json;
         closeArchiveModal();
         showAlert('Submission successfully promoted to archive.', 'success');
-        loadStats();
-        loadSubmissions();
+        await Promise.all([
+          loadStats(),
+          loadSubmissions()
+        ]);
       } catch(err) {
         alertEl.textContent = err?.message || 'Failed to promote submission.';
         alertEl.classList.remove('hidden');
